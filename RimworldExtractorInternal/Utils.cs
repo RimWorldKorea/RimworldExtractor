@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Intrinsics.Arm;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -9,6 +11,7 @@ using ClosedXML.Excel;
 using DocumentFormat.OpenXml.Office.PowerPoint.Y2021.M06.Main;
 using DocumentFormat.OpenXml.Office.Word;
 using RimworldExtractorInternal.DataTypes;
+using Crc32 = System.IO.Hashing.Crc32;
 
 namespace RimworldExtractorInternal
 {
@@ -216,5 +219,40 @@ namespace RimworldExtractorInternal
 
         [GeneratedRegex("\\s+")]
         private static partial Regex StripSpace();
+
+        /** 긴 파일명을 줄이고 중복을 피하기 위해 사용
+         *  
+         */
+        public class StringShortener
+        {
+            private const string Base36Chars = "0123456789abcdefghijklmnopqrstuvwxyz";
+
+            public static UInt32 GetCRC32Hash(string input)
+            {
+                Span<byte> inputBytes = Encoding.UTF8.GetBytes(input);
+                
+                Span<byte> hashBytes = new byte[4];
+                Crc32.TryHash(inputBytes, hashBytes, out _); // TryHash는 리틀 엔디언을 반환
+                
+                return BinaryPrimitives.ReadUInt32LittleEndian(hashBytes);
+            }
+
+            public static string ToBase36(UInt32 input, int length)
+            {
+                Span<char> result = stackalloc char[length];
+                for (int i = length - 1; i >= 0; i--)
+                {
+                    result[i] = Base36Chars[(int)(input % 36)];
+                    input /= 36;
+                }
+                
+                return new string(result);
+            }
+            
+            public static string Run(string input, int length = 7)
+            {
+                return ToBase36(GetCRC32Hash(input), length);
+            }
+        }
     }
 }

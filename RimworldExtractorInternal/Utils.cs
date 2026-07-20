@@ -15,13 +15,24 @@ namespace RimworldExtractorInternal
 {
     public static partial class Utils
     {
+        /// <param name="ModName">"함수 이름 - 창작마당 일련번호" 형식으로 된 문자열</param>
+        /// <param name="TypeName">DefInjected 폴더 아래의 ThingDef 등 하위 클래스 폴더 이름</param>
         public static string GenerateFileName(string ModName, string TypeName)
         {
+#if DEBUG
+            Log.Msg("[입력 번수] ModName: \"" + ModName + "\" TypeName: \"" + TypeName + "\"");
+#endif
             return ToBase36(GetDeterministicHash(ModName, TypeName));
         }
         
+        /// <param name="ModName">"함수 이름 - 창작마당 일련번호" 형식으로 된 문자열</param>
+        /// <param name="TypeName">DefInjected 폴더 아래의 ThingDef 등 하위 클래스 폴더 이름</param>
+        /// <param name="DefName">ModName과 TypeName만으로 파일 이름을 결정할 수 없을 때 사용합니다. 해당 파일의 첫번째 노드 이름을 추천합니다.</param>
         public static string GenerateFileName(string ModName, string TypeName, string DefName)
         {
+#if DEBUG
+            Log.Msg("[입력 번수] ModName: \"" + ModName + "\" TypeName: \"" + TypeName + "\" DefName: \"" + DefName +"\"");
+#endif
             return ToBase36(GetDeterministicHash(ModName, TypeName, DefName));
         }
 

@@ -505,7 +505,7 @@ namespace RimworldExtractorInternal
 
                 }
 
-                docPatch.SaveSafely(Path.Combine(outputPath, Utils.GenerateFileName(ModName, "Patches") + ".xml"));
+                docPatch.SaveSafely(Path.Combine(outputPath, Utils.GenerateFileName(Path.GetFileNameWithoutExtension(ModName), "Patches") + ".xml"));
             }
 
             if (defInjected.Count > 0)
@@ -552,7 +552,7 @@ namespace RimworldExtractorInternal
                     var className = tokens[0];
                     var outputPath = isOfficial
                         ? Path.Combine(defInjectedDir, className, tokens[1] + ".xml")
-                        : Path.Combine(defInjectedDir, className, Utils.GenerateFileName(ModName, key) + ".xml");
+                        : Path.Combine(defInjectedDir, className, Utils.GenerateFileName(Path.GetFileNameWithoutExtension(ModName), className) + ".xml");
 
                     doc.DoFullListTranslation();
                     doc.SaveSafely(outputPath);
@@ -602,7 +602,7 @@ namespace RimworldExtractorInternal
                 {
                     var tokens = nodeParent.Split('.');
                     var outputPath = Path.Combine(defInjectedDir, className,
-                        Utils.GenerateFileName(ModName, className, nodeParent) + ".xml");
+                        Utils.GenerateFileName(Path.GetFileNameWithoutExtension(ModName), className, nodeParent) + ".xml");
 
                     doc.DoFullListTranslation();
                     doc.SaveSafely(outputPath);
@@ -634,7 +634,7 @@ namespace RimworldExtractorInternal
 
                 foreach (var (key, doc) in xmls)
                 {
-                    var outputPath = isOfficial ? Path.Combine(keyedDir, $"{key}.xml"): Path.Combine(keyedDir, Utils.GenerateFileName(ModName, "Keyed") + ".xml");
+                    var outputPath = isOfficial ? Path.Combine(keyedDir, $"{key}.xml"): Path.Combine(keyedDir, Utils.GenerateFileName(Path.GetFileNameWithoutExtension(ModName), "Keyed") + ".xml");
                     doc.SaveSafely(outputPath);
                 }
             }

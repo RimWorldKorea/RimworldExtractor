@@ -135,7 +135,9 @@ namespace RimworldExtractorGUI
                 default:
                     throw new ArgumentOutOfRangeException();
             }
-
+            
+            string BuildYamlText = RimworldExtractorInternal.Utils.WriteBuildYamlText(SelectedMod);
+            File.WriteAllText(Path.Combine(outPath, "LoadFolders.Build.yaml"), BuildYamlText);
 
             var (cntDefs, cntKeyed, cntStrings, cntPatches) = extraction.Count();
             Log.Msg($"번역 데이터 수: 총 {extraction.Count}개 중 Defs {cntDefs}개, Keyed {cntKeyed}개, Strings {cntStrings}개, Patches {cntPatches}개, 완료!");

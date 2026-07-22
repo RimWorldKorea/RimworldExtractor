@@ -1,0 +1,18 @@
+﻿<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="RimworldExtractorGUI.App"
+             RequestedThemeVariant="Default">
+    <Application.Styles>
+        <FluentTheme DensityStyle="Compact" />
+        
+        <!-- 모든 Window 배경색을 OS 테마 Accent 색상으로 자동 바인딩 -->
+        <Style Selector="Window">
+            <Setter Property="Background" Value="{DynamicResource SystemAccentColor}" />
+        </Style>
+        
+        <Style Selector="Button">
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+    </Application.Styles>
+</Application>

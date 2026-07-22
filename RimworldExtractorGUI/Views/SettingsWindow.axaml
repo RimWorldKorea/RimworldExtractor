@@ -1,0 +1,145 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:RimworldExtractorGUI.ViewModels"
+        x:Class="RimworldExtractorGUI.Views.SettingsWindow"
+        x:DataType="vm:SettingsViewModel"
+        Title="설정"
+        Width="950" Height="580"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+
+    <Grid RowDefinitions="*, Auto" Margin="12">
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+            <Grid ColumnDefinitions="*, *" RowDefinitions="Auto, Auto">
+                
+                <!-- 1. 림월드 관련 설정 -->
+                <Border Grid.Row="0" Grid.Column="0" BorderBrush="LightGray" BorderThickness="1" CornerRadius="4" Margin="4" Padding="10">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="림월드 관련 설정" FontWeight="Bold" Foreground="#333333" Margin="0,0,0,4"/>
+                        
+                        <TextBlock Text="림월드 경로 지정:"/>
+                        <Grid ColumnDefinitions="*, Auto">
+                            <TextBox Grid.Column="0" Text="{Binding PathRimworld, Mode=TwoWay}" Margin="0,0,6,0"/>
+                            <Button Grid.Column="1" Content="..." Width="40" HorizontalContentAlignment="Center"
+                                    Command="{Binding SelectPathRimworldCommand}"
+                                    CommandParameter="{Binding $parent[Window].StorageProvider}"/>
+                        </Grid>
+
+                        <TextBlock Text="창작마당 경로 지정:" Margin="0,4,0,0"/>
+                        <Grid ColumnDefinitions="*, Auto">
+                            <TextBox Grid.Column="0" Text="{Binding PathWorkshop, Mode=TwoWay}" Margin="0,0,6,0"/>
+                            <Button Grid.Column="1" Content="..." Width="40" HorizontalContentAlignment="Center"
+                                    Command="{Binding SelectPathWorkshopCommand}"
+                                    CommandParameter="{Binding $parent[Window].StorageProvider}"/>
+                        </Grid>
+
+                        <Grid ColumnDefinitions="*, *" Margin="0,4,0,0">
+                            <StackPanel Grid.Column="0" Margin="0,0,4,0">
+                                <TextBlock Text="버전 패턴 정규식:"/>
+                                <TextBox Text="{Binding PatternVersion, Mode=TwoWay}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="4,0,0,0">
+                                <TextBlock Text="림월드 기본 버전:"/>
+                                <Grid ColumnDefinitions="*, Auto">
+                                    <TextBox Grid.Column="0" Text="{Binding CurrentVersion, Mode=TwoWay}" Margin="0,0,4,0"/>
+                                    <Button Grid.Column="1" Content="자동 감지" Command="{Binding AutoDetectVersionCommand}"/>
+                                </Grid>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- 2. 추출/저장 관련 기본 설정 -->
+                <Border Grid.Row="1" Grid.Column="0" BorderBrush="LightGray" BorderThickness="1" CornerRadius="4" Margin="4" Padding="10">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="추출/저장 관련 기본 설정" FontWeight="Bold" Foreground="#333333" Margin="0,0,0,4"/>
+                        
+                        <Grid ColumnDefinitions="*, *">
+                            <StackPanel Grid.Column="0" Margin="0,0,4,0">
+                                <TextBlock Text="원본 언어:"/>
+                                <ComboBox ItemsSource="{Binding Languages}" SelectedItem="{Binding OriginalLanguage, Mode=TwoWay}" HorizontalAlignment="Stretch"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="4,0,0,0">
+                                <TextBlock Text="번역 언어:"/>
+                                <ComboBox ItemsSource="{Binding Languages}" SelectedItem="{Binding TranslationLanguage, Mode=TwoWay}" HorizontalAlignment="Stretch"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid ColumnDefinitions="*, *" Margin="0,4,0,0">
+                            <StackPanel Grid.Column="0" Margin="0,0,4,0">
+                                <TextBlock Text="추출 형식:"/>
+                                <ComboBox ItemsSource="{Binding ExtractionMethods}" SelectedIndex="{Binding SelectedExtractionMethodIndex, Mode=TwoWay}" HorizontalAlignment="Stretch"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="4,0,0,0">
+                                <TextBlock Text="저장 중 파일 중복 발생 시:"/>
+                                <ComboBox ItemsSource="{Binding DuplicationPolicies}" SelectedIndex="{Binding SelectedPolicyIndex, Mode=TwoWay}" HorizontalAlignment="Stretch"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <TextBlock Text="기본 참조 모드 리스트 경로 지정:" Margin="0,4,0,0"/>
+                        <Grid ColumnDefinitions="*, Auto">
+                            <TextBox Grid.Column="0" Text="{Binding PathBaseRefList, Mode=TwoWay}" Margin="0,0,6,0"/>
+                            <Button Grid.Column="1" Content="..." Width="40" HorizontalContentAlignment="Center"
+                                    Command="{Binding SelectBaseRefListCommand}"
+                                    CommandParameter="{Binding $parent[Window].StorageProvider}"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- 3. 추출/저장 관련 심화 설정 -->
+                <Border Grid.Row="0" Grid.Column="1" Grid.RowSpan="2" BorderBrush="LightGray" BorderThickness="1" CornerRadius="4" Margin="4" Padding="10">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="추출/저장 관련 심화 설정" FontWeight="Bold" Foreground="#333333" Margin="0,0,0,4"/>
+
+                        <Grid ColumnDefinitions="*, *">
+                            <StackPanel Grid.Column="0" Margin="0,0,4,0">
+                                <Grid ColumnDefinitions="*, Auto">
+                                    <TextBlock Grid.Column="0" Text="추출 가능한 태그:" VerticalAlignment="Center"/>
+                                    <Button Grid.Column="1" Content="?" Width="24" Height="24" HorizontalContentAlignment="Center" Command="{Binding ShowHelp1Command}"/>
+                                </Grid>
+                                <TextBox Text="{Binding ExtractableTags, Mode=TwoWay}" Height="80" AcceptsReturn="True" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1" Margin="4,0,0,0">
+                                <Grid ColumnDefinitions="*, Auto">
+                                    <TextBlock Grid.Column="0" Text="Translation Handle 태그:" VerticalAlignment="Center"/>
+                                    <Button Grid.Column="1" Content="?" Width="24" Height="24" HorizontalContentAlignment="Center" Command="{Binding ShowHelp2Command}"/>
+                                </Grid>
+                                <TextBox Text="{Binding TranslationHandles, Mode=TwoWay}" Height="80" AcceptsReturn="True" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid ColumnDefinitions="*, *" Margin="0,6,0,0">
+                            <StackPanel Grid.Column="0" Margin="0,0,4,0">
+                                <Grid ColumnDefinitions="*, Auto">
+                                    <TextBlock Grid.Column="0" Text="노드 대체 키워드:" VerticalAlignment="Center"/>
+                                    <Button Grid.Column="1" Content="?" Width="24" Height="24" HorizontalContentAlignment="Center" Command="{Binding ShowHelp3Command}"/>
+                                </Grid>
+                                <TextBox Text="{Binding NodeReplacement, Mode=TwoWay}" Height="80" AcceptsReturn="True" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1" Margin="4,0,0,0">
+                                <Grid ColumnDefinitions="*, Auto">
+                                    <TextBlock Grid.Column="0" Text="Full-list Translation 태그:" VerticalAlignment="Center"/>
+                                    <Button Grid.Column="1" Content="?" Width="24" Height="24" HorizontalContentAlignment="Center" Command="{Binding ShowHelp4Command}"/>
+                                </Grid>
+                                <TextBox Text="{Binding FullListTranslationTags, Mode=TwoWay}" Height="80" AcceptsReturn="True" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <CheckBox Content="(임시) TKey 추출 사용" IsChecked="{Binding EnableTkey, Mode=TwoWay}" Margin="0,10,0,0"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </ScrollViewer>
+
+        <!-- 하단 액션 버튼 바 -->
+        <Grid Grid.Row="1" ColumnDefinitions="*, Auto, Auto, Auto" Margin="0,10,0,0">
+            <TextBlock Grid.Column="0" Text="팁: 마우스를 상호작용란 위에 올려놓아 자세한 설명을 표시합니다" VerticalAlignment="Center" Foreground="Gray" FontSize="11"/>
+            
+            <Button Grid.Column="1" Content="저장 후 닫기" Margin="0,0,8,0" Command="{Binding SaveAndCloseCommand}"/>
+            <Button Grid.Column="2" Content="취소" Margin="0,0,8,0" Command="{Binding CancelCommand}"/>
+            <Button Grid.Column="3" Content="기본값으로 초기화" Command="{Binding ResetCommand}"/>
+        </Grid>
+    </Grid>
+</Window>

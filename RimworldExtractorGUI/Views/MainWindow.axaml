@@ -1,0 +1,70 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:RimworldExtractorGUI.ViewModels"
+        x:Class="RimworldExtractorGUI.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Rimworld Extractor GUI (림추출기)"
+        Width="820" Height="520"
+        WindowStartupLocation="CenterScreen">
+
+    <Grid RowDefinitions="Auto, *, Auto, 180" Margin="12">
+        <!-- 상단 메뉴 및 선택된 모드 정보 -->
+        <Grid Grid.Row="0" ColumnDefinitions="220, *" Margin="0,0,0,10">
+            <!-- 왼쪽 메뉴 버튼들 -->
+            <StackPanel Grid.Column="0" Spacing="6">
+                <Button Content="1. 추출할 모드 선택" Height="42" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                        Command="{Binding SelectModCommand}"/>
+                
+                <Button Content="2. 번역 데이터 추출" Height="42" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                        Command="{Binding ExtractCommand}"/>
+                
+                <Grid ColumnDefinitions="*, *">
+                    <Button Grid.Column="0" Content="XML -&gt; XLSX" Height="40" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,0,3,0"
+                            Command="{Binding ConvertXlsxCommand}"/>
+                    <Button Grid.Column="1" Content="XLSX -&gt; XML" Height="40" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="3,0,0,0"
+                            Command="{Binding ConvertXmlCommand}"/>
+                </Grid>
+
+                <Grid ColumnDefinitions="*, *">
+                    <Button Grid.Column="0" Content="번역 분석기&#10;열기 (WIP)" Height="42" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,0,3,0"
+                            Command="{Binding OpenTranslationAnalyzerCommand}"/>
+                    <Button Grid.Column="1" Content="이미지 + 파일&#10;합치기" Height="42" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="3,0,0,0"
+                            Command="{Binding OpenJpgPackagerCommand}"/>
+                </Grid>
+
+                <Button Content="옵션" Height="40" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                        Command="{Binding OpenSettingsCommand}"/>
+            </StackPanel>
+
+            <!-- 오른쪽 설명 및 선택된 모드 텍스트 -->
+            <StackPanel Grid.Column="1" Margin="15,0,0,0" Spacing="8">
+                <TextBlock Text="림월드의 공식 콘텐츠나 모드의 번역 데이터를 추출하는 프로그램입니다." 
+                           HorizontalAlignment="Center" FontWeight="Bold"/>
+                
+                <ScrollViewer Height="180" Background="Black" Padding="8">
+                    <TextBlock Text="{Binding SelectedModsText}" TextWrapping="Wrap" TextAlignment="Center"/>
+                </ScrollViewer>
+            </StackPanel>
+        </Grid>
+
+        <!-- 중간 정보 / 링크 바 -->
+        <Grid Grid.Row="2" ColumnDefinitions="Auto, *, Auto" Margin="0,5">
+            <Button Grid.Column="0" Content="{Binding VersionText}" Background="Transparent" Foreground="Blue"
+                    Command="{Binding OpenVersionUrlCommand}"/>
+            
+            <TextBlock Grid.Column="1" Text="Log" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
+            
+            <Button Grid.Column="2" Content="경고나 에러 발생 시"
+                    Command="{Binding OpenDiscussionUrlCommand}"/>
+        </Grid>
+
+        <!-- 하단 로그 터미널 Box -->
+        <TextBox Grid.Row="3" Name="TextBoxLog" 
+                 IsReadOnly="True" 
+                 AcceptsReturn="True" 
+                 TextWrapping="Wrap"
+                 Background="Black" 
+                 Foreground="White" 
+                 FontFamily="Consolas, Monospace, Courier New"/>
+    </Grid>
+</Window>

@@ -1,0 +1,31 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:RimworldExtractorGUI.ViewModels"
+        x:Class="RimworldExtractorGUI.Views.InitialPathSelectWindow"
+        x:DataType="vm:InitialPathSelectViewModel"
+        Title="림월드와 창작마당의 경로를 알려주세요"
+        Width="600" Height="150"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen">
+
+    <Grid RowDefinitions="Auto, Auto, Auto" ColumnDefinitions="Auto, *, Auto" Margin="12">
+        <!-- 림월드 경로 -->
+        <TextBlock Grid.Row="0" Grid.Column="0" Text="림월드 경로 지정" VerticalAlignment="Center" Margin="0,0,12,0"/>
+        <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding PathRimworld}" Margin="0,0,12,10" VerticalAlignment="Center"/>
+        <Button Grid.Row="0" Grid.Column="2" Content="..." Width="40" HorizontalContentAlignment="Center"
+                Command="{Binding SelectPathRimworldCommand}"
+                CommandParameter="{Binding $parent[Window].StorageProvider}"/>
+
+        <!-- 창작마당 경로 -->
+        <TextBlock Grid.Row="1" Grid.Column="0" Text="창작마당 경로 지정" VerticalAlignment="Center" Margin="0,0,12,0"/>
+        <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding PathWorkshop}" Margin="0,0,12,10" VerticalAlignment="Center"/>
+        <Button Grid.Row="2" Grid.Column="2" Content="..." Width="40" HorizontalContentAlignment="Center"
+                Command="{Binding SelectPathWorkshopCommand}"
+                CommandParameter="{Binding $parent[Window].StorageProvider}"/>
+
+        <!-- 완료 버튼 -->
+        <Button Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" Content="완료" 
+                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,10,0,0"
+                Command="{Binding CompleteCommand}"/>
+    </Grid>
+</Window>

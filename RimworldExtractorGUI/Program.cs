@@ -1,70 +1,47 @@
-using System.Diagnostics;
+using Avalonia;
 using System.Reflection;
 
-namespace RimworldExtractorGUI
+namespace RimworldExtractorGUI;
+
+internal static class Program
 {
-    /*
-    * TODO: https://github.com/RimWorldKorea/RMK/discussions/496#discussioncomment-8651025
-    */
-    internal static class Program
+    public const string VERSION = ""; // Github Action에 의해 게시 전 자동으로 생성
+
+    [STAThread]
+    public static void Main(string[] args)
     {
-        /// <summary>
-        /// Github Action에 의해 게시 전 자동으로 생성
-        /// </summary>
-        internal const string VERSION = "";
-        /// <summary>
-        ///  The main entry point for the application.
-        /// </summary>
-        [STAThread]
-        static void Main()
+        AppDomain.CurrentDomain.AssemblyResolve += CurrentDomainOnAssemblyResolve;
+        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+    }
+
+    public static AppBuilder BuildAvaloniaApp()
+        => AppBuilder.Configure<App>()
+            .UsePlatformDetect()
+            .WithInterFont()
+            .LogToTrace();
+
+    // 기존 dll 동적 로드 로직 유지[cite: 1]
+    private static Assembly? CurrentDomainOnAssemblyResolve(object? sender, ResolveEventArgs args)
+    {
+        if (args.Name.Contains(".resources")) return null;
+
+        Assembly? assembly = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => a.FullName == args.Name);
+        if (assembly != null) return assembly;
+
+        string filename = args.Name.Split(',')[0] + ".dll".ToLower();
+        var assemblyFilePath = Path.Combine("bin", filename);
+
+        if (File.Exists(assemblyFilePath))
         {
-            AppDomain.CurrentDomain.AssemblyResolve += CurrentDomainOnAssemblyResolve;
-            // To customize application configuration such as set high DPI settings or default font,
-            // see https://aka.ms/applicationconfiguration.
-            ApplicationConfiguration.Initialize();
-            if (!File.Exists("Prefabs.dat"))
+            try
             {
-                var formInitialPathSelect = new FormInitialPathSelect();
-                formInitialPathSelect.StartPosition = FormStartPosition.CenterScreen;
-                if (formInitialPathSelect.ShowDialog() != DialogResult.OK)
-                {
-                    MessageBox.Show("폴더 지정을 완료해주세요.");
-                    return;
-                }
-                // Application.Run();
+                return Assembly.LoadFrom(assemblyFilePath);
             }
-
-            var formMain = new FormMain();
-            formMain.StartPosition = FormStartPosition.CenterScreen;
-            Application.Run(formMain);
-        }
-
-        private static Assembly? CurrentDomainOnAssemblyResolve(object? sender, ResolveEventArgs args)
-        {
-            // Ignore missing resources
-            if (args.Name.Contains(".resources"))
+            catch
+            {
                 return null;
-
-            // check for assemblies already loaded
-            Assembly? assembly = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => a.FullName == args.Name);
-            if (assembly != null)
-                return assembly;
-
-            string filename = args.Name.Split(',')[0] + ".dll".ToLower();
-            var assemblyFilePath = Path.Combine("bin", filename);
-
-            if (File.Exists(assemblyFilePath))
-            {
-                try
-                {
-                    return Assembly.LoadFrom(assemblyFilePath);
-                }
-                catch
-                {
-                    return null;
-                }
             }
-            return null;
         }
+        return null;
     }
 }

@@ -4,7 +4,7 @@
         x:Class="RimworldExtractorGUI.Views.InitialPathSelectWindow"
         x:DataType="vm:InitialPathSelectViewModel"
         Title="림월드와 창작마당의 경로를 알려주세요"
-        Width="600" Height="150"
+        Width="800" Height="150"
         CanResize="False"
         WindowStartupLocation="CenterScreen">
 

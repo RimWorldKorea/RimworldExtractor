@@ -7,8 +7,9 @@
         Width="820" Height="520"
         WindowStartupLocation="CenterScreen">
 
-    <Grid RowDefinitions="Auto, *, Auto, 180" Margin="12">
-        <!-- 상단 메뉴 및 선택된 모드 정보 -->
+    <!-- RowDefinitions를 Auto, Auto, * 로 변경하여 마지막 행(로그 영역)이 남은 높이를 모두 차지하도록 수정 -->
+    <Grid RowDefinitions="Auto, Auto, *" Margin="12">
+        <!-- 상단 메뉴 및 선택된 모드 정보 (Row 0) -->
         <Grid Grid.Row="0" ColumnDefinitions="220, *" Margin="0,0,0,10">
             <!-- 왼쪽 메뉴 버튼들 -->
             <StackPanel Grid.Column="0" Spacing="6">
@@ -47,8 +48,8 @@
             </StackPanel>
         </Grid>
 
-        <!-- 중간 정보 / 링크 바 -->
-        <Grid Grid.Row="2" ColumnDefinitions="Auto, *, Auto" Margin="0,5">
+        <!-- 중간 정보 / 링크 바 (Row 1) -->
+        <Grid Grid.Row="1" ColumnDefinitions="Auto, *, Auto" Margin="0,5">
             <Button Grid.Column="0" Content="{Binding VersionText}" Background="Transparent" Foreground="Blue"
                     Command="{Binding OpenVersionUrlCommand}"/>
             
@@ -58,8 +59,8 @@
                     Command="{Binding OpenDiscussionUrlCommand}"/>
         </Grid>
 
-        <!-- 하단 로그 터미널 Box -->
-        <TextBox Grid.Row="3" Name="TextBoxLog" 
+        <!-- 하단 로그 터미널 Box (Row 2: 남은 세로 공간 자동 채움) -->
+        <TextBox Grid.Row="2" Name="TextBoxLog" 
                  IsReadOnly="True" 
                  AcceptsReturn="True" 
                  TextWrapping="Wrap"

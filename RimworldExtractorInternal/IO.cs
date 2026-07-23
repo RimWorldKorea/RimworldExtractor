@@ -247,68 +247,7 @@ namespace RimworldExtractorInternal
 
         public static List<TranslationEntry> FromExcel(string inputPath)
         {
-            using var libFixer = new LibreExcelFixer(inputPath);
-            inputPath = libFixer.DoFix();
-
-            var xlsx = new XLWorkbook(inputPath);
-            var sheet = xlsx.Worksheets.Worksheet(1);
-            var translations = new List<TranslationEntry>();
-            var rows = sheet.RowsUsed().ToList();
-            var headers = rows.First().Cells();
-
-            var colClass = headers.FirstOrDefault(x => x.StrVal() == HeaderClass)
-                               ?.WorksheetColumn().ColumnNumber() ??
-                           throw new XlsxHeaderReadingException(HeaderClass);
-            var colNode = headers.FirstOrDefault(x => x.StrVal() == HeaderNode)
-                ?.WorksheetColumn().ColumnNumber() ??
-                          throw new XlsxHeaderReadingException(HeaderNode);
-            var colRequiredMods = headers
-                .FirstOrDefault(x => x.StrVal() == HeaderRequiredMods)
-                ?.WorksheetColumn().ColumnNumber() ?? -1;
-            var colOriginal = headers.FirstOrDefault(x => x.StrVal() == HeaderOriginal)
-                                  ?.WorksheetColumn().ColumnNumber() ??
-                              headers.FirstOrDefault(x => x.StrVal() == "EN [Source string]")
-                                  ?.WorksheetColumn().ColumnNumber() ??
-                              throw new XlsxHeaderReadingException(HeaderOriginal);
-            var colTranslated = headers.FirstOrDefault(x => x.StrVal() == HeaderTranslated)
-                                    ?.WorksheetColumn().ColumnNumber() ??
-                                headers.FirstOrDefault(x => x.StrVal() == "KO [Translation]")
-                                    ?.WorksheetColumn().ColumnNumber() ??
-                                throw new XlsxHeaderReadingException(HeaderTranslated);
-
-            for (int i = 1; i < rows.Count; i++)
-            {
-                var row = rows[i];
-                var className = row.Cell(colClass).StrVal();
-                var node = row.Cell(colNode).StrVal();
-                if (className.Length == 0 || node.Length == 0)
-                    continue;
-                RequiredMods? requiredMods = null;
-                if (colRequiredMods != -1 && row.Cell(colRequiredMods).Value is { IsText: true } cellRequiredMods)
-                {
-                    var textRequiredMods = cellRequiredMods.GetText();
-                    if (textRequiredMods != null && textRequiredMods.Contains('\n'))
-                    {
-                        requiredMods = new RequiredMods();
-                        foreach (var s in textRequiredMods.Split('\n'))
-                        {
-                            requiredMods.AddAllowedByModName(s);
-                        }
-                    }
-                    else if (textRequiredMods != null)
-                    {
-                        requiredMods = RequiredMods.FromStringByModNames(textRequiredMods);
-                    }
-                }
-                var original = row.Cell(colOriginal).Value.IsBlank ? "" : row.Cell(colOriginal).StrVal();
-                var cellTranslated = row.Cell(colTranslated).Value;
-                var translated = cellTranslated.IsText ? (cellTranslated.GetText() == "" ? null : cellTranslated.GetText()) : null;
-
-                var translation = new TranslationEntry(className, node, original,
-                    translated, requiredMods, null);
-                translations.Add(translation);
-            }
-            return translations;
+            return Spreadsheet.SpreadsheetReader.ReadTranslations(inputPath);
         }
 
         /// <summary>

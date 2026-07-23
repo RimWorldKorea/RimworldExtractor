@@ -5,8 +5,10 @@ namespace RimworldExtractorInternal
     public static class TranslationAnalyzerTool
     {
         public static string[] GetXlsxPaths(string rootPath) =>
-            IO.DescendantFiles(rootPath).Where(x => x.ToLower().EndsWith(".xlsx")).ToArray();
-
+            IO.DescendantFiles(rootPath)
+                .Where(x => x.ToLower().EndsWith(".xlsx") || x.ToLower().EndsWith(".ods"))
+                .ToArray();
+        
         public static ModMetadata? GetModMetadataFromFilePath(string filePath)
         {
             if (ModMetadatasByFilePath.TryGetValue(filePath, out var value))

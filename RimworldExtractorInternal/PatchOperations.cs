@@ -20,13 +20,12 @@ internal static class PatchOperations
                 doc.Root!.Add(new XElement(node));
             }
         }
-
+        
         foreach (var node in doc.Root!.Elements())
         {
-            foreach (var _ in PatchOperationRecursive(node, simResult, null, true))
-            {
-                // PrePatch 처리
-            }
+            // PatchOperationRecursive가 내부에서 simResult(DefTree, DefsAddedByPatches 등)를
+            // 직접 수정하므로, ToList()로 제너레이터를 끝까지 소비시켜 패치 효과를 적용시킵니다.
+            _ = PatchOperationRecursive(node, simResult, null, prePatchMode: true).ToList();
         }
     }
 
@@ -89,7 +88,7 @@ internal static class PatchOperations
                     yield return translationEntry;
                 break;
             default:
-                Log.Msg($"ö ʴÂ PatchOperation ŸԴϴÙ: {operation}");
+                Log.Msg($"지원하지 않는 PatchOperation 타입입니다: {operation}");
                 break;
         }
 
@@ -105,7 +104,7 @@ internal static class PatchOperations
         XElement? value = curNode.Element("value");
         if (xpath == null || value == null)
         {
-            Log.Wrn($"xpath ǴÂ valueÇ Ì ϴÙ. ߸È å XML Ë.");
+            Log.Wrn($"xpath 또는 value가 없습니다. 잘못된 패치 XML입니다.");
             yield break; // yield break;
         }
 
@@ -116,7 +115,7 @@ internal static class PatchOperations
             var parentNode = selectNode.Parent;
             if (parentNode == null)
             {
-                Log.Wrn($"õÈ å {selectNode.Name.LocalName}Ç θð 尡 ϴÙ.");
+                Log.Wrn($"선택된 노드 {selectNode.Name.LocalName}의 부모 노드가 없습니다.");
                 continue;
             }
             var rootDefNode = Extractor.GetRootDefNode(parentNode, out var nodeName);
@@ -155,7 +154,7 @@ internal static class PatchOperations
         XElement? value = curNode.Element("value");
         if (xpath == null || value == null)
         {
-            Log.Wrn($"xpath ǴÂ valueÇ Ì ϴÙ. ߸È å XML Ë.");
+            Log.Wrn($"xpath 또는 value가 없습니다. 잘못된 패치 XML입니다.");
             yield break; // yield break;
         }
 
@@ -198,7 +197,7 @@ internal static class PatchOperations
         XElement? value = curNode.Element("value");
         if (xpath == null || value == null)
         {
-            Log.Wrn($"xpath ǴÂ valueÇ Ì ϴÙ. ߸È å XML Ë.");
+            Log.Wrn($"xpath 또는 value가 없습니다. 잘못된 패치 XML입니다.");
             yield break; // yield break;
         }
 
@@ -217,7 +216,7 @@ internal static class PatchOperations
                 className = (selectNode.Attribute("Class")?.Value ?? selectNode.Name.LocalName);
             }
             if (defName is null || className is null)
-                Log.Wrn($"defName ǴÂ className» ã» ö Â Patch: xpath:{xpath}");
+                Log.Wrn($"defName 또는 className을 찾을 수 없는 Patch: xpath:{xpath}");
             
             var currentTarget = selectNode;
             foreach (XElement valueChildNode in value.Elements())
@@ -246,7 +245,7 @@ internal static class PatchOperations
         XElement? value = curNode.Element("value");
         if (xpath == null || value == null)
         {
-            Log.Wrn($"xpath ǴÂ valueÇ Ì ϴÙ. ߸È å XML Ë.");
+            Log.Wrn($"xpath 또는 value가 없습니다. 잘못된 패치 XML입니다.");
             yield break; // yield break;
         }
 
@@ -270,7 +269,7 @@ internal static class PatchOperations
                 var defName = curRootDefNode.Element("defName")?.Value;
                 if (defName == null)
                 {
-                    Log.Wrn($"defNameÌ Â Â ö ʽϴÙ. xpath={xpath}, value={value}");
+                    Log.Wrn($"defName이 없는 노드입니다. xpath={xpath}, value={value}");
                     continue;
                 }
 
@@ -350,7 +349,7 @@ internal static class PatchOperations
         var attribute = curNode.Element("attribute")?.Value;
         if (xpath == null || (mode != PatchOperationAttributeMode.Remove && value == null) || attribute == null)
         {
-            Log.Wrn($"xpath ǴÂ valueÇ Ì ϴÙ. ߸È å XML Ë.");
+            Log.Wrn($"xpath 또는 value가 없습니다. 잘못된 패치 XML입니다.");
             yield break; // yield break;
         }
 

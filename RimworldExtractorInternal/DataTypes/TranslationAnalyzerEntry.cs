@@ -98,7 +98,7 @@ namespace RimworldExtractorInternal.DataTypes
         {
             FilePath = path;
             SaveMethod = SaveMethodEnum.Append;
-            Metadata = TranslationAnalyzerTool.GetModMetadataFromFilePath(path);
+            Metadata = DiffAnalyzer.GetModMetadataFromFilePath(path);
             try
             {
                 OriginalTranslations = IO.FromExcel(path);

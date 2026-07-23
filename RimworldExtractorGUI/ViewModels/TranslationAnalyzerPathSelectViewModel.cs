@@ -55,7 +55,7 @@ public partial class TranslationAnalyzerPathSelectViewModel : ViewModelBase
         var tokens = (PathText ?? "").Split('|', StringSplitOptions.RemoveEmptyEntries);
         if (tokens.Length > 0 && Directory.Exists(tokens[0]))
         {
-            tokens = tokens.SelectMany(TranslationAnalyzerTool.GetXlsxPaths).ToArray();
+            tokens = tokens.SelectMany(DiffAnalyzer.GetXlsxPaths).ToArray();
         }
         Paths = tokens;
         IsSuccess = true;

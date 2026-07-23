@@ -19,7 +19,7 @@ namespace RimworldExtractorTest
                          "Data\\test\\Nephilim Xenotype - 2997308585.xlsx"
                      })
             {
-                var modMetadata = TranslationAnalyzerTool.GetModMetadataFromFilePath(path);
+                var modMetadata = DiffAnalyzer.GetModMetadataFromFilePath(path);
                 Assert.IsNotNull(modMetadata);
                 Console.WriteLine(modMetadata);
             }

@@ -2,7 +2,7 @@
 
 namespace RimworldExtractorInternal
 {
-    public static class TranslationAnalyzerTool
+    public static class DiffAnalyzer
     {
         public static string[] GetXlsxPaths(string rootPath) =>
             IO.DescendantFiles(rootPath)

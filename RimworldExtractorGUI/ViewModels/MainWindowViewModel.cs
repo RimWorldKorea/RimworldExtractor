@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using RimworldExtractorGUI.Services;
 using RimworldExtractorGUI.Utils;
 using RimworldExtractorInternal;
 using RimworldExtractorInternal.DataTypes;
@@ -14,8 +15,11 @@ namespace RimworldExtractorGUI.ViewModels;
 
 public partial class MainWindowViewModel : ViewModelBase
 {
+    private readonly IDialogService _dialogService;
+    private readonly IStorageService _storageService;
+
     [ObservableProperty]
-    private string _selectedModsText = "선택된 모드가 없습니다.\n\n===기본적인 사용방법===\n1) '1. 추출할 모드 선택'을 통해 번역할 모드를 선택하세요.\n선택) 번역할 모드를 우클릭 후, '이 모드와 관련된 모든 모드를 참조 모드로 선택'을 클릭하세요.\n2) '2. 번역 데이터 추출'을 통해 번역 텍스트를 추출하세요.\n3) 추출된 파일들을 번역하세요.\n5) 끝!\n\n팁) 옵션에서 출력 형식을 엑셀 파일(림왈도 형식)로 변경할 수 있습니다.";
+    private string _selectedModsText = "모드가 선택되지 않았습니다.\n\n=== 사용 방법 ===\n1) '1. 모드 선택' 버튼을 누릅니다.\n2) '2. 추출' 버튼을 누릅니다.\n3) 변환이 완료되면 출력 디렉토리가 열립니다.\n5) 번역을 시작하세요!\n\n※ 모드를 선택하면 모드 정보가 이곳에 표시됩니다.";
 
     [ObservableProperty]
     private string _versionText = "버전 확인 중...";
@@ -28,17 +32,11 @@ public partial class MainWindowViewModel : ViewModelBase
     public List<ExtractableFolder>? SelectedFolders { get; private set; }
     public List<ModMetadata>? ReferenceMods { get; private set; }
 
-    // View에 다이얼로그 호출을 요청하기 위한 이벤트들
-    public event Func<Task>? RequestSelectMod;
-    public event Func<Task>? RequestExtract;
-    public event Func<Task>? RequestConvertXlsx;
-    public event Func<Task>? RequestConvertXml;
-    public event Func<Task>? RequestOpenSettings;
-    public event Func<Task>? RequestOpenJpgPackager;
-    public event Func<Task>? RequestOpenTranslationAnalyzer;
-
-    public MainWindowViewModel()
+    // 생성자를 통해 Service 주입
+    public MainWindowViewModel(IDialogService dialogService, IStorageService storageService)
     {
+        _dialogService = dialogService;
+        _storageService = storageService;
         CheckVersionAsync();
     }
 
@@ -51,12 +49,12 @@ public partial class MainWindowViewModel : ViewModelBase
                 var latest = GithubVersionCheker.GetLatest();
                 var current = Program.VERSION;
                 VersionText = latest == current
-                    ? $"{current} 최신 버전입니다"
-                    : $"{current} < {latest} 최신 버전 사용가능";
+                    ? $"{current} (최신 버전)"
+                    : $"{current} < {latest} (업데이트 가능)";
             }
             catch (Exception e)
             {
-                Log.Wrn($"최신 버전 확인에 실패하였습니다: {e.Message}");
+                Log.Wrn($"버전 확인 실패 : {e.Message}");
             }
         });
     }
@@ -68,13 +66,13 @@ public partial class MainWindowViewModel : ViewModelBase
         ReferenceMods = refMods.Except(new[] { mod }).ToList();
         CanExtract = true;
 
-        var text = $"선택된 모드: {SelectedMod.ModName}";
+        var text = $"대상 모드 : {SelectedMod.ModName}";
         if (ReferenceMods?.Count > 0)
         {
             var concatText = string.Join(", ", ReferenceMods.Select(x => x.ModName));
             var stripedText = concatText.Substring(0, Math.Min(concatText.Length, 200));
             if (concatText.Length > 200) stripedText += "...";
-            text += $"\n참조로 선택된 모드: {stripedText}";
+            text += $"\n참조 모드 : {stripedText}";
         }
         SelectedModsText = text;
     }
@@ -82,51 +80,104 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private async Task SelectModAsync()
     {
-        if (RequestSelectMod != null)
-            await RequestSelectMod.Invoke();
+        var result = await _dialogService.ShowSelectModDialogAsync(SelectedMod);
+        if (result.IsSuccess && result.SelectedMod != null)
+        {
+            UpdateSelectedModInfo(result.SelectedMod, result.SelectedFolders, result.ReferenceMods);
+        }
     }
 
     [RelayCommand(CanExecute = nameof(CanExtract))]
     private async Task ExtractAsync()
     {
-        if (RequestExtract != null)
-            await RequestExtract.Invoke();
+        if (SelectedMod == null || SelectedFolders == null || ReferenceMods == null) return;
+
+        Log.Msg("추출 시작...");
+        
+        // UI가 멈추지 않도록 무거운 추출 로직은 Task.Run으로 감쌉니다.
+        var extraction = await Task.Run(() => 
+            Extractor.ExtractTranslationData(SelectedMod, SelectedFolders, ReferenceMods));
+
+        var outPath = SelectedMod.Identifier.StripInvaildChars();
+
+        // I/O 작업 수행
+        await Task.Run(() =>
+        {
+            switch (Prefabs.Method)
+            {
+                case Prefabs.ExtractionMethod.Excel:
+                    IO.ToExcel(extraction, Path.Combine(outPath, outPath));
+                    break;
+                case Prefabs.ExtractionMethod.Languages:
+                    IO.ToLanguageXml(extraction, false, false, outPath, outPath);
+                    break;
+                case Prefabs.ExtractionMethod.LanguagesWithComments:
+                    IO.ToLanguageXml(extraction, false, true, outPath, outPath);
+                    break;
+            }
+
+            string buildYamlText = RimworldExtractorInternal.Utils.WriteBuildYamlText(SelectedMod);
+            File.WriteAllText(Path.Combine(outPath, "LoadFolders.Build.yaml"), buildYamlText);
+        });
+
+        // 튜플 요소 추출 - (Defs, Keyed, Strings, Patches)
+        var (cntDefs, cntKeyed, cntStrings, cntPatches) = RimworldExtractorInternal.Utils.Count(extraction);
+        Log.Msg($"번역 데이터 수: 총 {extraction.Count}개 중 Defs {cntDefs}개, Keyed {cntKeyed}개, Strings {cntStrings}개, Patches {cntPatches}개 완료!");
+
+        if (await _dialogService.ConfirmAsync("추출 완료", "추출된 폴더를 열어보시겠습니까?"))
+        {
+            Process.Start(new ProcessStartInfo { FileName = outPath, UseShellExecute = true });
+        }
     }
 
     [RelayCommand]
     private async Task ConvertXlsxAsync()
     {
-        if (RequestConvertXlsx != null)
-            await RequestConvertXlsx.Invoke();
+        var fileNames = await _dialogService.ShowXmlisterDialogAsync();
+        if (fileNames != null && fileNames.Length > 0)
+        {
+            await Task.Run(() =>
+            {
+                for (var i = 0; i < fileNames.Length; i++)
+                {
+                    var root = fileNames[i];
+                    var translations = IO.FromLanguageXml(root);
+                    IO.ToExcel(translations, Path.Combine(root, Path.GetFileNameWithoutExtension(root)));
+                    Log.Msg($"{i + 1}/{fileNames.Length}::변환 완료 : {root}");
+                }
+            });
+
+            await _dialogService.ShowAlertAsync("알림", "모든 파일의 변환이 완료되었습니다!");
+        }
     }
 
     [RelayCommand]
     private async Task ConvertXmlAsync()
     {
-        if (RequestConvertXml != null)
-            await RequestConvertXml.Invoke();
+        var path = await _storageService.OpenFileAsync("변환할 Excel 파일 선택", "Excel 파일", "*.xlsx");
+        if (!string.IsNullOrEmpty(path))
+        {
+            await Task.Run(() =>
+            {
+                var translations = IO.FromExcel(path);
+                IO.ToLanguageXml(translations, true, Prefabs.CommentOriginal, Path.GetFileName(path), Path.GetDirectoryName(path) ?? "");
+            });
+
+            if (await _dialogService.ConfirmAsync("변환 완료", "변환된 폴더를 열어보시겠습니까?"))
+            {
+                Process.Start(new ProcessStartInfo { FileName = Path.GetDirectoryName(path) ?? "", UseShellExecute = true });
+            }
+        }
     }
 
     [RelayCommand]
-    private async Task OpenSettingsAsync()
-    {
-        if (RequestOpenSettings != null)
-            await RequestOpenSettings.Invoke();
-    }
+    private async Task OpenSettingsAsync() => await _dialogService.ShowSettingsDialogAsync();
 
     [RelayCommand]
-    private async Task OpenJpgPackagerAsync()
-    {
-        if (RequestOpenJpgPackager != null)
-            await RequestOpenJpgPackager.Invoke();
-    }
+    private async Task OpenJpgPackagerAsync() => await _dialogService.ShowImageFileCombinerDialogAsync();
 
     [RelayCommand]
-    private async Task OpenTranslationAnalyzerAsync()
-    {
-        if (RequestOpenTranslationAnalyzer != null)
-            await RequestOpenTranslationAnalyzer.Invoke();
-    }
+    private async Task OpenTranslationAnalyzerAsync() => await _dialogService.ShowTranslationAnalyzerDialogAsync();
 
     [RelayCommand]
     private void OpenVersionUrl()

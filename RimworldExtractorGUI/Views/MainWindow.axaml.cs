@@ -18,7 +18,8 @@ public partial class MainWindow : Window
         // 1. 서비스 초기화 및 주입
         var dialogService = new AvaloniaDialogService(this);
         var storageService = new AvaloniaStorageService(this);
-        _viewModel = new MainWindowViewModel(dialogService, storageService);
+        var versionService = new GitHubVersionCheckService();
+        _viewModel = new MainWindowViewModel(dialogService, storageService, versionService);
         DataContext = _viewModel;
 
         // 2. 로그 라이터 설정

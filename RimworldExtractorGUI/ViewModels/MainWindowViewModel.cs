@@ -17,6 +17,7 @@ public partial class MainWindowViewModel : ViewModelBase
 {
     private readonly IDialogService _dialogService;
     private readonly IStorageService _storageService;
+    private readonly IVersionCheckService _versionService;
 
     [ObservableProperty]
     private string _selectedModsText = "모드가 선택되지 않았습니다.\n\n=== 사용 방법 ===\n1) '1. 모드 선택' 버튼을 누릅니다.\n2) '2. 추출' 버튼을 누릅니다.\n3) 변환이 완료되면 출력 디렉토리가 열립니다.\n5) 번역을 시작하세요!\n\n※ 모드를 선택하면 모드 정보가 이곳에 표시됩니다.";
@@ -33,30 +34,32 @@ public partial class MainWindowViewModel : ViewModelBase
     public List<ModMetadata>? ReferenceMods { get; private set; }
 
     // 생성자를 통해 Service 주입
-    public MainWindowViewModel(IDialogService dialogService, IStorageService storageService)
+    public MainWindowViewModel(IDialogService dialogService, IStorageService storageService, IVersionCheckService versionService)
     {
         _dialogService = dialogService;
         _storageService = storageService;
+        _versionService = versionService;
+        
         CheckVersionAsync();
     }
 
-    private void CheckVersionAsync()
+    private async void CheckVersionAsync()
     {
-        Task.Run(() =>
+        try
         {
-            try
-            {
-                var latest = GithubVersionCheker.GetLatest();
-                var current = Program.VERSION;
-                VersionText = latest == current
-                    ? $"{current} (최신 버전)"
-                    : $"{current} < {latest} (업데이트 가능)";
-            }
-            catch (Exception e)
-            {
-                Log.Wrn($"버전 확인 실패 : {e.Message}");
-            }
-        });
+            // 비동기로 안전하게 최신 버전 호출
+            var latest = await _versionService.GetLatestVersionAsync();
+            var current = _versionService.CurrentVersion;
+
+            VersionText = latest == current
+                ? $"{current} (최신 버전)"
+                : $"{current} < {latest} (업데이트 가능)";
+        }
+        catch (Exception e)
+        {
+            Log.Wrn($"버전 확인 실패 : {e.Message}");
+            VersionText = "버전 확인 실패";
+        }
     }
 
     public void UpdateSelectedModInfo(ModMetadata mod, List<ExtractableFolder> folders, List<ModMetadata> refMods)
@@ -182,12 +185,13 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void OpenVersionUrl()
     {
-        Process.Start(new ProcessStartInfo { FileName = GithubVersionCheker.LatestUrl, UseShellExecute = true });
+        // 서비스에서 URL을 가져옴
+        Process.Start(new ProcessStartInfo { FileName = _versionService.LatestUrl, UseShellExecute = true });
     }
 
     [RelayCommand]
-    private void OpenDiscussionUrl()
+    private void OpenDiscordUrl()
     {
-        Process.Start(new ProcessStartInfo { FileName = GithubVersionCheker.DiscussionUrl, UseShellExecute = true });
+        Process.Start(new ProcessStartInfo { FileName = _versionService.DiscordUrl, UseShellExecute = true });
     }
 }

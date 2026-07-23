@@ -56,7 +56,7 @@
             <TextBlock Grid.Column="1" Text="Log" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
             
             <Button Grid.Column="2" Content="경고나 에러 발생 시"
-                    Command="{Binding OpenDiscussionUrlCommand}"/>
+                    Command="{Binding OpenDiscordUrlCommand}"/>
         </Grid>
 
         <!-- 하단 로그 터미널 Box (Row 2: 남은 세로 공간 자동 채움) -->

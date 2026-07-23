@@ -1,17 +1,21 @@
-﻿using ExcelDataReader;
+﻿using System.Text;
+using ExcelDataReader;
 
 namespace RimworldExtractorInternal.Spreadsheet;
 
 public class XlsxReader : ISpreadsheetReader
 {
+    static XlsxReader()
+    {
+        // 파일 인코딩 설정에 따라 읽지 못하게 되는 경우를 예방합니다.
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+    }
+    
     public bool CanRead(string filePath) => 
         filePath.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase);
 
     public Grid ReadGrid(string filePath, int sheetIndex = 0)
     {
-        // .NET 환경에서 한글/특수 인코딩 호환성을 확보하기 위한 등록
-        System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
-
         using var stream = File.OpenRead(filePath);
         using var reader = ExcelReaderFactory.CreateReader(stream);
 

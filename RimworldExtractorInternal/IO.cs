@@ -2,11 +2,10 @@
 using System.Security;
 using System.Text.RegularExpressions;
 using System.Xml;
+using System.Xml.Linq;
 using RimworldExtractorInternal.Compats;
 using RimworldExtractorInternal.DataTypes;
 using RimworldExtractorInternal.Exceptions;
-using DocumentFormat.OpenXml.Spreadsheet;
-using DocumentFormat.OpenXml.Office2016.Excel;
 
 namespace RimworldExtractorInternal
 {
@@ -18,6 +17,7 @@ namespace RimworldExtractorInternal
         private static readonly string HeaderRequiredMods = "Required Mods [Not chosen]";
         private static string HeaderOriginal => $"{Prefabs.OriginalLanguage} [Source string]";
         private static string HeaderTranslated => $"{Prefabs.TranslationLanguage} [Translation]";
+
         public static void ToExcel(List<TranslationEntry> translations, string outPath = "result",
             bool markNoTranslation = false)
         {
@@ -72,6 +72,7 @@ namespace RimworldExtractorInternal
             sheet.Style.Font.FontName = "맑은 고딕";
             xlsx.SaveSafely(outPath + ".xlsx");
         }
+
         public static void ModifyExcel(List<TranslationAnalyzerEntry.ChangeRecord> changes, string targetPath)
         {
             var xlsx = new XLWorkbook(targetPath);
@@ -147,39 +148,6 @@ namespace RimworldExtractorInternal
                         curRow.Cell(colTranslated).Clear();
                     }
                 }
-                //var subSheet = xlsx.AddWorksheet($"{dateString}_삭제된 노드 목록");
-                //subSheet.Cell(1, 1).Value = HeaderClassNode;
-                //subSheet.Cell(1, 2).Value = HeaderClass;
-                //subSheet.Cell(1, 3).Value = HeaderNode;
-                //subSheet.Cell(1, 4).Value = HeaderRequiredMods;
-                //subSheet.Cell(1, 5).Value = HeaderOriginal;
-                //subSheet.Cell(1, 6).Value = HeaderTranslated;
-                //var nxtRow = subSheet.Row(2);
-                //for (int i = rows.Count - 1; i >= 0; i--)
-                //{
-                //    var curRow = rows[i];
-                //    var curClassNode = curRow.Cell(colClassNode).StrVal();
-                //    if (removeNodes.Any(x => $"{x.Orig!.ClassName}+{x.Orig!.Node}" == curClassNode))
-                //    {
-                //        curRow.Cell(colClassNode).CopyTo(nxtRow.Cell(1));
-                //        curRow.Cell(colClass).CopyTo(nxtRow.Cell(2));
-                //        curRow.Cell(colNode).CopyTo(nxtRow.Cell(3));
-                //        if (colRequiredMods != -1)
-                //            curRow.Cell(colRequiredMods).CopyTo(nxtRow.Cell(4));
-                //        curRow.Cell(colOriginal).CopyTo(nxtRow.Cell(5));
-                //        curRow.Cell(colTranslated).CopyTo(nxtRow.Cell(6));
-                //        for (int j = 0; j < mainSheet.ColumnsUsed().Count() - colTranslated + 1; j++)
-                //        {
-                //            curRow.Cell(j + colTranslated + 1).CopyTo(nxtRow.Cell(j + 6 + 1));
-                //        }
-                //        curRow.Cells(colTranslated + 1, mainSheet.ColumnsUsed().Count());
-
-                //        nxtRow = nxtRow.RowBelow();
-                //        curRow.Delete();
-                //    }
-                //}
-
-                //rows = mainSheet.RowsUsed().ToList();
             }
 
             if (changedOriginals.Count > 0)
@@ -308,8 +276,6 @@ namespace RimworldExtractorInternal
                                     ?.WorksheetColumn().ColumnNumber() ??
                                 throw new XlsxHeaderReadingException(HeaderTranslated);
 
-
-
             for (int i = 1; i < rows.Count; i++)
             {
                 var row = rows[i];
@@ -321,7 +287,6 @@ namespace RimworldExtractorInternal
                 if (colRequiredMods != -1 && row.Cell(colRequiredMods).Value is { IsText: true } cellRequiredMods)
                 {
                     var textRequiredMods = cellRequiredMods.GetText();
-                    // 하위 호환성
                     if (textRequiredMods != null && textRequiredMods.Contains('\n'))
                     {
                         requiredMods = new RequiredMods();
@@ -345,7 +310,12 @@ namespace RimworldExtractorInternal
             }
             return translations;
         }
-        
+
+        /// <summary>
+        /// 추출 데이터를 Languages XML 구조로 저장합니다.
+        /// Conditional Patch 항목(Patches. 접두어)은 PatchOperation 대신 'Patches.' 접두어를 제거한 뒤
+        /// RequiredMods/PackageID 단위의 별도 폴더(ConditionalLanguages)에 표준 DefInjected XML 형태로 내보냅니다.
+        /// </summary>
         public static void ToLanguageXml(List<TranslationEntry> translations, bool skipNoTranslation, bool commentOriginal, string ModName, string rootDirPath)
         {
             var languagesDir = PathCombineCreateDir(rootDirPath, "Languages");
@@ -354,8 +324,9 @@ namespace RimworldExtractorInternal
             var defInjectedFullListTranslations = new List<TranslationEntry>();
             var keyed = new List<TranslationEntry>();
             var strings = new List<TranslationEntry>();
-            var patches = new List<TranslationEntry>();
-            var patchedNodeSet = new HashSet<string>();
+            
+            // Conditional / Patched 번역 항목을 수집 (PackageID별 분리)
+            var conditionalDefInjected = new List<TranslationEntry>();
 
             var isOfficial = translations.Any(x => x.SourceFile != null);
             if (isOfficial)
@@ -363,13 +334,25 @@ namespace RimworldExtractorInternal
                 Log.Msg("공식 컨텐츠는 모드를 추출할 때와는 달리, 파일명을 보존해서 추출합니다.");
             }
 
-
-            foreach (var translation in translations)
+            foreach (var rawTranslation in translations)
             {
+                var translation = rawTranslation;
                 var className = translation.ClassName;
 
                 if (skipNoTranslation && className != "Strings" && string.IsNullOrEmpty(translation.Translated))
                 {
+                    continue;
+                }
+
+                // Patch 항목 처리: 'Patches.' 접두어가 붙어있는 경우
+                if (className.StartsWith("Patches."))
+                {
+                    // 'Patches.' 접두어 제거 -> 순수 DefTypeName으로 변경 (예: Patches.ThingDef -> ThingDef)
+                    var realClassName = className["Patches.".Length..];
+                    translation = translation with { ClassName = realClassName };
+
+                    // Patch를 통해 생성된 항목은 Conditional 목록으로 분류
+                    conditionalDefInjected.Add(translation);
                     continue;
                 }
 
@@ -383,9 +366,7 @@ namespace RimworldExtractorInternal
                         break;
                     default:
                         {
-                            if (className.StartsWith("Patches."))
-                                patches.Add(translation);
-                            else if (!isOfficial && Prefabs.FullListTranslationTags.Any(translation.Node.Contains))
+                            if (!isOfficial && Prefabs.FullListTranslationTags.Any(translation.Node.Contains))
                                 defInjectedFullListTranslations.Add(translation);
                             else
                                 defInjected.Add(translation);
@@ -394,156 +375,81 @@ namespace RimworldExtractorInternal
                 }
             }
 
-            if (skipNoTranslation && patches.Count == 0 && defInjected.Count == 0 &&
+            if (skipNoTranslation && conditionalDefInjected.Count == 0 && defInjected.Count == 0 &&
                 keyed.Count == 0 && translations.Count > 0 && defInjectedFullListTranslations.Count == 0)
             {
                 Log.Wrn("번역 데이터가 존재하지 않아 아무것도 추출되지 않습니다. 팁) XLSX -> XML 기능의 경우 번역된 내용이 없으면 아무것도 저장되지 않습니다.");
             }
 
-            if (patches.Count > 0)
+            // 1. Conditional DefInjected 항목 내보내기 (PackageID / RequiredMods 별 폴더 구성)
+            if (conditionalDefInjected.Count > 0)
             {
-                var outputPath = PathCombineCreateDir(rootDirPath, "Patches");
+                // 외부 로드 링커 툴이 인지할 수 있는 별도 폴더 (예: ConditionalLanguages)
+                var conditionalBaseDir = PathCombineCreateDir(rootDirPath, "ConditionalLanguages");
 
-                var docPatch = new XmlDocument();
-                docPatch.AppendElement("Patch");
-                var root = docPatch.DocumentElement ?? throw new InvalidOperationException();
+                // RequiredMods(PackageID) 별로 그룹화
+                var groupedByMods = conditionalDefInjected.GroupBy(x => x.RequiredMods?.ToString() ?? "Common");
 
-                var entryDict = new Dictionary<string, XmlElement>();
-
-                // RequiredMods에 따라 뼈대 사전 생성
-                foreach (var translation in CompatManager.DoPostProcessing(patches))
+                foreach (var group in groupedByMods)
                 {
-                    var requiredMods = translation.RequiredMods;
-                    if (requiredMods == null || entryDict.ContainsKey(requiredMods.ToString()))
-                        continue;
+                    var packageIdFolder = group.Key.Replace("::", "_").Replace("/", "_").Replace('\\', '_');
+                    var targetFolder = PathCombineCreateDir(conditionalBaseDir, packageIdFolder, Prefabs.TranslationLanguage, "DefInjected");
 
-                    var aboveNode = root.AppendElement("Operation");
-                    foreach (var allowedMod in requiredMods.AllowedMods)
+                    var xmls = new Dictionary<string, XDocument>();
+                    foreach (var translation in CompatManager.DoPostProcessing(group))
                     {
-                        aboveNode.Append(operationFindMod =>
+                        PathCombineCreateDir(targetFolder, translation.ClassName);
+                        var key = $"{translation.ClassName}|{translation.SourceFile}";
+
+                        if (!xmls.TryGetValue(key, out var doc))
                         {
-                            operationFindMod.AppendAttribute("Class", "PatchOperationFindMod");
-                            operationFindMod.AppendElement("mods", mods =>
-                            {
-                                var allowedModSplited = allowedMod.Split(RequiredMods.OR_IDENTIFIER);
-                                foreach (var allowedModToken in allowedModSplited)
-                                {
-                                    if (allowedModToken.Contains("##packageId##"))
-                                    {
-                                        Log.ErrOnce(
-                                            $"Required Mods 열에 잘못된 값이 존재합니다. Patches의 올바른 생성을 위해 엑셀 파일에 있는 해당 문구: \"{allowedModToken}\" 를 직접 모드 이름으로 바꿔야 합니다.",
-                                            $"잘못된{allowedModToken}에러".GetHashCode());
-                                    }
+                            doc = new XDocument(new XElement("LanguageData"));
+                            xmls[key] = doc;
+                        }
 
-                                    mods.AppendElement("li", allowedModToken);
-                                }
-                            });
-                            aboveNode = operationFindMod.AppendElement("match");
-                        });
-                    }
-
-                    foreach (var disallowedMod in requiredMods.DisallowedMods)
-                    {
-                        aboveNode.Append(operationFindMod =>
-                        {
-                            operationFindMod.AppendAttribute("Class", "PatchOperationFindMod");
-                            operationFindMod.AppendElement("mods", mods =>
-                            {
-                                var disallowedModSplited = disallowedMod.Split(RequiredMods.OR_IDENTIFIER);
-                                foreach (var disallowedModToken in disallowedModSplited)
-                                {
-                                    if (disallowedModToken.Contains("##packageId##"))
-                                    {
-                                        Log.ErrOnce(
-                                            $"Required Mods 열에 잘못된 값이 존재합니다. Patches의 올바른 생성을 위해 엑셀 파일에 있는 해당 문구: \"{disallowedModToken}\" 를 직접 모드 이름으로 바꿔야 합니다.",
-                                            $"잘못된{disallowedModToken}에러".GetHashCode());
-                                    }
-
-                                    mods.AppendElement("li", disallowedModToken);
-                                }
-                            });
-                            aboveNode = operationFindMod.AppendElement("nomatch");
-                        });
-                    }
-
-                    aboveNode.Append(operationSequence =>
-                    {
-                        operationSequence.AppendAttribute("Class", "PatchOperationSequence");
-                        operationSequence.AppendElement("success", "Always");
-                        entryDict[requiredMods.ToString()] = operationSequence.AppendElement("operations");
-                    });
-                }
-
-                foreach (var translation in patches)
-                {
-                    var requiredMods = translation.RequiredMods;
-                    XmlElement operation;
-                    if (requiredMods != null)
-                    {
-                        operation = entryDict[requiredMods.ToString()].AppendElement("li");
-                    }
-                    else
-                    {
-                        operation = root.AppendElement("Operation");
-                    }
-
-                    operation.Append(li =>
-                    {
-                        li.AppendAttribute("Class", "PatchOperationReplace");
-                        li.AppendElement("success", "Always");
                         if (commentOriginal)
-                            li.AppendComment(
-                                $"Original={SecurityElement.Escape(translation.Original).Replace('-', 'ー')}");
-                        li.AppendElement("xpath", Utils.GetXpath(translation.ClassName[(translation.ClassName.IndexOf('.') + 1)..], translation.Node));
-                        li.AppendElement("value", value =>
-                        {
-                            var lastNode = translation.Node.Split('.').Last();
-                            if (int.TryParse(lastNode, out _)) lastNode = "li";
-                            value.AppendElement(lastNode, translation.Translated ?? translation.Original);
-                        });
-                    });
+                            doc.Root!.AppendComment($"Original={SecurityElement.Escape(translation.Original).Replace('-', 'ー')}");
 
+                        var elem = doc.Root!.AppendElement(translation.Node, translation.Translated ?? translation.Original);
+                        ProcessPointerReplacement(elem, translations);
+                    }
+
+                    foreach (var (key, doc) in xmls)
+                    {
+                        var tokens = key.Split('|');
+                        var className = tokens[0];
+                        var outputPath = isOfficial
+                            ? Path.Combine(targetFolder, className, tokens[1] + ".xml")
+                            : Path.Combine(targetFolder, className, Utils.GenerateFileName(Path.GetFileNameWithoutExtension(ModName), className) + ".xml");
+
+                        doc.DoFullListTranslation();
+                        doc.SaveSafely(outputPath);
+                    }
                 }
-
-                docPatch.SaveSafely(Path.Combine(outputPath, Utils.GenerateFileName(Path.GetFileNameWithoutExtension(ModName), "Patches") + ".xml"));
             }
 
+            // 2. 일반 DefInjected 내보내기
             if (defInjected.Count > 0)
             {
                 var defInjectedDir = PathCombineCreateDir(translationDir, "DefInjected");
-                var xmls = new Dictionary<string, XmlDocument>();
+                var xmls = new Dictionary<string, XDocument>();
+
                 foreach (var translation in CompatManager.DoPostProcessing(defInjected))
                 {
-                    if (patchedNodeSet.Contains(translation.Node))
-                        continue;
                     PathCombineCreateDir(defInjectedDir, translation.ClassName);
-                    if (!xmls.TryGetValue($"{translation.ClassName}|{translation.SourceFile}", out var doc))
+                    var key = $"{translation.ClassName}|{translation.SourceFile}";
+
+                    if (!xmls.TryGetValue(key, out var doc))
                     {
-                        doc = new XmlDocument();
-                        xmls[$"{translation.ClassName}|{translation.SourceFile}"] = doc;
-                        doc.AppendElement("LanguageData");
+                        doc = new XDocument(new XElement("LanguageData"));
+                        xmls[key] = doc;
                     }
 
-                    doc.DocumentElement!.Append(languageData =>
-                    {
-                        if (commentOriginal)
-                            languageData.AppendComment($"Original={SecurityElement.Escape(translation.Original).Replace('-', 'ー')}");
-                        languageData.AppendElement(translation.Node, t =>
-                        {
-                            t.InnerText = translation.Translated ?? translation.Original;
-                            if (!t.InnerText.Contains("{*")) return;
-                            t.InnerText = Regex.Replace(t.InnerText, "\\{\\*(.*?)\\}", match =>
-                            {
-                                var targetIdentifier = match.Groups[1].Value;
-                                var replacement = translations.FirstOrDefault(x => $"{x.ClassName}+{x.Node}" == targetIdentifier);
-                                if (replacement != null)
-                                    return replacement.Translated ?? replacement.Original;
-                                Log.Err($"Pointer: {targetIdentifier}에 대한 원본 Identifier를 찾을 수 없습니다.");
-                                return "ERR";
-                            });
-                        });
-                    });
+                    if (commentOriginal)
+                        doc.Root!.AppendComment($"Original={SecurityElement.Escape(translation.Original).Replace('-', 'ー')}");
 
+                    var elem = doc.Root!.AppendElement(translation.Node, translation.Translated ?? translation.Original);
+                    ProcessPointerReplacement(elem, translations);
                 }
 
                 foreach (var (key, doc) in xmls)
@@ -559,48 +465,33 @@ namespace RimworldExtractorInternal
                 }
             }
 
+            // 3. FullList Translation 내보내기
             if (defInjectedFullListTranslations.Count > 0)
             {
                 var defInjectedDir = PathCombineCreateDir(translationDir, "DefInjected");
-                var xmls = new Dictionary<(string, string), XmlDocument>();
+                var xmls = new Dictionary<(string, string), XDocument>();
+
                 foreach (var translation in CompatManager.DoPostProcessing(defInjectedFullListTranslations))
                 {
-                    if (patchedNodeSet.Contains(translation.Node))
-                        continue;
                     PathCombineCreateDir(defInjectedDir, translation.ClassName);
                     var nodeParent = translation.Node[..translation.Node.LastIndexOf('.')];
-                    if (!xmls.TryGetValue((translation.ClassName, nodeParent), out var doc))
+                    var key = (translation.ClassName, nodeParent);
+
+                    if (!xmls.TryGetValue(key, out var doc))
                     {
-                        doc = new XmlDocument();
-                        xmls[(translation.ClassName, nodeParent)] = doc;
-                        doc.AppendElement("LanguageData");
+                        doc = new XDocument(new XElement("LanguageData"));
+                        xmls[key] = doc;
                     }
 
-                    doc.DocumentElement!.Append(languageData =>
-                    {
-                        if (commentOriginal)
-                            languageData.AppendComment($"Original={SecurityElement.Escape(translation.Original).Replace('-', 'ー')}");
-                        languageData.AppendElement(translation.Node, t =>
-                        {
-                            t.InnerText = translation.Translated ?? translation.Original;
-                            if (!t.InnerText.Contains("{*")) return;
-                            t.InnerText = Regex.Replace(t.InnerText, "\\{\\*(.*?)\\}", match =>
-                            {
-                                var targetIdentifier = match.Groups[1].Value;
-                                var replacement = translations.FirstOrDefault(x => $"{x.ClassName}+{x.Node}" == targetIdentifier);
-                                if (replacement != null)
-                                    return replacement.Translated ?? replacement.Original;
-                                Log.Err($"Pointer: {targetIdentifier}에 대한 원본 Identifier를 찾을 수 없습니다.");
-                                return "ERR";
-                            });
-                        });
-                    });
+                    if (commentOriginal)
+                        doc.Root!.AppendComment($"Original={SecurityElement.Escape(translation.Original).Replace('-', 'ー')}");
 
+                    var elem = doc.Root!.AppendElement(translation.Node, translation.Translated ?? translation.Original);
+                    ProcessPointerReplacement(elem, translations);
                 }
-                
+
                 foreach (var ((className, nodeParent), doc) in xmls)
                 {
-                    var tokens = nodeParent.Split('.');
                     var outputPath = Path.Combine(defInjectedDir, className,
                         Utils.GenerateFileName(Path.GetFileNameWithoutExtension(ModName), className, nodeParent) + ".xml");
 
@@ -609,40 +500,44 @@ namespace RimworldExtractorInternal
                 }
             }
 
+            // 4. Keyed 내보내기
             if (keyed.Count > 0)
             {
                 var keyedDir = PathCombineCreateDir(translationDir, "Keyed");
-                var xmls = new Dictionary<string, XmlDocument>();
+                var xmls = new Dictionary<string, XDocument>();
+
                 foreach (var translation in keyed)
                 {
                     var key = isOfficial ? translation.SourceFile! : "default";
 
                     if (!xmls.TryGetValue(key, out var doc))
                     {
-                        doc = new XmlDocument();
+                        doc = new XDocument(new XElement("LanguageData"));
                         xmls[key] = doc;
-                        doc.AppendElement("LanguageData");
                     }
 
-                    doc.DocumentElement!.Append(languageData =>
-                    {
-                        if (commentOriginal)
-                            languageData.AppendComment($"{Prefabs.OriginalLanguage}={SecurityElement.Escape(translation.Original).Replace('-', 'ー')}");
-                        languageData.AppendElement(translation.Node, translation.Translated ?? translation.Original);
-                    });
+                    if (commentOriginal)
+                        doc.Root!.AppendComment($"{Prefabs.OriginalLanguage}={SecurityElement.Escape(translation.Original).Replace('-', 'ー')}");
+
+                    doc.Root!.AppendElement(translation.Node, translation.Translated ?? translation.Original);
                 }
 
                 foreach (var (key, doc) in xmls)
                 {
-                    var outputPath = isOfficial ? Path.Combine(keyedDir, $"{key}.xml"): Path.Combine(keyedDir, Utils.GenerateFileName(Path.GetFileNameWithoutExtension(ModName), "Keyed") + ".xml");
+                    var outputPath = isOfficial 
+                        ? Path.Combine(keyedDir, $"{key}.xml")
+                        : Path.Combine(keyedDir, Utils.GenerateFileName(Path.GetFileNameWithoutExtension(ModName), "Keyed") + ".xml");
+                    
                     doc.SaveSafely(outputPath);
                 }
             }
 
+            // 5. Strings 내보내기
             if (strings.Count > 0)
             {
                 var stringDir = PathCombineCreateDir(translationDir, "Strings");
                 var txts = new Dictionary<string, List<string>>();
+
                 foreach (var translation in strings)
                 {
                     var className = translation.Node[..translation.Node.LastIndexOf('.')];
@@ -665,6 +560,20 @@ namespace RimworldExtractorInternal
             }
         }
 
+        private static void ProcessPointerReplacement(XElement elem, List<TranslationEntry> translations)
+        {
+            if (!elem.Value.Contains("{*")) return;
+            elem.Value = Regex.Replace(elem.Value, "\\{\\*(.*?)\\}", match =>
+            {
+                var targetIdentifier = match.Groups[1].Value;
+                var replacement = translations.FirstOrDefault(x => $"{x.ClassName}+{x.Node}" == targetIdentifier);
+                if (replacement != null)
+                    return replacement.Translated ?? replacement.Original;
+                Log.Err($"Pointer: {targetIdentifier}에 대한 원본 Identifier를 찾을 수 없습니다.");
+                return "ERR";
+            });
+        }
+
         public static List<TranslationEntry> FromLanguageXml(string rootPath)
         {
             var translationsDir = Path.Combine(rootPath, "Languages", Prefabs.TranslationLanguage);
@@ -674,7 +583,6 @@ namespace RimworldExtractorInternal
             var defInjectedDir = Path.Combine(translationsDir, "DefInjected");
             var keyedDir = Path.Combine(translationsDir, "Keyed");
             var stringsDir = Path.Combine(translationsDir, "Strings");
-            // var patchesDir = Path.Combine(rootPath, "Patches");
 
             var translations = new List<TranslationEntry>();
 
@@ -684,21 +592,21 @@ namespace RimworldExtractorInternal
                 try
                 {
                     var doc = ReadXml(filePath);
-                    foreach (XmlElement node in doc.DocumentElement!.ChildNodes)
+                    foreach (var node in doc.Root!.Elements())
                     {
-                        var name = node.Name;
-                        // FullTranslation일 경우
-                        if (node.ChildNodes.OfType<XmlNode>().All(x => x.NodeType == XmlNodeType.Element))
+                        var name = node.Name.LocalName;
+                        if (node.Elements().Any())
                         {
-                            for (int i = 0; i < node.ChildNodes.Count; i++)
+                            var children = node.Elements().ToList();
+                            for (int i = 0; i < children.Count; i++)
                             {
                                 translations.Add(new TranslationEntry(className, $"{name}.{i}", string.Empty,
-                                    node.ChildNodes[i]!.InnerText, null, null));
+                                    children[i].Value, null, null));
                             }
                         }
                         else
                         {
-                            translations.Add(new TranslationEntry(className, name, string.Empty, node.InnerText, null, null));
+                            translations.Add(new TranslationEntry(className, name, string.Empty, node.Value, null, null));
                         }
                     }
                 }
@@ -710,14 +618,13 @@ namespace RimworldExtractorInternal
             }
 
             var keyed = new ExtractableFolder(ModMetadata.Emptry, keyedDir, null);
-            translations.AddRange(Extractor.ExtractKeyed(keyed).Select(x => x with{Translated = x.Original, Original = ""}));
+            translations.AddRange(Extractor.ExtractKeyed(keyed).Select(x => x with { Translated = x.Original, Original = "" }));
 
             var strings = new ExtractableFolder(ModMetadata.Emptry, stringsDir, null);
-            translations.AddRange(Extractor.ExtractStrings(strings).Select(x => x with{Translated = x.Original, Original = ""}));
+            translations.AddRange(Extractor.ExtractStrings(strings).Select(x => x with { Translated = x.Original, Original = "" }));
 
             return translations;
         }
-
 
         private static void SaveSafely(this XLWorkbook xlsx, string path)
         {
@@ -753,9 +660,8 @@ namespace RimworldExtractorInternal
             }
         }
 
-        private static void SaveSafely(this XmlDocument doc, string path)
+        private static void SaveSafely(this XDocument doc, string path)
         {
-            doc.InsertBefore(doc.CreateXmlDeclaration("1.0", "utf-8", null), doc.DocumentElement);
             if (!File.Exists(path))
             {
                 doc.Save(path);
@@ -807,6 +713,7 @@ namespace RimworldExtractorInternal
                     throw new ArgumentOutOfRangeException();
             }
         }
+
         private static string PathCombineCreateDir(params string[] paths)
         {
             var dir = Path.Combine(paths);
@@ -815,62 +722,58 @@ namespace RimworldExtractorInternal
             return dir;
         }
 
-        private static void DoFullListTranslation(this XmlDocument defInjectedDoc)
+        private static void DoFullListTranslation(this XDocument defInjectedDoc)
         {
             var patterns = Prefabs.FullListTranslationTags.Select(x => $".+?\\.{x}\\.\\d+").ToList();
 
-            var fullListdic = new Dictionary<string, XmlNode>();
-            var removedNodesDic = new Dictionary<string, List<XmlNode>>();
-            foreach (XmlNode childNode in defInjectedDoc.DocumentElement!.ChildNodes)
+            var fullListdic = new Dictionary<string, XElement>();
+            var removedNodesDic = new Dictionary<string, List<XElement>>();
+            foreach (var childNode in defInjectedDoc.Root!.Elements().ToList())
             {
-                var nodeName = childNode.Name;
+                var nodeName = childNode.Name.LocalName;
                 if (!patterns.Any(x => Regex.IsMatch(nodeName, x)))
                     continue;
                 nodeName = nodeName[..nodeName.LastIndexOf('.')];
                 if (!fullListdic.TryGetValue(nodeName, out var fullList))
                 {
-                    fullList = defInjectedDoc.CreateElement(nodeName);
+                    fullList = new XElement(nodeName);
                     fullListdic[nodeName] = fullList;
                 }
 
                 if (!removedNodesDic.TryGetValue(nodeName, out var removedList))
                 {
-                    removedList = new List<XmlNode>();
+                    removedList = new List<XElement>();
                     removedNodesDic[nodeName] = removedList;
                 }
 
-                var li = fullList.AppendElement("li");
-                li.InnerText = childNode.InnerText;
+                var li = fullList.AppendElement("li", childNode.Value);
                 removedList.Add(childNode);
             }
-
 
             foreach (var (key, fullListNode) in fullListdic)
             {
                 var removedList = removedNodesDic[key];
-
-                defInjectedDoc.DocumentElement!.InsertAfter(fullListNode, removedList.Last());
+                removedList.Last().AddAfterSelf(fullListNode);
                 foreach (var xmlNode in removedList)
                 {
-                    defInjectedDoc.DocumentElement!.RemoveChild(xmlNode);
+                    xmlNode.Remove();
                 }
             }
         }
 
-        internal static XmlDocument ReadXml(string filePath)
+        internal static XDocument ReadXml(string filePath)
         {
-            var contents = File.ReadAllText(filePath);
             var readerSettings = new XmlReaderSettings
             {
                 IgnoreComments = true,
                 IgnoreWhitespace = true,
                 CheckCharacters = false
             };
-            using var stringReader = new StringReader(contents);
-            using var xmlReader = XmlReader.Create(stringReader, readerSettings);
-            var childDoc = new XmlDocument();
-            childDoc.Load(xmlReader);
-            return childDoc;
+    
+            // File.ReadAllText 대신 FileStream을 통해 BOM 및 XML 인코딩 자동 처리
+            using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            using var xmlReader = XmlReader.Create(stream, readerSettings);
+            return XDocument.Load(xmlReader);
         }
 
         internal static IEnumerable<string> DescendantFiles(string root)

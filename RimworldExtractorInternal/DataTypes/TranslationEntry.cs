@@ -1,6 +1,4 @@
-﻿using System.Diagnostics;
-
-namespace RimworldExtractorInternal.DataTypes
+﻿namespace RimworldExtractorInternal.DataTypes
 {
     /// <summary>
     /// 번역 데이터

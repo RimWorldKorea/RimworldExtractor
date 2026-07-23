@@ -1,11 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO.Compression;
-using System.Linq;
+﻿using System.IO.Compression;
 using System.Xml.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace RimworldExtractorInternal
 {
@@ -72,9 +67,6 @@ namespace RimworldExtractorInternal
                         }
                     }
 
-                    /*기존 엔트리를 지우고 위에서 작업한 XDocument를 대체 엔트리에 저장
-                      원래 코드처럼 스트림 가지고 바로 어떻게 해보려고 했는데 뭔가 잘 모르겠어서 이렇게 해둠
-                    */
                     if (isEdited)
                     {
                         string filePath = entry.FullName;

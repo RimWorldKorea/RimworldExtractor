@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml;
+﻿using System.Reflection;
+using System.Xml.Linq;
 using RimworldExtractorInternal.DataTypes;
 
 namespace RimworldExtractorInternal.Compats
@@ -45,7 +40,7 @@ namespace RimworldExtractorInternal.Compats
             }
         }
 
-        public static void DoPreProcessing(XmlDocument doc)
+        public static void DoPreProcessing(XDocument doc)
         {
             foreach (var compat in compats)
             {

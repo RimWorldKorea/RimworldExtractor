@@ -1,13 +1,8 @@
 ﻿using ClosedXML.Excel;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.Serialization;
-using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using System.Xml;
+using System.Xml.Linq;
 
 namespace RimworldExtractorInternal
 {
@@ -28,9 +23,33 @@ namespace RimworldExtractorInternal
         public static string CurrentVersion = string.Empty;
         public static string PatternVersion = string.Empty;
         public static string PatternVersionWithV = string.Empty;
+        
         public static string OriginalLanguage = string.Empty;
+        public static string SecondaryLanguage = string.Empty;
+        
         public static string TranslationLanguage = string.Empty;
+        
         public static bool CommentOriginal = false;
+        
+        /// <summary>
+        /// 설정된 언어 목록을 우선순위에 따라 순서대로 반환합니다.
+        /// (1차 언어 -> 2차 언어 -> English)
+        /// </summary>
+        public static IEnumerable<string> GetLanguagePriorityList()
+        {
+            var list = new List<string>();
+            if (!string.IsNullOrWhiteSpace(OriginalLanguage))
+                list.Add(OriginalLanguage);
+            if (!string.IsNullOrWhiteSpace(SecondaryLanguage))
+                list.Add(SecondaryLanguage);
+            //TODO English 기본값이 필요한지 검토
+            if (!list.Contains("English"))
+                list.Add("English");
+
+            Log.Msg($"{string.Join(", ", list)}");
+            
+            return list.Distinct();
+        }
 
         private static Dictionary<string, ExtractionRule> _extractionRules = new();
 
@@ -146,7 +165,7 @@ namespace RimworldExtractorInternal
 
 
         public static Action<XLWorkbook, string>? StopCallbackXlsx = null;
-        public static Action<XmlDocument, string>? StopCallbackXml = null; 
+        public static Action<XDocument, string>? StopCallbackXml = null; 
         public static Action<IEnumerable<string>, string>? StopCallbackTxt = null;
 
 

@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using System.Xml;
+﻿using System.Text.RegularExpressions;
+using System.Xml.Linq;
 using RimworldExtractorInternal.DataTypes;
 
 namespace RimworldExtractorInternal
@@ -91,42 +86,42 @@ namespace RimworldExtractorInternal
             {
                 try
                 {
-                    var doc = new XmlDocument();
-                    doc.LoadXml(File.ReadAllText(pathAbout));
-                    packageId = doc.DocumentElement?["packageId"]?.InnerText ?? "UNKNOWN";
-                    name = doc.DocumentElement?["name"]?.InnerText ?? "UNKNOWN";
+                    var doc = XDocument.Parse(File.ReadAllText(pathAbout));
+                    packageId = doc.Root?.Element("packageId")?.Value ?? "UNKNOWN";
+                    name = doc.Root?.Element("name")?.Value ?? "UNKNOWN";
                     if (name == "UNKNOWN")
                     {
                         // Official Contents
-                        if (doc.DocumentElement?["author"]?.InnerText == "Ludeon Studios")
+                        if (doc.Root?.Element("author")?.Value == "Ludeon Studios")
                         {
                             name = Path.GetFileName(modRoot).Trim();
                             return new ModMetadata(modRoot, "Official", name, packageId, true);
                         }
                     }
 
-                    if (doc.DocumentElement?["modDependencies"] != null)
+                    var modDependenciesNode = doc.Root?.Element("modDependencies");
+                    if (modDependenciesNode != null)
                     {
-                        foreach (XmlNode childNode in doc.DocumentElement["modDependencies"]!.ChildNodes)
+                        foreach (var childNode in modDependenciesNode.Elements())
                         {
-                            var packageIdModDependencies = childNode["packageId"];
+                            var packageIdModDependencies = childNode.Element("packageId");
                             if (packageIdModDependencies != null)
-                                modDependencies.Add(packageIdModDependencies.InnerText);
+                                modDependencies.Add(packageIdModDependencies.Value);
                         }
                     }
 
-                    if (doc.DocumentElement?["modDependenciesByVersion"] != null)
+                    var modDependenciesByVersionNode = doc.Root?.Element("modDependenciesByVersion");
+                    if (modDependenciesByVersionNode != null)
                     {
-                        var nodes = doc.DocumentElement["modDependenciesByVersion"]?["v" + Prefabs.CurrentVersion]
-                            ?.ChildNodes;
-                        nodes ??= doc.DocumentElement["modDependenciesByVersion"]?.LastChild?.ChildNodes;
+                        var nodes = modDependenciesByVersionNode.Element("v" + Prefabs.CurrentVersion)?.Elements();
+                        nodes ??= modDependenciesByVersionNode.Elements().LastOrDefault()?.Elements();
                         if (nodes != null)
                         {
-                            foreach (XmlNode childNode in nodes)
+                            foreach (var childNode in nodes)
                             {
-                                var packageIdModDependencies = childNode["packageId"];
+                                var packageIdModDependencies = childNode.Element("packageId");
                                 if (packageIdModDependencies != null)
-                                    modDependencies.Add(packageIdModDependencies.InnerText);
+                                    modDependencies.Add(packageIdModDependencies.Value);
                             }
                         }
                     }
@@ -187,15 +182,14 @@ namespace RimworldExtractorInternal
 
             if (File.Exists(pathLoadFolders))
             {
-                var doc = new XmlDocument();
-                doc.LoadXml(File.ReadAllText(pathLoadFolders));
-                foreach (XmlNode node in doc.DocumentElement!.ChildNodes)
+                var doc = XDocument.Parse(File.ReadAllText(pathLoadFolders));
+                foreach (var node in doc.Root!.Elements())
                 {
-                    var name = node.Name;
-                    foreach (XmlNode li in node.ChildNodes)
+                    var name = node.Name.LocalName;
+                    foreach (var li in node.Elements())
                     {
-                        var requiredPackageIds = li.Attributes?["IfModActive"]?.Value;
-                        foreach (var extractableFolder in GetExtractableFoldersInternal(Path.Combine(root, li.InnerText))
+                        var requiredPackageIds = li.Attribute("IfModActive")?.Value;
+                        foreach (var extractableFolder in GetExtractableFoldersInternal(Path.Combine(root, li.Value))
                                      .Select(x => new ExtractableFolder(modMetadata, x, requiredPackageIds, name[1..])))
                         {
                             sets.Add(extractableFolder);

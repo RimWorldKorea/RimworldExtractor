@@ -1,57 +1,13 @@
 ﻿using System.Text;
 using System.Text.RegularExpressions;
-using System.Xml;
+using System.Xml.Linq;
 using RimworldExtractorInternal.DataTypes;
 
 namespace RimworldExtractorInternal
 {
     public static partial class Extractor
     {
-        private static void LoadReferenceDefs(List<string> referenceDefsRoots)
-        {
-            if (CombinedDefs == null)
-            {
-                Log.Err($"{nameof(CombinedDefs)} should have to be non-null but is null.");
-                return;
-            }
-
-            foreach (var referenceDefsRoot in referenceDefsRoots)
-            {
-                foreach (var filePath in IO.DescendantFiles(referenceDefsRoot)
-                             .Where(x => x.ToLower().EndsWith(".xml")))
-                {
-                    try
-                    {
-                        var childDoc = IO.ReadXml(filePath);
-
-                        foreach (XmlNode node in childDoc.DocumentElement!.ChildNodes)
-                        {
-                            var newNode = CombinedDefs.ImportNode(node, true);
-                            var newAttribute = CombinedDefs.CreateAttribute("Reference");
-                            newAttribute.Value = "True";
-                            newNode.Attributes?.Append(newAttribute);
-                            CombinedDefs.DocumentElement!.AppendChild(newNode);
-                            var attributeName = node.Attributes?["Name"]?.Value;
-                            if (attributeName != null)
-                            {
-                                if (ParentNodeLookUp.ContainsKey(attributeName))
-                                {
-                                    Log.Wrn($"Parent 노드의 이름이 겹칩니다: {attributeName}. 나중 것으로 덮어씌웁니다.");
-                                }
-                                ParentNodeLookUp[attributeName] = newNode;
-                            }
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        Log.Err($"{filePath} 를 읽는 중 에러 발생, {e.Message}");
-                        throw;
-                    }
-                }
-            }
-        }
-
-        internal static IEnumerable<TranslationEntry> FindExtractableNodes(string defName, string className, XmlNode rootNode, string? curNormalizedPath = null)
+        internal static IEnumerable<TranslationEntry> FindExtractableNodes(string defName, string className, XElement rootNode, string? curNormalizedPath = null)
         {
             if (className == "XmlExtensions.SettingsMenuDef")
             {
@@ -62,27 +18,27 @@ namespace RimworldExtractorInternal
                 yield break;
             }
 
-            var requiredModsInnerText = rootNode["REQUIREDMODS"]?.InnerText;
+            var requiredModsInnerText = rootNode.Element("REQUIREDMODS")?.Value;
             var requiredMods = requiredModsInnerText != null
                 ? RequiredMods.FromStringByModNames(requiredModsInnerText)
                 : null;
 
-            var fileName = _isOfficialContent ? rootNode.Attributes?["SourceFile"]?.Value : null;
+            var fileName = _isOfficialContent ? rootNode.Attribute("SourceFile")?.Value : null;
 
             // (CurrentNode, CurrentPath)
-            var q = new Queue<(XmlNode, string)>();
+            var q = new Queue<(XElement, string)>();
 
             if (curNormalizedPath == null)
             {
-                foreach (XmlNode node in rootNode.ChildNodes)
+                foreach (var node in rootNode.Elements())
                 {
-                    q.Enqueue((node, node.IsListNode() ? GetIdxOfListNode(node).ToString() : node.Name));
+                    q.Enqueue((node, node.IsListNode() ? GetIdxOfListNode(node).ToString() : node.Name.LocalName));
                 }
             }
             else
             {
                 q.Enqueue((rootNode, curNormalizedPath + "." + (rootNode.IsListNode()
-                    ? GetIdxOfListNode(rootNode).ToString() : rootNode.Name)));
+                    ? GetIdxOfListNode(rootNode).ToString() : rootNode.Name.LocalName)));
             }
 
             while (q.Count > 0)
@@ -101,18 +57,27 @@ namespace RimworldExtractorInternal
                         var nodeName = $"{defName}.{curPath}";
                         if (curNormalizedPath != null)
                             nodeName = curPath;
-                        else if (Prefabs.EnableTkey && curNode.Attributes?["TKey"]?.Value != null)
+                        else if (Prefabs.EnableTkey && curNode.Attribute("TKey")?.Value != null)
                         {
-                            var tKey = curNode.Attributes["TKey"]!.Value;
+                            var tKey = curNode.Attribute("TKey")!.Value;
                             nodeName = $"{defName}.{tKey}.slateRef";
                         }
-                        var translation = new TranslationEntry(className, nodeName, curNode.InnerText, null, requiredMods, fileName);
+                        var originalText = curNode.Value;
+
+                        var translation = new TranslationEntry(
+                            className, 
+                            nodeName, 
+                            originalText, 
+                            null,
+                            requiredMods, 
+                            fileName
+                        );
                         yield return translation;
                     }
                     continue;
                 }
 
-                foreach (XmlNode childNode in curNode.ChildNodes)
+                foreach (var childNode in curNode.Elements())
                 {
                     string path;
                     if (childNode.IsListNode())
@@ -123,7 +88,7 @@ namespace RimworldExtractorInternal
                             path = $"{curPath}.{GetIdxOfListNode(childNode)}";
                     }
                     else
-                        path = $"{curPath}.{childNode.Name}";
+                        path = $"{curPath}.{childNode.Name.LocalName}";
 
 
                     q.Enqueue((childNode, path));
@@ -132,24 +97,24 @@ namespace RimworldExtractorInternal
         }
 
         private static IEnumerable<TranslationEntry> FindExtractableNodesXmlExtensionSettings(string defName, string className,
-            XmlNode rootNode, string? curNormalizedPath = null)
+            XElement rootNode, string? curNormalizedPath = null)
         {
             var extractableTagsXmlExtensionSettings = new[] { "label", "text", "tooltip" };
 
             // (CurrentNode, CurrentPath)
-            var q = new Queue<(XmlNode, string)>();
+            var q = new Queue<(XElement, string)>();
 
             if (curNormalizedPath == null)
             {
-                foreach (XmlNode node in rootNode.ChildNodes)
+                foreach (var node in rootNode.Elements())
                 {
-                    q.Enqueue((node, node.IsListNode() ? GetIdxOfListNode(node).ToString() : node.Name));
+                    q.Enqueue((node, node.IsListNode() ? GetIdxOfListNode(node).ToString() : node.Name.LocalName));
                 }
             }
             else
             {
                 q.Enqueue((rootNode, curNormalizedPath + "." + (rootNode.IsListNode()
-                    ? GetIdxOfListNode(rootNode).ToString() : rootNode.Name)));
+                    ? GetIdxOfListNode(rootNode).ToString() : rootNode.Name.LocalName)));
             }
 
             while (q.Count > 0)
@@ -165,26 +130,26 @@ namespace RimworldExtractorInternal
                                      extractableTagsXmlExtensionSettings.Contains(token[^2]);
                     if (extractableTagsXmlExtensionSettings.Contains(lastTag) || isListNode)
                     {
-                        var tKey = curNode.ParentNode?["tKey"]?.InnerText;
-                        var tKeyTip = curNode.ParentNode?["tKeyTip"]?.InnerText;
+                        var tKey = curNode.Parent?.Element("tKey")?.Value;
+                        var tKeyTip = curNode.Parent?.Element("tKeyTip")?.Value;
                         if (lastTag is "label" or "text" && tKey != null)
                         {
-                            yield return new TranslationEntry("Keyed", tKey, curNode.InnerText, null, null, null);
+                            yield return new TranslationEntry("Keyed", tKey, curNode.Value, null, null, null);
                         }
                         else if (lastTag == "tooltip" && tKeyTip != null)
                         {
-                            yield return new TranslationEntry("Keyed", tKeyTip, curNode.InnerText, null, null, null);
+                            yield return new TranslationEntry("Keyed", tKeyTip, curNode.Value, null, null, null);
                         }
                         else
                         {
-                            yield return new TranslationEntry(className, $"{defName}.{curPath}", curNode.InnerText, null, null, null);
+                            yield return new TranslationEntry(className, $"{defName}.{curPath}", curNode.Value, null, null, null);
                         }
                     }
 
                     continue;
                 }
 
-                foreach (XmlNode childNode in curNode.ChildNodes)
+                foreach (var childNode in curNode.Elements())
                 {
                     string path;
                     if (childNode.IsListNode())
@@ -195,29 +160,29 @@ namespace RimworldExtractorInternal
                         path = $"{curPath}.{GetIdxOfListNode(childNode)}";
                     }
                     else
-                        path = $"{curPath}.{childNode.Name}";
+                        path = $"{curPath}.{childNode.Name.LocalName}";
 
                     q.Enqueue((childNode, path));
                 }
             }
         }
 
-        private static bool MatchTranslationHandle(XmlNode node, out string translationHandleResult)
+        private static bool MatchTranslationHandle(XElement node, out string translationHandleResult)
         {
             translationHandleResult = string.Empty;
-            if (!node.HasChildNodes)
+            if (!node.HasElements)
                 return false;
             foreach (var handle in Prefabs.TranslationHandles)
             {
                 var isTypeField = handle.StartsWith('*');
                 var translationHandleMatcher = isTypeField ? handle[1..] : handle;
-                foreach (XmlNode childNode in node.ChildNodes)
+                foreach (var childNode in node.Elements())
                 {
-                    var name = childNode.Name;
-                    if (childNode.ChildNodes.Count == 1 && childNode.FirstChild!.NodeType == XmlNodeType.Text && translationHandleMatcher == name)
+                    var name = childNode.Name.LocalName;
+                    if (childNode.IsTextNode() && translationHandleMatcher == name)
                     {
                         translationHandleResult = isTypeField ?
-                            childNode.InnerText.Split('.').Last() : NormalizedHandle(childNode.InnerText);
+                            childNode.Value.Split('.').Last() : NormalizedHandle(childNode.Value);
                         if (string.IsNullOrWhiteSpace(translationHandleResult))
                         {
                             return false;
@@ -280,179 +245,39 @@ namespace RimworldExtractorInternal
             return handle;
         }
 
-
-        private static void DoXmlInheritance(IEnumerable<XmlNode>? customNodes = null)
+        internal static XElement? GetRootDefNode(XElement node, out string? nodeName)
         {
-            if (CombinedDefs == null)
+            if (node.Element("defName") != null)
             {
-                return;
-            }
-
-            var newDoc = new XmlDocument();
-            var defs = newDoc.AppendElement("Defs");
-
-            customNodes ??= CombinedDefs.DocumentElement!.ChildNodes.OfType<XmlNode>().ToList();
-
-            
-
-            foreach (XmlNode node in customNodes)
-            {
-                if (node.Attributes == null || node.Attributes["Abstract"]?.Value.ToLower() == "true"
-                    // || node.Attributes["Reference"]?.Value.ToLower() == "true"
-                    )
-                    continue;
-
-                var parentName = node.Attributes["ParentName"]?.Value;
-                if (parentName == null)
-                {
-                    defs.AppendChild(newDoc.ImportNode(node, true));
-                    continue;
-                }
-                var parentNodes = new Stack<XmlNode>();
-                parentNodes.Push(node);
-                while (true)
-                {
-                    if (parentName != null)
-                    {
-                        if (ParentNodeLookUp.TryGetValue(parentName, out var parentNode))
-                        {
-                            parentNodes.Push(parentNode);
-                            parentName = parentNode?.Attributes?["ParentName"]?.Value;
-                        }
-                        else
-                        {
-                            Log.Wrn($"자식 노드={node["defName"]?.InnerText ?? "UNKNOWN"}의 부모 노드={parentName}를 찾을 수 없었습니다. ");
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
-
-                var mergedNode = (XmlElement)newDoc.ImportNode(node, true);
-                while (mergedNode.FirstChild != null)
-                {
-                    mergedNode.RemoveChild(mergedNode.FirstChild);
-                }
-                mergedNode.Attributes.RemoveNamedItem("ParentName");
-                while (parentNodes.Count > 0)
-                {
-                    var parentNode = parentNodes.Pop();
-                    XmlOverwriteRecursive(mergedNode, parentNode);
-                }
-
-                var requiredPackageId = node.Attributes["RequiredPackageId"]?.Value;
-                if (requiredPackageId != null)
-                {
-                    mergedNode.AppendAttribute("RequiredPackageId", requiredPackageId);
-                }
-
-                if (_isOfficialContent)
-                {
-                    var sourceFile = node.Attributes["SourceFile"]?.Value;
-                    if (sourceFile != null)
-                    {
-                        mergedNode.AppendAttribute("SourceFile", sourceFile);
-                    }
-                }
-
-                if (node.Attributes["Reference"]?.Value.ToLower() == "true")
-                {
-                    var attribute = mergedNode.Attributes.Append(newDoc.CreateAttribute("Reference"));
-                    attribute.Value = "True";
-                }
-
-                defs.AppendChild(mergedNode);
-            }
-
-            CombinedDefs = newDoc;
-        }
-
-        private static void XmlOverwriteRecursive(XmlNode current, XmlNode other)
-        {
-            if (current.Name != other.Name)
-            {
-                // Log.Wrn($"Different name, Original={Original.Name}|{Original.OuterXml}, other={other.Name}|{other.OuterXml}");
-                return;
-            }
-
-            foreach (XmlNode otherChildNode in other.ChildNodes)
-            {
-
-
-                var existingChildNode = current[otherChildNode.Name];
-                // 1. 존재하지 않을 경우
-                if (existingChildNode == null)
-                {
-                    current.AppendChild(current.OwnerDocument!.ImportNode(otherChildNode, true));
-                    continue;
-                }
-
-                // 2. 상속을 원하지 않을 경우
-                var inherit = otherChildNode.Attributes?["Inherit"]?.Value.ToLower() != "false";
-                if (!inherit)
-                {
-                    current.RemoveChild(existingChildNode);
-                    current.AppendChild(current.OwnerDocument!.ImportNode(otherChildNode, true));
-                    continue;
-                }
-
-                // 3. 텍스트 노드 하나일 경우
-                if (existingChildNode.IsTextNode())
-                {
-                    current.RemoveChild(existingChildNode);
-                    current.AppendChild(current.OwnerDocument!.ImportNode(otherChildNode, true));
-                    continue;
-                }
-                // 4. 리스트 노드일 경우
-                if (existingChildNode.FirstChild.IsListNode())
-                {
-                    foreach (XmlNode childNode in otherChildNode.ChildNodes)
-                    {
-                        existingChildNode.AppendChild(current.OwnerDocument!.ImportNode(childNode, true));
-                    }
-
-                    continue;
-                }
-                XmlOverwriteRecursive(existingChildNode, otherChildNode);
-            }
-        }
-
-        internal static XmlNode? GetRootDefNode(XmlNode node, out string? nodeName)
-        {
-            if (node["defName"] != null)
-            {
-                nodeName = node["defName"]!.InnerText;
+                nodeName = node.Element("defName")!.Value;
                 return node;
             }
-            else if (node.Name == "Defs")
+            else if (node.Name.LocalName == "Defs")
             {
                 nodeName = null;
                 return null;
             }
 
             var parentNode = node;
-            nodeName = node.IsListNode() ? GetIdxOfListNode(node).ToString() : node.Name;
+            nodeName = node.IsListNode() ? GetIdxOfListNode(node).ToString() : node.Name.LocalName;
             do
             {
-                parentNode = parentNode.ParentNode;
+                parentNode = parentNode.Parent;
                 if (parentNode == null)
                     throw new InvalidOperationException("Couldn't find root Def node");
-                if (parentNode["defName"] != null)
+                if (parentNode.Element("defName") != null)
                 {
-                    nodeName = $"{parentNode["defName"]!.InnerText}.{nodeName}";
+                    nodeName = $"{parentNode.Element("defName")!.Value}.{nodeName}";
                     break;
                 }
-                nodeName = $"{(parentNode.IsListNode() ? GetIdxOfListNode(parentNode).ToString() : parentNode.Name)}.{nodeName}";
+                nodeName = $"{(parentNode.IsListNode() ? GetIdxOfListNode(parentNode).ToString() : parentNode.Name.LocalName)}.{nodeName}";
             } while (true);
             return parentNode;
         }
 
-        private static int GetIdxOfListNode(XmlNode curNode)
+        private static int GetIdxOfListNode(XElement curNode)
         {
-            var nodes = curNode.ParentNode?.ChildNodes;
+            var nodes = curNode.Parent?.Elements().ToList();
             if (nodes == null)
                 throw new InvalidOperationException("ParentNode was null.");
             int i;
@@ -464,6 +289,5 @@ namespace RimworldExtractorInternal
 
             throw new InvalidOperationException("Couldn't find idx of list node.");
         }
-
     }
 }

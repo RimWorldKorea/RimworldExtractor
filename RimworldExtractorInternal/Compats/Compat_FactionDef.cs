@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml;
+﻿using System.Xml.Linq;
 
 namespace RimworldExtractorInternal.Compats
 {
@@ -11,16 +6,16 @@ namespace RimworldExtractorInternal.Compats
     {
         private const string selector =
             "Defs/FactionDef";
-        public override void DoPreProcessing(XmlDocument doc)
+        public override void DoPreProcessing(XDocument doc)
         {
             var nodes = doc.SelectNodesSafe(selector);
             if (nodes == null)
                 return;
-            foreach (XmlNode node in nodes)
+            foreach (var node in nodes)
             {
-                var pawnSingular = node["pawnSingular"];
-                var pawnsPlural = node["pawnsPlural"];
-                var leaderTitle = node["leaderTitle"];
+                var pawnSingular = node.Element("pawnSingular");
+                var pawnsPlural = node.Element("pawnsPlural");
+                var leaderTitle = node.Element("leaderTitle");
 
                 if (pawnSingular == null)
                     node.AppendElement("pawnSingular", "member");

@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml;
+﻿using System.Xml.Linq;
 
 namespace RimworldExtractorInternal.Compats
 {
@@ -15,25 +9,25 @@ namespace RimworldExtractorInternal.Compats
     {
         public const string selector = "Defs/AncientMarket_Libraray.CustomMapDataDef";
 
-        public override void DoPreProcessing(XmlDocument doc)
+        public override void DoPreProcessing(XDocument doc)
         {
             var nodes = doc.SelectNodesSafe(selector);
             if (nodes == null) return;
 
-            foreach (XmlNode node in nodes)
+            foreach (var node in nodes)
             {
                 //ProcessNodeRecursive(node);
-                var q = new Queue<XmlNode>();
+                var q = new Queue<XElement>();
                 q.Enqueue(node);
 
                 while (q.Count > 0)
                 {
                     var n = q.Dequeue();
-                    var toRemove = new List<XmlNode>();
+                    var toRemove = new List<XElement>();
 
-                    foreach (XmlNode child in n.ChildNodes)
+                    foreach (var child in n.Elements())
                     {
-                        if (child.IsTextNode() && child.InnerText.StartsWith('(') && child.InnerText.EndsWith(')'))
+                        if (child.IsTextNode() && child.Value.StartsWith('(') && child.Value.EndsWith(')'))
                         {
                             toRemove.Add(child);
                         }
@@ -45,7 +39,7 @@ namespace RimworldExtractorInternal.Compats
 
                     foreach (var child in toRemove)
                     {
-                        n.RemoveChild(child);
+                        child.Remove();
                     }
                 }
             }

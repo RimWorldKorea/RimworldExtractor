@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Sockets;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml;
-using System.Xml.Linq;
+﻿using System.Xml.Linq;
 using RimworldExtractorInternal.Compats;
 using RimworldExtractorInternal.DataTypes;
 
@@ -13,9 +6,6 @@ namespace RimworldExtractorInternal
 {
     public static partial class Extractor
     {
-        internal static XmlDocument? CombinedDefs;
-        public static readonly Dictionary<string, XmlNode> ParentNodeLookUp = new();
-
         private static bool _isOfficialContent = false;
 
         public static List<TranslationEntry> ExtractTranslationData(ModMetadata modMetadata, List<ExtractableFolder> selectedFolders, List<ModMetadata>? referenceMods)
@@ -41,15 +31,19 @@ namespace RimworldExtractorInternal
                 }
             }
 
+            // 1. 환경 모사 실행 -> 최종 모사된 XDocument 수령
+            var simResult = DefTreeSimulator.Execute(
+                modMetadata, selectedFolders, prePatches, refDefs, _isOfficialContent);
+
             var extraction = new List<TranslationEntry>();
-            Reset();
+
+            // 2. 모사된 XDocument 트리를 순회하며 TranslationEntry 추출
             var defs = selectedFolders.Where(x => Path.GetFileName(x.FolderName) == "Defs").ToList();
             if (defs.Count > 0)
             {
-                prePatches.AddRange(selectedFolders.Where(x => Path.GetFileName(x.FolderName) == "Patches").ToList());
-                PrepareDefs(defs, refDefs, prePatches);
-                extraction.AddRange(ExtractDefs());
+                extraction.AddRange(ExtractDefs(simResult));
             }
+
             foreach (var extractableFolder in selectedFolders)
             {
                 switch (Path.GetFileName(extractableFolder.FolderName))
@@ -63,7 +57,7 @@ namespace RimworldExtractorInternal
                         extraction.AddRange(ExtractStrings(extractableFolder));
                         break;
                     case "Patches":
-                        extraction.AddRange(ExtractPatches(extractableFolder));
+                        extraction.AddRange(ExtractPatches(simResult, extractableFolder));
                         break;
                     default:
                         Log.Wrn($"지원하지 않는 폴더입니다. {extractableFolder.FolderName}");
@@ -93,91 +87,9 @@ namespace RimworldExtractorInternal
             return extraction.DistinctBy(x => $"{x.ClassName}+{x.Node}").ToList();
         }
 
-        private static void Reset()
+        internal static IEnumerable<TranslationEntry> ExtractDefs(SimulationResult simResult)
         {
-            CombinedDefs = new XmlDocument();
-            CombinedDefs.AppendElement("Defs");
-            ParentNodeLookUp.Clear();
-        }
-
-        private static void PrepareDefs(List<ExtractableFolder> extracableFolders, List<string>? referenceDefsRoots, List<ExtractableFolder> prePatches)
-        {
-
-            if (CombinedDefs == null)
-                Reset();
-
-            if (referenceDefsRoots != null) LoadReferenceDefs(referenceDefsRoots);
-
-            extracableFolders.ForEach(extractableFolder =>
-            {
-                var defsRoot = extractableFolder.FullPath;
-                var requiredPackageId = extractableFolder.RequiredPackageId;
-                foreach (var filePath in IO.DescendantFiles(defsRoot).Where(x => x.ToLower().EndsWith(".xml")))
-                {
-                    try
-                    {
-                        var fileName = Path.GetFileNameWithoutExtension(filePath);
-                        var childDoc = IO.ReadXml(filePath);
-
-                        foreach (XmlNode node in childDoc.DocumentElement!.ChildNodes)
-                        {
-                            var newNode = CombinedDefs!.ImportNode(node, true);
-
-                            if (requiredPackageId != null)
-                            {
-                                newNode.AppendAttribute("RequiredPackageId", requiredPackageId);
-                            }
-
-                            if (_isOfficialContent)
-                            {
-                                newNode.AppendAttribute("SourceFile", fileName);
-                            }
-                            CombinedDefs.DocumentElement!.AppendChild(newNode);
-                            var attributeName = node.Attributes?["Name"]?.Value;
-                            if (attributeName != null)
-                            {
-                                ParentNodeLookUp[attributeName] = newNode;
-                            }
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        Log.Err($"{filePath}를 읽는 중 에러 발생, {e.Message}");
-                    }
-                }
-            });
-
-            DoPrePatch(prePatches);
-
-            DoXmlInheritance();
-        }
-
-        private static void DoPrePatch(List<ExtractableFolder> prePatches)
-        {
-            foreach (var patchDir in prePatches)
-            {
-                foreach (var entry in ExtractPatches(patchDir, true))
-                {
-                    // do nothing
-                }
-            }
-
-            foreach (XmlNode node in CombinedDefs!.DocumentElement!.ChildNodes)
-            {
-                var attributeName = node.Attributes?["Name"]?.Value;
-                if (attributeName != null)
-                {
-                    ParentNodeLookUp[attributeName] = node;
-                }
-            }
-        }
-
-        internal static IEnumerable<TranslationEntry> ExtractDefs()
-        {
-#if DEBUG
-            CombinedDefs.Save("test.xml");
-#endif
-            var rawExtraction = ExtractDefsInternal().ToList();
+            var rawExtraction = ExtractDefsInternal(simResult).ToList();
             foreach (var translationEntry in rawExtraction)
             {
                 Console.WriteLine(translationEntry);
@@ -187,36 +99,30 @@ namespace RimworldExtractorInternal
                 yield return entry;
             }
         }
-        private static IEnumerable<TranslationEntry> ExtractDefsInternal()
+
+        private static IEnumerable<TranslationEntry> ExtractDefsInternal(SimulationResult simResult)
         {
-            if (CombinedDefs == null)
-            {
-                throw new InvalidOperationException("You need to call PrepareDefs first");
-            }
+            CompatManager.DoPreProcessing(simResult.DefTree);
 
-            CompatManager.DoPreProcessing(CombinedDefs);
-
-            foreach (XmlNode node in CombinedDefs.DocumentElement!.ChildNodes.OfType<XmlNode>()
-                         .Where(x => x.Attributes?["Reference"]?.Value.ToLower() != "true"))
+            foreach (var node in simResult.DefTree.Root!.Elements()
+                         .Where(x => x.Attribute("Reference")?.Value.ToLower() != "true"))
             {
-                var defName = node["defName"]?.InnerText;
+                var defName = node.Element("defName")?.Value;
                 if (defName == null)
                 {
-                    if (node.Name != "SongDef")
-                        Log.Wrn($"SongDef과 Abstract가 아닌 XML 요소 {node.Name}에서 'defName' 태그를 찾지 못했습니다. InnerXml: {node.InnerXml}");
+                    if (node.Name.LocalName != "SongDef")
+                        Log.Wrn($"SongDef과 Abstract가 아닌 XML 요소 {node.Name}에서 'defName' 태그를 찾지 못했습니다. InnerXml: {node}");
                     continue;
                 }
 
-
                 var requiredMods = new RequiredMods();
-                var requiredPackageIds = node.Attributes?["RequiredPackageId"]?.Value.Split(',');
+                var requiredPackageIds = node.Attribute("RequiredPackageId")?.Value.Split(',');
                 if (requiredPackageIds != null)
                 {
                     requiredMods.AddAllowedByPackageIds(requiredPackageIds);
                 }
 
-
-                var className = node.Attributes?["Class"]?.Value ?? node.Name;
+                var className = node.Attribute("Class")?.Value ?? node.Name.LocalName;
                 className = className[..1].ToUpper() + className[1..];
 
                 foreach (var translationEntry in FindExtractableNodes(defName, className, node))
@@ -232,25 +138,18 @@ namespace RimworldExtractorInternal
         internal static IEnumerable<TranslationEntry> ExtractKeyed(ExtractableFolder keyed)
         {
             var keyedRoot = keyed.FullPath;
-            RequiredMods? requiredMods = null;
-            if (keyed.RequiredPackageId == null)
-            {
-                requiredMods = null;
-            }
-            else
-            {
-                requiredMods = new RequiredMods();
-                requiredMods.AddAllowedByPackageIds(keyed.RequiredPackageId.Split(','));
-            }
-            
+            RequiredMods? requiredMods = keyed.RequiredPackageId == null
+                ? null
+                : new RequiredMods().Tap(rm => rm.AddAllowedByPackageIds(keyed.RequiredPackageId.Split(',')));
+
             foreach (var filePath in IO.DescendantFiles(keyedRoot).Where(x => x.ToLower().EndsWith(".xml")))
             {
                 var fileName = Path.GetFileNameWithoutExtension(filePath);
 
                 var doc = IO.ReadXml(filePath);
-                foreach (XmlNode node in doc.DocumentElement!.ChildNodes)
+                foreach (var node in doc.Root!.Elements())
                 {
-                    yield return new TranslationEntry("Keyed", node.Name, node.InnerText, null, requiredMods,
+                    yield return new TranslationEntry("Keyed", node.Name.LocalName, node.Value, null, requiredMods,
                         _isOfficialContent ? fileName : null);
                 }
             }
@@ -259,16 +158,10 @@ namespace RimworldExtractorInternal
         internal static IEnumerable<TranslationEntry> ExtractStrings(ExtractableFolder strings)
         {
             var stringsRoot = strings.FullPath;
-            RequiredMods? requiredMods = null;
-            if (strings.RequiredPackageId == null)
-            {
-                requiredMods = null;
-            }
-            else
-            {
-                requiredMods = new RequiredMods();
-                requiredMods.AddAllowedByPackageIds(strings.RequiredPackageId.Split(','));
-            }
+            RequiredMods? requiredMods = strings.RequiredPackageId == null
+                ? null
+                : new RequiredMods().Tap(rm => rm.AddAllowedByPackageIds(strings.RequiredPackageId.Split(',')));
+
             foreach (var filePath in IO.DescendantFiles(stringsRoot).Where(x => x.ToLower().EndsWith(".txt")))
             {
                 var nodeName = Path.GetRelativePath(stringsRoot, filePath);
@@ -283,57 +176,40 @@ namespace RimworldExtractorInternal
             }
         }
 
-
-        internal static IEnumerable<TranslationEntry> ExtractPatches(ExtractableFolder patches, bool prePatchMode = false)
+        internal static IEnumerable<TranslationEntry> ExtractPatches(SimulationResult simResult, ExtractableFolder patches)
         {
-            var rawExtraction = ExtractPatchesInternal(patches, prePatchMode).ToList();
+            var rawExtraction = ExtractPatchesInternal(simResult, patches).ToList();
             foreach (var entry in CompatManager.DoPostProcessing(rawExtraction))
             {
                 yield return entry;
             }
         }
 
-        private static IEnumerable<TranslationEntry> ExtractPatchesInternal(ExtractableFolder patches, bool prePatchMode = false)
+        private static IEnumerable<TranslationEntry> ExtractPatchesInternal(SimulationResult simResult, ExtractableFolder patches)
         {
-            if (CombinedDefs == null)
-            {
-                Log.Err($"{nameof(CombinedDefs)} is null. should call ExtractDefs() first before call ExtractPatches().");
-                yield break;
-            }
-
-            PatchOperations.DefsAddedByPatches.Clear();
+            simResult.DefsAddedByPatches.Clear();
 
             var patchesRoot = patches.FullPath;
+            RequiredMods? requiredMods = patches.RequiredPackageId == null
+                ? null
+                : new RequiredMods().Tap(rm => rm.AddAllowedByPackageIds(patches.RequiredPackageId.Split(',')));
 
-            RequiredMods? requiredMods = null;
-            if (patches.RequiredPackageId == null)
-            {
-                requiredMods = null;
-            }
-            else
-            {
-                requiredMods = new RequiredMods();
-                requiredMods.AddAllowedByPackageIds(patches.RequiredPackageId.Split(','));
-            }
-
-            var doc = new XmlDocument();
-            doc.AppendElement("Patch");
+            var doc = new XDocument(new XElement("Patch"));
             foreach (var filePath in IO.DescendantFiles(patchesRoot).Where(x => x.ToLower().EndsWith(".xml")))
             {
                 var childDoc = IO.ReadXml(filePath);
-                foreach (XmlNode node in childDoc.DocumentElement!.ChildNodes)
+                foreach (var node in childDoc.Root!.Elements())
                 {
-                    if (node.Name != "Operation")
+                    if (node.Name.LocalName != "Operation")
                         continue;
 
-                    var newNode = doc.ImportNode(node, true);
-                    doc.DocumentElement!.AppendChild(newNode);
+                    doc.Root!.Add(new XElement(node));
                 }
             }
 
-            foreach (XmlNode node in doc.DocumentElement!.ChildNodes)
+            foreach (var node in doc.Root!.Elements())
             {
-                foreach (var translationEntry in PatchOperations.PatchOperationRecursive(node, null, prePatchMode))
+                foreach (var translationEntry in PatchOperations.PatchOperationRecursive(node, simResult, null, false))
                 {
                     yield return translationEntry with
                     {
@@ -342,25 +218,25 @@ namespace RimworldExtractorInternal
                 }
             }
 
-
-            if (PatchOperations.DefsAddedByPatches.Count == 0)
+            if (simResult.DefsAddedByPatches.Count == 0)
                 yield break;
+
             CompatManager.DoPreProcessing(doc);
-            foreach (var (requiredModsPatches, node) in PatchOperations.DefsAddedByPatches)
+            foreach (var (requiredModsPatches, node) in simResult.DefsAddedByPatches)
             {
-                var name = node.Attributes?["Name"]?.Value;
+                var name = node.Attribute("Name")?.Value;
                 if (requiredModsPatches != null)
                 {
                     node.AppendElement("REQUIREDMODS", requiredModsPatches.ToString());
                 }
                 if (name != null)
                 {
-                    ParentNodeLookUp[name] = node;
+                    simResult.ParentNodeLookUp[name] = node;
                 }
             }
-            DoXmlInheritance(PatchOperations.DefsAddedByPatches.Select(x => x.Item2));
+            DefTreeSimulator.DoXmlInheritance(simResult, simResult.DefsAddedByPatches.Select(x => x.Item2));
 
-            foreach (var translation in ExtractDefs())
+            foreach (var translation in ExtractDefs(simResult))
             {
                 yield return translation with
                 {
@@ -368,7 +244,8 @@ namespace RimworldExtractorInternal
                     RequiredMods = translation.RequiredMods + requiredMods
                 };
             }
-            yield break;
         }
+
+        private static T Tap<T>(this T obj, Action<T> action) { action(obj); return obj; }
     }
 }

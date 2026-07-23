@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml;
+﻿using System.Xml.Linq;
 using RimworldExtractorInternal.DataTypes;
 
 namespace RimworldExtractorInternal.Compats
@@ -18,7 +13,7 @@ namespace RimworldExtractorInternal.Compats
             }
         }
 
-        public virtual void DoPreProcessing(XmlDocument doc)
+        public virtual void DoPreProcessing(XDocument doc)
         {
             return;
         }

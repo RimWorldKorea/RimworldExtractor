@@ -1,46 +1,40 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml;
+﻿using System.Xml.Linq;
 using RimworldExtractorInternal.DataTypes;
 
 namespace RimworldExtractorInternal.Compats
 {
-
     [CompatPriority(200)]
     internal class Compat_ScenarioDef : BaseCompat
     {
         private const string selector =
             "Defs/ScenarioDef";
-        public override void DoPreProcessing(XmlDocument doc)
+        public override void DoPreProcessing(XDocument doc)
         {
             var nodes = doc.SelectNodesSafe(selector);
             if (nodes == null)
                 return;
 
-            foreach (XmlNode node in nodes)
+            foreach (var node in nodes)
             {
-                var label = node["label"];
-                var description = node["description"];
+                var label = node.Element("label");
+                var description = node.Element("description");
 
                 if (label == null || description == null)
                 {
-                    Log.Wrn($"ScenarioDef에 label이나 description 태그가 없습니다. defName: {node["defName"]?.InnerText}");
+                    Log.Wrn($"ScenarioDef에 label이나 description 태그가 없습니다. defName: {node.Element("defName")?.Value}");
                     continue;
                 }
 
-                if (node["scenario"]?["name"] != null || node["scenario"]?["description"] != null)
+                if (node.Element("scenario")?.Element("name") != null || node.Element("scenario")?.Element("description") != null)
                 {
-                    Log.Msg($"ScenarioDef에 이미 scenario.name이나 scenario.description 태그가 존재합니다. defName: {node["defName"]?.InnerText}");
+                    Log.Msg($"ScenarioDef에 이미 scenario.name이나 scenario.description 태그가 존재합니다. defName: {node.Element("defName")?.Value}");
                     continue;
                 }
 
                 node.AppendElement("scenario", scenario =>
                 {
-                    scenario.AppendElement("name", label.InnerText);
-                    scenario.AppendElement("description", description.InnerText);
+                    scenario.AppendElement("name", label.Value);
+                    scenario.AppendElement("description", description.Value);
                 });
             }
         }

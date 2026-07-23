@@ -1,14 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using System.Xml;
+using System.Xml.Linq;
+using System.Xml.XPath;
 using ClosedXML.Excel;
-using DocumentFormat.OpenXml.Office.PowerPoint.Y2021.M06.Main;
-using DocumentFormat.OpenXml.Office.Word;
 using RimworldExtractorInternal.DataTypes;
 
 namespace RimworldExtractorInternal
@@ -65,64 +60,39 @@ namespace RimworldExtractorInternal
             return new string(result);
         }
 
-        public static XmlElement Append(this XmlElement parent, Action<XmlElement> work)
+        public static XElement Append(this XElement parent, Action<XElement> work)
         {
             work(parent);
             return parent;
         }
 
-        public static XmlElement AppendElement(this XmlNode parent, string name, string? innerText = null)
+        public static XElement AppendElement(this XContainer parent, string name, string? innerText = null)
         {
-            var child = (XmlElement?)parent.AppendChild(
-                (parent.NodeType == XmlNodeType.Document ? (XmlDocument)parent : parent.OwnerDocument!)
-                .CreateElement(name)) ?? throw new NullReferenceException();
+            var child = new XElement(name);
             if (innerText != null)
             {
-                child.InnerText = innerText;
+                child.Value = innerText;
             }
-
-            return child;
-        }
-        public static XmlElement AppendElement(this XmlElement parent, string name, string? innerText = null)
-        {
-            var child = (XmlElement?)parent.AppendChild(parent.OwnerDocument.CreateElement(name)) ??
-                        throw new NullReferenceException();
-
-            if (innerText != null)
-            {
-                child.InnerText = innerText;
-            }
+            parent.Add(child);
             return child;
         }
 
-        public static XmlElement AppendElement(this XmlNode parent, string name, Action<XmlElement> work)
+        public static XElement AppendElement(this XContainer parent, string name, Action<XElement> work)
         {
             var child = parent.AppendElement(name);
             work(child);
             return child;
         }
 
-        public static XmlAttribute? AppendAttribute(this XmlNode parent, string name, string? value)
+        public static XAttribute? AppendAttribute(this XElement parent, string name, string? value)
         {
-            if (parent is XmlElement e)
-                return e.AppendAttribute(name, value);
-            else
-                return null;
-        }
-        public static XmlAttribute AppendAttribute(this XmlElement parent, string name, string? value)
-        {
-            var attr = parent.Attributes.Append(parent.OwnerDocument.CreateAttribute(name));
-            if (value != null)
-            {
-                attr.Value = value;
-            }
-            return attr;
+            parent.SetAttributeValue(name, value);
+            return parent.Attribute(name);
         }
 
-        public static XmlComment AppendComment(this XmlElement parent, string comment)
+        public static void AppendComment(this XContainer parent, string comment)
         {
-            var child = (XmlComment)parent.AppendChild(parent.OwnerDocument.CreateComment(comment))!;
-            return child;
+            parent.Add(new XComment(comment));
         }
 
         public static List<T> Combine<T>(this IEnumerable<T>? first, IEnumerable<T>? second)
@@ -140,21 +110,6 @@ namespace RimworldExtractorInternal
             return newList;
         }
 
-        public static IEnumerable<XmlNode> Where(this XmlNodeList nodes, Predicate<XmlNode> predicate)
-        {
-            return nodes.OfType<XmlNode>().Where(x => predicate(x));
-        }
-
-        public static IEnumerable<T> Select<T>(this XmlNodeList nodes, Func<XmlNode, T> selector)
-        {
-            return nodes.OfType<XmlNode>().Select(selector);
-        }
-
-        public static XmlNode? FirstOrDefault(this XmlNodeList nodes, Predicate<XmlNode> predicate)
-        {
-            return nodes.OfType<XmlNode>().FirstOrDefault(x => predicate(x));
-        }
-
         public static bool HasSameElements<T>(this IEnumerable<T> node1, IEnumerable<T>? node2)
         {
             if (node2 == null)
@@ -164,19 +119,19 @@ namespace RimworldExtractorInternal
             return !node1Array.Except(node2Array).Any() && !node2Array.Except(node1Array).Any();
         }
 
-        public static bool HasAttribute(this XmlNode node, string attributeName)
+        public static bool HasAttribute(this XElement node, string attributeName)
         {
-            return node.Attributes?[attributeName] != null;
+            return node.Attribute(attributeName) != null;
         }
 
-        public static bool HasAttribute(this XmlNode node, string attributeName, string value)
+        public static bool HasAttribute(this XElement node, string attributeName, string value)
         {
-            return node.Attributes?[attributeName]?.Value == value;
+            return node.Attribute(attributeName)?.Value == value;
         }
 
-        public static bool TryGetAttritube(this XmlNode node, string attritubeName, out string? value)
+        public static bool TryGetAttritube(this XElement node, string attritubeName, out string? value)
         {
-            value = node.Attributes?[attritubeName]?.Value;
+            value = node.Attribute(attritubeName)?.Value;
             return value != null;
         }
 
@@ -218,18 +173,17 @@ namespace RimworldExtractorInternal
             return string.Empty;
         }
 
-        internal static bool IsListNode(this XmlNode? curNode) => curNode?.Name == "li";
+        internal static bool IsListNode(this XElement? curNode) => curNode?.Name.LocalName == "li";
 
-        internal static bool IsTextNode(this XmlNode? curNode) =>
-            curNode?.ChildNodes.Count == 1 && (curNode.FirstChild!.NodeType == XmlNodeType.Text ||
-                                               curNode.FirstChild!.NodeType == XmlNodeType.CDATA);
+        internal static bool IsTextNode(this XElement? curNode) =>
+            curNode != null && !curNode.HasElements;
 
-        public static XmlNodeList? SelectNodesSafe(this XmlDocument? doc, string? xpath)
+        public static IEnumerable<XElement>? SelectNodesSafe(this XContainer? doc, string? xpath)
         {
             if (doc == null || xpath == null) return null;
             try
             {
-                return doc.SelectNodes(xpath);
+                return doc.XPathSelectElements(xpath);
             }
             catch (Exception e)
             {

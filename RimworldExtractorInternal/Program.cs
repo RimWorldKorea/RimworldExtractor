@@ -1,6 +1,4 @@
-﻿using DocumentFormat.OpenXml.Vml.Office;
-
-namespace RimworldExtractorInternal
+﻿namespace RimworldExtractorInternal
 {
     internal class Program
     {

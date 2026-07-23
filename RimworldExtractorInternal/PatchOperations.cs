@@ -1,23 +1,41 @@
-using System.Xml;
-using DocumentFormat.OpenXml.Office2013.PowerPoint.Roaming;
+using System.Xml.Linq;
 using RimworldExtractorInternal.DataTypes;
 
 namespace RimworldExtractorInternal;
 
 internal static class PatchOperations
 {
-    /// <summary>
-    /// Defs added by Patch operations, to be extracted after Patch operations end.
-    /// Item1) required mods, Item2) Xml Node
-    /// </summary>
-    public static readonly List<(RequiredMods?, XmlNode)> DefsAddedByPatches = new();
-
-    public static IEnumerable<TranslationEntry> PatchOperationRecursive(XmlNode curNode, RequiredMods? requiredMods, bool prePatchMode = false)
+    public static void ExecutePrePatches(SimulationResult simResult, ExtractableFolder patchDir)
     {
-        if (Extractor.CombinedDefs == null)
+        var patchesRoot = patchDir.FullPath;
+        var doc = new XDocument(new XElement("Patch"));
+        foreach (var filePath in IO.DescendantFiles(patchesRoot).Where(x => x.ToLower().EndsWith(".xml")))
+        {
+            var childDoc = IO.ReadXml(filePath);
+            foreach (var node in childDoc.Root!.Elements())
+            {
+                if (node.Name.LocalName != "Operation")
+                    continue;
+
+                doc.Root!.Add(new XElement(node));
+            }
+        }
+
+        foreach (var node in doc.Root!.Elements())
+        {
+            foreach (var _ in PatchOperationRecursive(node, simResult, null, true))
+            {
+                // PrePatch ì²˜ë¦¬
+            }
+        }
+    }
+
+    public static IEnumerable<TranslationEntry> PatchOperationRecursive(XElement curNode, SimulationResult simResult, RequiredMods? requiredMods, bool prePatchMode = false)
+    {
+        if (simResult.DefTree == null)
             yield break;
 
-        var operation = curNode.Attributes?["Class"]?.Value;
+        var operation = curNode.Attribute("Class")?.Value;
 
         if (curNode.TryGetAttritube("MayRequire", out string? mayRequire) && mayRequire != null)
         {
@@ -25,95 +43,98 @@ internal static class PatchOperations
             requiredMods.AddAllowedByPackageIds(mayRequire.Split(','));
         }
 
-        XmlNode? success = curNode["success"];
+        XElement? success = curNode.Element("success");
         switch (operation)
         {
             case "PatchOperationFindMod":
-                foreach (var translationEntry in PatchOperationFindMod(curNode, requiredMods, prePatchMode))
+                foreach (var translationEntry in PatchOperationFindMod(curNode, simResult, requiredMods, prePatchMode))
                     yield return translationEntry;
                 break;
             case "PatchOperationSequence":
-                foreach (var translationEntry in PatchOperationSequence(curNode, requiredMods, prePatchMode)) 
+                foreach (var translationEntry in PatchOperationSequence(curNode, simResult, requiredMods, prePatchMode)) 
                     yield return translationEntry;
                 break;
             case "PatchOperationAdd":
-                foreach (var translationEntry in PatchOperationAdd(curNode, requiredMods, prePatchMode)) 
+                foreach (var translationEntry in PatchOperationAdd(curNode, simResult, requiredMods, prePatchMode)) 
                     yield return translationEntry;
                 break;
             case "PatchOperationReplace":
-                foreach (var translationEntry in PatchOperationReplace(curNode, requiredMods, prePatchMode))
+                foreach (var translationEntry in PatchOperationReplace(curNode, simResult, requiredMods, prePatchMode))
                     yield return translationEntry;
                 break;
             case "PatchOperationAddModExtension":
-                foreach (var translationEntry in PatchOperationAddModExtension(curNode, requiredMods, prePatchMode))
+                foreach (var translationEntry in PatchOperationAddModExtension(curNode, simResult, requiredMods, prePatchMode))
                     yield return translationEntry;
                 break;
             case "PatchOperationInsert":
-                foreach (var translationEntry in PatchOperationInsert(curNode, requiredMods, prePatchMode))
+                foreach (var translationEntry in PatchOperationInsert(curNode, simResult, requiredMods, prePatchMode))
                     yield return translationEntry;
                 break;
             // PrePatches
             case "PatchOperationAttributeAdd":
-                foreach (var translationEntry in PatchOperationAttribute(curNode, requiredMods, PatchOperationAttributeMode.Add, prePatchMode))
+                foreach (var translationEntry in PatchOperationAttribute(curNode, simResult, requiredMods, PatchOperationAttributeMode.Add, prePatchMode))
                     yield return translationEntry;
                 break;
             case "PatchOperationAttributeRemove":
-                foreach (var translationEntry in PatchOperationAttribute(curNode, requiredMods, PatchOperationAttributeMode.Remove, prePatchMode))
+                foreach (var translationEntry in PatchOperationAttribute(curNode, simResult, requiredMods, PatchOperationAttributeMode.Remove, prePatchMode))
                     yield return translationEntry;
                 break;
             case "PatchOperationAttributeSet":
-                foreach (var translationEntry in PatchOperationAttribute(curNode, requiredMods, PatchOperationAttributeMode.Set, prePatchMode))
+                foreach (var translationEntry in PatchOperationAttribute(curNode, simResult, requiredMods, PatchOperationAttributeMode.Set, prePatchMode))
                     yield return translationEntry;
                 break;
             // Added by mods
             case "JPTools.PatchOperationFindModById":
-                foreach (var translationEntry in JPTools_PatchOperationFindModById(curNode, requiredMods, prePatchMode))
+                foreach (var translationEntry in JPTools_PatchOperationFindModById(curNode, simResult, requiredMods, prePatchMode))
                     yield return translationEntry;
                 break;
             default:
-                Log.Msg($"Áö¿øÇÏÁö ¾Ê´Â PatchOperation Å¸ÀÔÀÔ´Ï´Ù: {operation}");
+                Log.Msg($"Ã¶ Ê´Ã‚ PatchOperation Å¸Ô´Ï´Ã™: {operation}");
                 break;
         }
 
         yield break;
     }
 
-
-    private static IEnumerable<TranslationEntry> PatchOperationInsert(XmlNode curNode, RequiredMods? requiredMods, bool prePatchMode = false)
+    private static IEnumerable<TranslationEntry> PatchOperationInsert(XElement curNode, SimulationResult simResult, RequiredMods? requiredMods, bool prePatchMode = false)
     {
         if (prePatchMode)
             yield break;
 
-        var xpath = curNode["xpath"]?.InnerText;
-        XmlNode? value = curNode["value"];
+        var xpath = curNode.Element("xpath")?.Value;
+        XElement? value = curNode.Element("value");
         if (xpath == null || value == null)
         {
-            Log.Wrn($"xpath ¶Ç´Â valueÀÇ °ªÀÌ ¾ø½À´Ï´Ù. Àß¸øµÈ ¸²¿ùµå XML Æ÷¸Ë.");
+            Log.Wrn($"xpath Ç´Ã‚ valueÃ‡ ÃŒ Ï´Ã™. ß¸Ãˆ Ã¥ XML Ã‹.");
             yield break; // yield break;
         }
 
-        var selectNodes = Extractor.CombinedDefs.SelectNodesSafe(xpath);
+        var selectNodes = simResult.DefTree.SelectNodesSafe(xpath);
         if (selectNodes == null) yield break;
-        foreach (XmlNode selectNode in selectNodes)
+        foreach (XElement selectNode in selectNodes)
         {
-            var parentNode = selectNode.ParentNode;
+            var parentNode = selectNode.Parent;
             if (parentNode == null)
             {
-                Log.Wrn($"¼±ÅÃµÈ ³ëµå {selectNode.Name}ÀÇ ºÎ¸ð ³ëµå°¡ ¾ø½À´Ï´Ù.");
+                Log.Wrn($"ÃµÃˆ Ã¥ {selectNode.Name.LocalName}Ã‡ Î¸Ã° å°¡ Ï´Ã™.");
                 continue;
             }
             var rootDefNode = Extractor.GetRootDefNode(parentNode, out var nodeName);
-            foreach (XmlElement valueChildNode in value.ChildNodes)
+            var currentTarget = selectNode;
+            foreach (XElement valueChildNode in value.Elements())
             {
-                XmlNode selectNodeImported = parentNode.InsertAfter(Extractor.CombinedDefs!.ImportNode(valueChildNode, true), selectNode)!;
+                var selectNodeImported = new XElement(valueChildNode);
+                currentTarget.AddAfterSelf(selectNodeImported);
+                currentTarget = selectNodeImported;
+
                 var curRootDefNode = rootDefNode ?? selectNodeImported;
-                var defName = curRootDefNode["defName"]?.InnerText;
+                var defName = curRootDefNode.Element("defName")?.Value;
                 if (defName == null)
                 {
                     continue;
                 }
-                foreach (var translation in Extractor.FindExtractableNodes(curRootDefNode["defName"]!.InnerText,
-                             curRootDefNode.Attributes?["Class"]?.Value ?? curRootDefNode.Name, selectNodeImported, nodeName))
+                foreach (var translation in Extractor.FindExtractableNodes(curRootDefNode.Element("defName")!.Value,
+                             curRootDefNode.Attribute("Class")?.Value ?? curRootDefNode.Name.LocalName, selectNodeImported, nodeName))
                 {
                     yield return translation with
                     {
@@ -125,38 +146,38 @@ internal static class PatchOperations
         }
     }
 
-    private static IEnumerable<TranslationEntry> PatchOperationAddModExtension(XmlNode curNode, RequiredMods? requiredMods, bool prePatchMode = false)
+    private static IEnumerable<TranslationEntry> PatchOperationAddModExtension(XElement curNode, SimulationResult simResult, RequiredMods? requiredMods, bool prePatchMode = false)
     {
         if (prePatchMode)
             yield break;
 
-        var xpath = curNode["xpath"]?.InnerText;
-        XmlNode? value = curNode["value"];
+        var xpath = curNode.Element("xpath")?.Value;
+        XElement? value = curNode.Element("value");
         if (xpath == null || value == null)
         {
-            Log.Wrn($"xpath ¶Ç´Â valueÀÇ °ªÀÌ ¾ø½À´Ï´Ù. Àß¸øµÈ ¸²¿ùµå XML Æ÷¸Ë.");
+            Log.Wrn($"xpath Ç´Ã‚ valueÃ‡ ÃŒ Ï´Ã™. ß¸Ãˆ Ã¥ XML Ã‹.");
             yield break; // yield break;
         }
 
-        var selectNodes = Extractor.CombinedDefs.SelectNodesSafe(xpath);
+        var selectNodes = simResult.DefTree.SelectNodesSafe(xpath);
         if (selectNodes == null) yield break;
-        foreach (XmlElement selectNode in selectNodes)
+        foreach (XElement selectNode in selectNodes)
         {
             var rootDefNode = Extractor.GetRootDefNode(selectNode, out var nodeName);
-            var modExtensionNode = selectNode["modExtensions"];
+            var modExtensionNode = selectNode.Element("modExtensions");
             if (modExtensionNode == null)
             {
-                modExtensionNode = Extractor.CombinedDefs.CreateElement("modExtensions");
-                selectNode.AppendChild(modExtensionNode);
-                // XmlNode selectNodeImported = selectNode.AppendChild(CombinedDefs.ImportNode())
+                modExtensionNode = new XElement("modExtensions");
+                selectNode.Add(modExtensionNode);
             }
 
-            foreach (XmlNode valueChildNode in value.ChildNodes)
+            foreach (XElement valueChildNode in value.Elements())
             {
-                XmlNode selectNodeImported = modExtensionNode.AppendChild(Extractor.CombinedDefs!.ImportNode(valueChildNode, true))!;
+                var selectNodeImported = new XElement(valueChildNode);
+                modExtensionNode.Add(selectNodeImported);
                 var curRootDefNode = rootDefNode ?? selectNodeImported;
-                foreach (var translation in Extractor.FindExtractableNodes(curRootDefNode["defName"]!.InnerText,
-                             curRootDefNode.Attributes?["Class"]?.Value ?? curRootDefNode.Name, selectNodeImported, nodeName))
+                foreach (var translation in Extractor.FindExtractableNodes(curRootDefNode.Element("defName")!.Value,
+                             curRootDefNode.Attribute("Class")?.Value ?? curRootDefNode.Name.LocalName, selectNodeImported, nodeName))
                 {
                     yield return translation with
                     {
@@ -168,38 +189,41 @@ internal static class PatchOperations
         }
     }
 
-    private static IEnumerable<TranslationEntry> PatchOperationReplace(XmlNode curNode, RequiredMods? requiredMods, bool prePatchMode = false)
+    private static IEnumerable<TranslationEntry> PatchOperationReplace(XElement curNode, SimulationResult simResult, RequiredMods? requiredMods, bool prePatchMode = false)
     {
         if (prePatchMode)
             yield break;
 
-        var xpath = curNode["xpath"]?.InnerText;
-        XmlNode? value = curNode["value"];
+        var xpath = curNode.Element("xpath")?.Value;
+        XElement? value = curNode.Element("value");
         if (xpath == null || value == null)
         {
-            Log.Wrn($"xpath ¶Ç´Â valueÀÇ °ªÀÌ ¾ø½À´Ï´Ù. Àß¸øµÈ ¸²¿ùµå XML Æ÷¸Ë.");
+            Log.Wrn($"xpath Ç´Ã‚ valueÃ‡ ÃŒ Ï´Ã™. ß¸Ãˆ Ã¥ XML Ã‹.");
             yield break; // yield break;
         }
 
-        var selectNodes = Extractor.CombinedDefs.SelectNodesSafe(xpath);
+        var selectNodes = simResult.DefTree.SelectNodesSafe(xpath);
         if (selectNodes == null) yield break;
-        foreach (XmlNode selectNode in selectNodes)
+        foreach (XElement selectNode in selectNodes)
         {
-            var parentNode = selectNode.ParentNode!;
+            var parentNode = selectNode.Parent!;
             var rootDefNode = Extractor.GetRootDefNode(parentNode, out var nodeName);
-            var defName = rootDefNode?["defName"]?.InnerText;
-            var className = (rootDefNode?.Attributes?["Class"]?.Value ?? rootDefNode?.Name);
+            var defName = rootDefNode?.Element("defName")?.Value;
+            var className = (rootDefNode?.Attribute("Class")?.Value ?? rootDefNode?.Name.LocalName);
                             
             if (rootDefNode == null)
             {
-                defName = selectNode?["defName"]?.InnerText;
-                className = (selectNode?.Attributes?["Class"]?.Value ?? selectNode?.Name);
+                defName = selectNode.Element("defName")?.Value;
+                className = (selectNode.Attribute("Class")?.Value ?? selectNode.Name.LocalName);
             }
             if (defName is null || className is null)
-                Log.Wrn($"defName ¶Ç´Â classNameÀ» Ã£À» ¼ö ¾ø´Â Patch: xpath:{xpath}");
-            foreach (XmlNode valueChildNode in value.ChildNodes)
+                Log.Wrn($"defName Ç´Ã‚ classNameÂ» Ã£Â» Ã¶ Ã‚ Patch: xpath:{xpath}");
+            
+            var currentTarget = selectNode;
+            foreach (XElement valueChildNode in value.Elements())
             {
-                XmlNode selectNodeImported = parentNode.InsertBefore(Extractor.CombinedDefs!.ImportNode(valueChildNode, true), selectNode)!;
+                var selectNodeImported = new XElement(valueChildNode);
+                currentTarget.AddBeforeSelf(selectNodeImported);
                 foreach (var translation in Extractor.FindExtractableNodes(defName, className, selectNodeImported, nodeName))
                 {
                     yield return translation with
@@ -209,49 +233,49 @@ internal static class PatchOperations
                     };
                 }
             }
-            parentNode.RemoveChild(selectNode);
+            selectNode.Remove();
         }
     }
 
-    private static IEnumerable<TranslationEntry> PatchOperationAdd(XmlNode curNode, RequiredMods? requiredMods, bool prePatchMode = false) 
+    private static IEnumerable<TranslationEntry> PatchOperationAdd(XElement curNode, SimulationResult simResult, RequiredMods? requiredMods, bool prePatchMode = false) 
     {
         if (prePatchMode)
             yield break;
 
-        var xpath = curNode["xpath"]?.InnerText;
-        XmlNode? value = curNode["value"];
+        var xpath = curNode.Element("xpath")?.Value;
+        XElement? value = curNode.Element("value");
         if (xpath == null || value == null)
         {
-            Log.Wrn($"xpath ¶Ç´Â valueÀÇ °ªÀÌ ¾ø½À´Ï´Ù. Àß¸øµÈ ¸²¿ùµå XML Æ÷¸Ë.");
+            Log.Wrn($"xpath Ç´Ã‚ valueÃ‡ ÃŒ Ï´Ã™. ß¸Ãˆ Ã¥ XML Ã‹.");
             yield break; // yield break;
         }
 
-        var selectNodes = Extractor.CombinedDefs.SelectNodesSafe(xpath);
+        var selectNodes = simResult.DefTree.SelectNodesSafe(xpath);
         if (selectNodes == null) yield break;
-        foreach (XmlNode selectNode in selectNodes)
+        foreach (XElement selectNode in selectNodes)
         {
             var rootDefNode = Extractor.GetRootDefNode(selectNode, out var nodeName);
-            foreach (XmlNode valueChildNode in value.ChildNodes)
+            foreach (XElement valueChildNode in value.Elements())
             {
-                XmlNode selectNodeImported = selectNode.AppendChild(Extractor.CombinedDefs!.ImportNode(valueChildNode, true))!;
+                var selectNodeImported = new XElement(valueChildNode);
+                selectNode.Add(selectNodeImported);
                 var curRootDefNode = rootDefNode ?? selectNodeImported;
 
                 if (xpath is "Defs" or "Defs/")
                 {
-                    DefsAddedByPatches.Add((requiredMods, selectNodeImported));
+                    simResult.DefsAddedByPatches.Add((requiredMods, selectNodeImported));
                     continue;
                 }
 
-                var defName = curRootDefNode["defName"]?.InnerText;
+                var defName = curRootDefNode.Element("defName")?.Value;
                 if (defName == null)
                 {
-
-                    Log.Wrn($"defNameÀÌ ¾ø´Â °æ¿ì´Â Áö¿øÇÏÁö ¾Ê½À´Ï´Ù. xpath={xpath}, value={value.InnerXml}");
+                    Log.Wrn($"defNameÃŒ Ã‚ Ã‚ Ã¶ Ê½Ï´Ã™. xpath={xpath}, value={value}");
                     continue;
                 }
 
                 foreach (var translation in Extractor.FindExtractableNodes(defName,
-                             curRootDefNode.Attributes?["Class"]?.Value ?? curRootDefNode.Name, selectNodeImported, nodeName))
+                             curRootDefNode.Attribute("Class")?.Value ?? curRootDefNode.Name.LocalName, selectNodeImported, nodeName))
                 {
                     if (translation.ClassName == "Keyed")
                     {
@@ -271,98 +295,87 @@ internal static class PatchOperations
         }
     }
 
-    private static IEnumerable<TranslationEntry> PatchOperationSequence(XmlNode curNode, RequiredMods? requiredMods, bool prePatchMode = false)
+    private static IEnumerable<TranslationEntry> PatchOperationSequence(XElement curNode, SimulationResult simResult, RequiredMods? requiredMods, bool prePatchMode = false)
     {
-        var operations = curNode["operations"];
+        var operations = curNode.Element("operations");
         if (operations == null)
             yield break;
-        foreach (XmlNode childOperation in operations.ChildNodes)
+        foreach (XElement childOperation in operations.Elements())
         {
-            foreach (var translationEntry in PatchOperationRecursive(childOperation, requiredMods, prePatchMode))
+            foreach (var translationEntry in PatchOperationRecursive(childOperation, simResult, requiredMods, prePatchMode))
             {
                 yield return translationEntry;
             }
         }
     }
 
-    private static IEnumerable<TranslationEntry> PatchOperationFindMod(XmlNode curNode, RequiredMods? requiredMods, bool prePatchMode = false)
+    private static IEnumerable<TranslationEntry> PatchOperationFindMod(XElement curNode, SimulationResult simResult, RequiredMods? requiredMods, bool prePatchMode = false)
     {
         requiredMods = new RequiredMods(requiredMods);
         var noMatchRequiredMods = new RequiredMods(requiredMods);
-        var requiredModNodes = curNode["mods"]?.ChildNodes;
-        var requiredModsList = requiredModNodes?.Select(n => n.InnerText).ToList();
+        var requiredModNodes = curNode.Element("mods")?.Elements();
+        var requiredModsList = requiredModNodes?.Select(n => n.Value).ToList();
 
-        var match = curNode["match"];
+        var match = curNode.Element("match");
         if (match != null)
         {
             if (requiredModsList != null)
             {
                 requiredMods.AddAllowedByModNames(requiredModsList);
             }
-            foreach (var translationEntry in PatchOperationRecursive(match, requiredMods, prePatchMode))
+            foreach (var translationEntry in PatchOperationRecursive(match, simResult, requiredMods, prePatchMode))
             {
                 yield return translationEntry;
             }
         }
 
-        var noMatch = curNode["nomatch"];
+        var noMatch = curNode.Element("nomatch");
         if (noMatch != null)
         {
             if (requiredModsList != null)
             {
                 noMatchRequiredMods.AddDisallowedByModNames(requiredModsList);
             }
-            foreach (var translationEntry in PatchOperationRecursive(noMatch, noMatchRequiredMods, prePatchMode))
+            foreach (var translationEntry in PatchOperationRecursive(noMatch, simResult, noMatchRequiredMods, prePatchMode))
             {
                 yield return translationEntry;
             }
         }
     }
 
-    private static IEnumerable<TranslationEntry> PatchOperationAttribute(XmlNode curNode, RequiredMods? requiredMods, PatchOperationAttributeMode mode, bool prePatchMode = false)
+    private static IEnumerable<TranslationEntry> PatchOperationAttribute(XElement curNode, SimulationResult simResult, RequiredMods? requiredMods, PatchOperationAttributeMode mode, bool prePatchMode = false)
     {
-        var xpath = curNode["xpath"]?.InnerText;
-        var value = curNode["value"]?.InnerText;
-        var attribute = curNode["attribute"]?.InnerText;
+        var xpath = curNode.Element("xpath")?.Value;
+        var value = curNode.Element("value")?.Value;
+        var attribute = curNode.Element("attribute")?.Value;
         if (xpath == null || (mode != PatchOperationAttributeMode.Remove && value == null) || attribute == null)
         {
-            Log.Wrn($"xpath ¶Ç´Â valueÀÇ °ªÀÌ ¾ø½À´Ï´Ù. Àß¸øµÈ ¸²¿ùµå XML Æ÷¸Ë.");
+            Log.Wrn($"xpath Ç´Ã‚ valueÃ‡ ÃŒ Ï´Ã™. ß¸Ãˆ Ã¥ XML Ã‹.");
             yield break; // yield break;
         }
 
-        var selectNodes = Extractor.CombinedDefs.SelectNodesSafe(xpath);
+        var selectNodes = simResult.DefTree.SelectNodesSafe(xpath);
         if (selectNodes == null) yield break;
-        foreach (XmlNode selectNode in selectNodes)
+        foreach (XElement selectNode in selectNodes)
         {
             switch (mode)
             {
                 case PatchOperationAttributeMode.Add:
-                    if (selectNode.Attributes?[attribute] == null)
+                    if (selectNode.Attribute(attribute) == null)
                     {
-                        selectNode.AppendAttribute(attribute, value);
+                        selectNode.SetAttributeValue(attribute, value);
                     }
                     break;
                 case PatchOperationAttributeMode.Remove:
-                    if (selectNode.Attributes?[attribute] != null)
-                    {
-                        selectNode.Attributes.Remove(selectNode.Attributes?[attribute]);
-                    }
+                    selectNode.Attribute(attribute)?.Remove();
                     break;
                 case PatchOperationAttributeMode.Set:
-                    if (selectNode.Attributes?[attribute] != null)
-                    {
-                        selectNode.Attributes[attribute]!.Value = value;
-                    }
-                    else
-                    {
-                        selectNode.AppendAttribute(attribute, value);
-                    }
+                    selectNode.SetAttributeValue(attribute, value);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(mode), mode, null);
             }
         }
-
     }
 
     private enum PatchOperationAttributeMode
@@ -370,34 +383,34 @@ internal static class PatchOperations
         Add, Remove, Set
     }
 
-    private static IEnumerable<TranslationEntry> JPTools_PatchOperationFindModById(XmlNode curNode, RequiredMods? requiredMods, bool prePatchMode = false)
+    private static IEnumerable<TranslationEntry> JPTools_PatchOperationFindModById(XElement curNode, SimulationResult simResult, RequiredMods? requiredMods, bool prePatchMode = false)
     {
         requiredMods = new RequiredMods(requiredMods);
         var noMatchRequiredMods = new RequiredMods(requiredMods);
-        var requiredModNodes = curNode["mods"]?.ChildNodes;
-        var requiredModsList = requiredModNodes?.Select(n => n.InnerText).ToList();
+        var requiredModNodes = curNode.Element("mods")?.Elements();
+        var requiredModsList = requiredModNodes?.Select(n => n.Value).ToList();
 
-        var match = curNode["match"];
+        var match = curNode.Element("match");
         if (match != null)
         {
             if (requiredModsList != null)
             {
                 requiredMods.AddAllowedByPackageIds(requiredModsList);
             }
-            foreach (var translationEntry in PatchOperationRecursive(match, requiredMods, prePatchMode))
+            foreach (var translationEntry in PatchOperationRecursive(match, simResult, requiredMods, prePatchMode))
             {
                 yield return translationEntry;
             }
         }
 
-        var noMatch = curNode["nomatch"];
+        var noMatch = curNode.Element("nomatch");
         if (noMatch != null)
         {
             if (requiredModsList != null)
             {
                 noMatchRequiredMods.AddAllowedByPackageIds(requiredModsList);
             }
-            foreach (var translationEntry in PatchOperationRecursive(noMatch, noMatchRequiredMods, prePatchMode))
+            foreach (var translationEntry in PatchOperationRecursive(noMatch, simResult, noMatchRequiredMods, prePatchMode))
             {
                 yield return translationEntry;
             }

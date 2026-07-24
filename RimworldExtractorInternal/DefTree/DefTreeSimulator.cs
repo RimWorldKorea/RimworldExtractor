@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Xml.Linq;
 using RimworldExtractorInternal.DataTypes;
+using RimworldExtractorInternal.DefTree;
 
 namespace RimworldExtractorInternal
 {
@@ -38,6 +39,16 @@ namespace RimworldExtractorInternal
             result.TargetFolders = selectedFolders;
             result.ReferenceMods = referenceMods ?? new List<ModMetadata>();
 
+            // ---------------------------------------------------------------------------------------------------------
+            // TODO [단계 0] 어셈블리로부터 사전 모델의 베이스 구성
+            // ---------------------------------------------------------------------------------------------------------
+
+            // 🟢 (A 지점) PostProcessors/PostA 스크립트 적용 (순수 XDocument 전달 및 반환)
+            result.DefTree = DefTreePipelineRunner.ExecuteStage(PipelineStage.StageA, result.DefTree);
+
+            // ---------------------------------------------------------------------------------------------------------
+            // [단계 1] 사전 참조 모델 구성
+            // ---------------------------------------------------------------------------------------------------------
             if (referenceDefsRoots != null)
             {
                 LoadReferenceDefs(result, referenceDefsRoots);
@@ -84,11 +95,26 @@ namespace RimworldExtractorInternal
                 }
             }
 
+            // 🟢 (B 지점) PostProcessors/PostB 스크립트 적용
+            result.DefTree = DefTreePipelineRunner.ExecuteStage(PipelineStage.StageB, result.DefTree);
+
+            // ---------------------------------------------------------------------------------------------------------
+            // [단계 2] 패치 오퍼레이션 적용 (PrePatch 및 XML 상속)
+            // ---------------------------------------------------------------------------------------------------------
             DoPrePatch(result, prePatches);
             DoXmlInheritance(result);
-            
-            // 🟢 다중 언어 설정(1차, 2차 등)에 맞춰 DefTree에 DefInjected 텍스트 오버레이
+
+            // 🟢 (C 지점) PostProcessors/PostC 스크립트 적용
+            result.DefTree = DefTreePipelineRunner.ExecuteStage(PipelineStage.StageC, result.DefTree);
+
+            // ---------------------------------------------------------------------------------------------------------
+            // [단계 3] 랭귀지 데이터 오버라이드
+            // ---------------------------------------------------------------------------------------------------------
             ApplyDefInjectedLanguages(result, Prefabs.GetLanguagePriorityList());
+
+            // 🟢 (D 지점) PostProcessors/PostD 스크립트 적용
+            result.DefTree = DefTreePipelineRunner.ExecuteStage(PipelineStage.StageD, result.DefTree);
+
 #if DEBUG
             result.DefTree.Save("DefTree_Debug.xml");
 #endif

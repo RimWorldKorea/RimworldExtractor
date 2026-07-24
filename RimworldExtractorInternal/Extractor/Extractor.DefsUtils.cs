@@ -1,4 +1,7 @@
-﻿using System.Text;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using RimworldExtractorInternal.DataTypes;
@@ -7,7 +10,12 @@ namespace RimworldExtractorInternal
 {
     public static partial class Extractor
     {
-        internal static IEnumerable<TranslationEntry> FindExtractableNodes(string defName, string className, XElement rootNode, string? curNormalizedPath = null)
+        internal static IEnumerable<TranslationEntry> FindExtractableNodes(
+            string defName, 
+            string className, 
+            XElement rootNode, 
+            bool isOfficialContent, 
+            string? curNormalizedPath = null)
         {
             if (className == "XmlExtensions.SettingsMenuDef")
             {
@@ -23,7 +31,7 @@ namespace RimworldExtractorInternal
                 ? RequiredMods.FromStringByModNames(requiredModsInnerText)
                 : null;
 
-            var fileName = _isOfficialContent ? rootNode.Attribute("SourceFile")?.Value : null;
+            var fileName = isOfficialContent ? rootNode.Attribute("SourceFile")?.Value : null;
 
             // (CurrentNode, CurrentPath)
             var q = new Queue<(XElement, string)>();
@@ -90,7 +98,6 @@ namespace RimworldExtractorInternal
                     else
                         path = $"{curPath}.{childNode.Name.LocalName}";
 
-
                     q.Enqueue((childNode, path));
                 }
             }
@@ -154,9 +161,6 @@ namespace RimworldExtractorInternal
                     string path;
                     if (childNode.IsListNode())
                     {
-                        //if (MatchTranslationHandle(childNode, out var translationHandleResult))
-                        //    path = $"{curPath}.{translationHandleResult}";
-                        //else
                         path = $"{curPath}.{GetIdxOfListNode(childNode)}";
                     }
                     else

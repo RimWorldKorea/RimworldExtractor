@@ -127,7 +127,37 @@ namespace RimworldExtractorInternal.DataTypes
                 throw new NullReferenceException();
             }
 
-            NewTranslations = Extractor.ExtractTranslationData(Metadata, selectedFolders, referenceMods);
+            // 🟢 참조 모드 정보로부터 refDefs 및 prePatches 준비
+            var refDefs = new List<string>();
+            var prePatches = new List<ExtractableFolder>();
+
+            if (referenceMods != null)
+            {
+                foreach (var referenceMod in referenceMods)
+                {
+                    refDefs.AddRange(
+                        from extractableFolder in ModLister.GetExtractableFolders(referenceMod)
+                        where extractableFolder.IsAutoSelectable() && Path.GetFileName(extractableFolder.FolderName) == "Defs"
+                        select Path.Combine(referenceMod.RootDir, extractableFolder.FolderName)
+                    );
+
+                    prePatches.AddRange(
+                        ModLister.GetExtractableFolders(referenceMod)
+                            .Where(x => x.IsAutoSelectable() && Path.GetFileName(x.FolderName) == "Patches")
+                    );
+                }
+            }
+
+            // 🟢 DefTreeSimulator를 거친 SimulationResult 생성 후 Extractor에 전달
+            var simResult = DefTreeSimulator.Execute(
+                Metadata,
+                selectedFolders,
+                prePatches,
+                refDefs,
+                Metadata.IsOfficialContent,
+                referenceMods);
+
+            NewTranslations = Extractor.ExtractTranslationData(simResult);
         }
 
         public void MergeTranslation()

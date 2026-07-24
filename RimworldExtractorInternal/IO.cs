@@ -250,11 +250,6 @@ namespace RimworldExtractorInternal
             return Spreadsheet.SpreadsheetReader.ReadTranslations(inputPath);
         }
 
-        /// <summary>
-        /// 추출 데이터를 Languages XML 구조로 저장합니다.
-        /// Conditional Patch 항목(Patches. 접두어)은 PatchOperation 대신 'Patches.' 접두어를 제거한 뒤
-        /// RequiredMods/PackageID 단위의 별도 폴더(ConditionalLanguages)에 표준 DefInjected XML 형태로 내보냅니다.
-        /// </summary>
         public static void ToLanguageXml(List<TranslationEntry> translations, bool skipNoTranslation, bool commentOriginal, string ModName, string rootDirPath)
         {
             var languagesDir = PathCombineCreateDir(rootDirPath, "Languages");
@@ -264,7 +259,6 @@ namespace RimworldExtractorInternal
             var keyed = new List<TranslationEntry>();
             var strings = new List<TranslationEntry>();
             
-            // Conditional / Patched 번역 항목을 수집 (PackageID별 분리)
             var conditionalDefInjected = new List<TranslationEntry>();
 
             var isOfficial = translations.Any(x => x.SourceFile != null);
@@ -283,14 +277,11 @@ namespace RimworldExtractorInternal
                     continue;
                 }
 
-                // Patch 항목 처리: 'Patches.' 접두어가 붙어있는 경우
                 if (className.StartsWith("Patches."))
                 {
-                    // 'Patches.' 접두어 제거 -> 순수 DefTypeName으로 변경 (예: Patches.ThingDef -> ThingDef)
                     var realClassName = className["Patches.".Length..];
                     translation = translation with { ClassName = realClassName };
 
-                    // Patch를 통해 생성된 항목은 Conditional 목록으로 분류
                     conditionalDefInjected.Add(translation);
                     continue;
                 }
@@ -320,13 +311,9 @@ namespace RimworldExtractorInternal
                 Log.Wrn("번역 데이터가 존재하지 않아 아무것도 추출되지 않습니다. 팁) XLSX -> XML 기능의 경우 번역된 내용이 없으면 아무것도 저장되지 않습니다.");
             }
 
-            // 1. Conditional DefInjected 항목 내보내기 (PackageID / RequiredMods 별 폴더 구성)
             if (conditionalDefInjected.Count > 0)
             {
-                // 외부 로드 링커 툴이 인지할 수 있는 별도 폴더 (예: ConditionalLanguages)
                 var conditionalBaseDir = PathCombineCreateDir(rootDirPath, "ConditionalLanguages");
-
-                // RequiredMods(PackageID) 별로 그룹화
                 var groupedByMods = conditionalDefInjected.GroupBy(x => x.RequiredMods?.ToString() ?? "Common");
 
                 foreach (var group in groupedByMods)
@@ -367,7 +354,6 @@ namespace RimworldExtractorInternal
                 }
             }
 
-            // 2. 일반 DefInjected 내보내기
             if (defInjected.Count > 0)
             {
                 var defInjectedDir = PathCombineCreateDir(translationDir, "DefInjected");
@@ -404,7 +390,6 @@ namespace RimworldExtractorInternal
                 }
             }
 
-            // 3. FullList Translation 내보내기
             if (defInjectedFullListTranslations.Count > 0)
             {
                 var defInjectedDir = PathCombineCreateDir(translationDir, "DefInjected");
@@ -439,7 +424,6 @@ namespace RimworldExtractorInternal
                 }
             }
 
-            // 4. Keyed 내보내기
             if (keyed.Count > 0)
             {
                 var keyedDir = PathCombineCreateDir(translationDir, "Keyed");
@@ -471,7 +455,6 @@ namespace RimworldExtractorInternal
                 }
             }
 
-            // 5. Strings 내보내기
             if (strings.Count > 0)
             {
                 var stringDir = PathCombineCreateDir(translationDir, "Strings");
@@ -513,7 +496,7 @@ namespace RimworldExtractorInternal
             });
         }
 
-        public static List<TranslationEntry> FromLanguageXml(string rootPath)
+        public static List<TranslationEntry> FromLanguageXml(string rootPath, bool isOfficialContent = false)
         {
             var translationsDir = Path.Combine(rootPath, "Languages", Prefabs.TranslationLanguage);
             if (!Directory.Exists(translationsDir))
@@ -527,7 +510,8 @@ namespace RimworldExtractorInternal
 
             foreach (var filePath in DescendantFiles(defInjectedDir).Where(x => x.ToLower().EndsWith(".xml")))
             {
-                var className = Path.GetRelativePath(defInjectedDir, filePath).Split(Path.DirectorySeparatorChar).First();
+                var className = Path.GetRelativePath(defInjectedDir, filePath).Split(Path.DirectorySeparatorChar)
+                    .First();
                 try
                 {
                     var doc = ReadXml(filePath);
@@ -545,7 +529,8 @@ namespace RimworldExtractorInternal
                         }
                         else
                         {
-                            translations.Add(new TranslationEntry(className, name, string.Empty, node.Value, null, null));
+                            translations.Add(
+                                new TranslationEntry(className, name, string.Empty, node.Value, null, null));
                         }
                     }
                 }
@@ -556,11 +541,14 @@ namespace RimworldExtractorInternal
                 }
             }
 
+            // 🟢 bool isOfficialContent 인수 전달
             var keyed = new ExtractableFolder(ModMetadata.Emptry, keyedDir, null);
-            translations.AddRange(Extractor.ExtractKeyed(keyed).Select(x => x with { Translated = x.Original, Original = "" }));
+            translations.AddRange(Extractor.ExtractKeyed(keyed, isOfficialContent)
+                .Select(x => x with { Translated = x.Original, Original = "" }));
 
             var strings = new ExtractableFolder(ModMetadata.Emptry, stringsDir, null);
-            translations.AddRange(Extractor.ExtractStrings(strings).Select(x => x with { Translated = x.Original, Original = "" }));
+            translations.AddRange(Extractor.ExtractStrings(strings)
+                .Select(x => x with { Translated = x.Original, Original = "" }));
 
             return translations;
         }
@@ -709,7 +697,6 @@ namespace RimworldExtractorInternal
                 CheckCharacters = false
             };
     
-            // File.ReadAllText 대신 FileStream을 통해 BOM 및 XML 인코딩 자동 처리
             using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
             using var xmlReader = XmlReader.Create(stream, readerSettings);
             return XDocument.Load(xmlReader);

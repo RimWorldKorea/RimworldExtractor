@@ -100,12 +100,13 @@ internal static class PatchOperations
         if (prePatchMode)
             yield break;
 
+        bool isOfficial = simResult.TargetMod?.IsOfficialContent ?? false;
         var xpath = curNode.Element("xpath")?.Value;
         XElement? value = curNode.Element("value");
         if (xpath == null || value == null)
         {
             Log.Wrn($"xpath 또는 value가 없습니다. 잘못된 패치 XML입니다.");
-            yield break; // yield break;
+            yield break;
         }
 
         var selectNodes = simResult.DefTree.SelectNodesSafe(xpath);
@@ -132,8 +133,14 @@ internal static class PatchOperations
                 {
                     continue;
                 }
-                foreach (var translation in Extractor.FindExtractableNodes(curRootDefNode.Element("defName")!.Value,
-                             curRootDefNode.Attribute("Class")?.Value ?? curRootDefNode.Name.LocalName, selectNodeImported, nodeName))
+
+                // 🟢 bool isOfficial 인수 추가 반영
+                foreach (var translation in Extractor.FindExtractableNodes(
+                             curRootDefNode.Element("defName")!.Value,
+                             curRootDefNode.Attribute("Class")?.Value ?? curRootDefNode.Name.LocalName, 
+                             selectNodeImported, 
+                             isOfficial, 
+                             nodeName))
                 {
                     yield return translation with
                     {
@@ -150,12 +157,13 @@ internal static class PatchOperations
         if (prePatchMode)
             yield break;
 
+        bool isOfficial = simResult.TargetMod?.IsOfficialContent ?? false;
         var xpath = curNode.Element("xpath")?.Value;
         XElement? value = curNode.Element("value");
         if (xpath == null || value == null)
         {
             Log.Wrn($"xpath 또는 value가 없습니다. 잘못된 패치 XML입니다.");
-            yield break; // yield break;
+            yield break;
         }
 
         var selectNodes = simResult.DefTree.SelectNodesSafe(xpath);
@@ -175,8 +183,14 @@ internal static class PatchOperations
                 var selectNodeImported = new XElement(valueChildNode);
                 modExtensionNode.Add(selectNodeImported);
                 var curRootDefNode = rootDefNode ?? selectNodeImported;
-                foreach (var translation in Extractor.FindExtractableNodes(curRootDefNode.Element("defName")!.Value,
-                             curRootDefNode.Attribute("Class")?.Value ?? curRootDefNode.Name.LocalName, selectNodeImported, nodeName))
+
+                // 🟢 bool isOfficial 인수 추가 반영
+                foreach (var translation in Extractor.FindExtractableNodes(
+                             curRootDefNode.Element("defName")!.Value,
+                             curRootDefNode.Attribute("Class")?.Value ?? curRootDefNode.Name.LocalName, 
+                             selectNodeImported, 
+                             isOfficial, 
+                             nodeName))
                 {
                     yield return translation with
                     {
@@ -193,12 +207,13 @@ internal static class PatchOperations
         if (prePatchMode)
             yield break;
 
+        bool isOfficial = simResult.TargetMod?.IsOfficialContent ?? false;
         var xpath = curNode.Element("xpath")?.Value;
         XElement? value = curNode.Element("value");
         if (xpath == null || value == null)
         {
             Log.Wrn($"xpath 또는 value가 없습니다. 잘못된 패치 XML입니다.");
-            yield break; // yield break;
+            yield break;
         }
 
         var selectNodes = simResult.DefTree.SelectNodesSafe(xpath);
@@ -223,7 +238,9 @@ internal static class PatchOperations
             {
                 var selectNodeImported = new XElement(valueChildNode);
                 currentTarget.AddBeforeSelf(selectNodeImported);
-                foreach (var translation in Extractor.FindExtractableNodes(defName, className, selectNodeImported, nodeName))
+
+                // 🟢 bool isOfficial 인수 추가 반영
+                foreach (var translation in Extractor.FindExtractableNodes(defName, className, selectNodeImported, isOfficial, nodeName))
                 {
                     yield return translation with
                     {
@@ -241,12 +258,13 @@ internal static class PatchOperations
         if (prePatchMode)
             yield break;
 
+        bool isOfficial = simResult.TargetMod?.IsOfficialContent ?? false;
         var xpath = curNode.Element("xpath")?.Value;
         XElement? value = curNode.Element("value");
         if (xpath == null || value == null)
         {
             Log.Wrn($"xpath 또는 value가 없습니다. 잘못된 패치 XML입니다.");
-            yield break; // yield break;
+            yield break;
         }
 
         var selectNodes = simResult.DefTree.SelectNodesSafe(xpath);
@@ -273,8 +291,13 @@ internal static class PatchOperations
                     continue;
                 }
 
-                foreach (var translation in Extractor.FindExtractableNodes(defName,
-                             curRootDefNode.Attribute("Class")?.Value ?? curRootDefNode.Name.LocalName, selectNodeImported, nodeName))
+                // 🟢 bool isOfficial 인수 추가 반영
+                foreach (var translation in Extractor.FindExtractableNodes(
+                             defName,
+                             curRootDefNode.Attribute("Class")?.Value ?? curRootDefNode.Name.LocalName, 
+                             selectNodeImported, 
+                             isOfficial, 
+                             nodeName))
                 {
                     if (translation.ClassName == "Keyed")
                     {
@@ -350,7 +373,7 @@ internal static class PatchOperations
         if (xpath == null || (mode != PatchOperationAttributeMode.Remove && value == null) || attribute == null)
         {
             Log.Wrn($"xpath 또는 value가 없습니다. 잘못된 패치 XML입니다.");
-            yield break; // yield break;
+            yield break;
         }
 
         var selectNodes = simResult.DefTree.SelectNodesSafe(xpath);

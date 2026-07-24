@@ -1,4 +1,8 @@
-﻿using System.Xml.Linq;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Xml.Linq;
 using RimworldExtractorInternal.Compats;
 using RimworldExtractorInternal.DataTypes;
 
@@ -6,58 +10,36 @@ namespace RimworldExtractorInternal
 {
     public static partial class Extractor
     {
-        private static bool _isOfficialContent = false;
-
-        public static List<TranslationEntry> ExtractTranslationData(ModMetadata modMetadata, List<ExtractableFolder> selectedFolders, List<ModMetadata>? referenceMods)
+        /// <summary>
+        /// 시뮬레이션 완료된 SimulationResult 데이터를 바탕으로 번역 데이터(TranslationEntry)를 추출합니다.
+        /// </summary>
+        public static List<TranslationEntry> ExtractTranslationData(SimulationResult simResult)
         {
-            if (modMetadata.IsOfficialContent)
-                _isOfficialContent = true;
-
-            var refDefs = new List<string>();
-            var prePatches = new List<ExtractableFolder>();
-            if (referenceMods != null)
-            {
-                foreach (var referenceMod in referenceMods)
-                {
-                    refDefs.AddRange(from extractableFolder in ModLister.GetExtractableFolders(referenceMod)
-                        where (extractableFolder.VersionInfo == "default" ||
-                               extractableFolder.VersionInfo == "Common" ||
-                               extractableFolder.VersionInfo == Prefabs.CurrentVersion)
-                              && Path.GetFileName(extractableFolder.FolderName) == "Defs"
-                        select Path.Combine(referenceMod.RootDir, extractableFolder.FolderName));
-                    prePatches.AddRange(ModLister.GetExtractableFolders(referenceMod).Where(x =>
-                        (x.VersionInfo == "default" || x.VersionInfo == "Common" ||
-                         x.VersionInfo == Prefabs.CurrentVersion) && Path.GetFileName(x.FolderName) == "Patches"));
-                }
-            }
-
-            // 1. 환경 모사 실행 -> 최종 모사된 XDocument 수령
-            var simResult = DefTreeSimulator.Execute(
-                modMetadata, selectedFolders, prePatches, refDefs, _isOfficialContent);
-
+            bool isOfficialContent = simResult.TargetMod?.IsOfficialContent ?? false;
             var extraction = new List<TranslationEntry>();
 
-            // 2. 모사된 XDocument 트리를 순회하며 TranslationEntry 추출
-            var defs = selectedFolders.Where(x => Path.GetFileName(x.FolderName) == "Defs").ToList();
-            if (defs.Count > 0)
+            // 1. Defs 항목 추출 (DefTree 기반)
+            var defsFolders = simResult.TargetFolders.Where(x => Path.GetFileName(x.FolderName) == "Defs").ToList();
+            if (defsFolders.Count > 0)
             {
-                extraction.AddRange(ExtractDefs(simResult));
+                extraction.AddRange(ExtractDefs(simResult, isOfficialContent));
             }
 
-            foreach (var extractableFolder in selectedFolders)
+            // 2. 기타 폴더(Keyed, Strings, Patches) 항목 추출
+            foreach (var extractableFolder in simResult.TargetFolders)
             {
                 switch (Path.GetFileName(extractableFolder.FolderName))
                 {
                     case "Defs":
                         break;
                     case "Keyed":
-                        extraction.AddRange(ExtractKeyed(extractableFolder));
+                        extraction.AddRange(ExtractKeyed(extractableFolder, isOfficialContent));
                         break;
                     case "Strings":
                         extraction.AddRange(ExtractStrings(extractableFolder));
                         break;
                     case "Patches":
-                        extraction.AddRange(ExtractPatches(simResult, extractableFolder));
+                        extraction.AddRange(ExtractPatches(simResult, extractableFolder, isOfficialContent));
                         break;
                     default:
                         Log.Wrn($"지원하지 않는 폴더입니다. {extractableFolder.FolderName}");
@@ -65,6 +47,7 @@ namespace RimworldExtractorInternal
                 }
             }
 
+            // 3. 중복 노드 검사 및 로깅
             var set = new HashSet<(string, string)>();
             foreach (var entry in extraction)
             {
@@ -74,33 +57,32 @@ namespace RimworldExtractorInternal
                 {
                     if (pair.Item2 != entry.Original)
                     {
-                        Log.Err(
-                            $"원문이 다른 중복되는 노드가 있습니다. 노드: {entry.ClassName}+{entry.Node}| {pair.Item2} | {entry.Original} ");
+                        Log.Err($"원문이 다른 중복되는 노드가 있습니다. 노드: {entry.ClassName}+{entry.Node}| {pair.Item2} | {entry.Original}");
                     }
                 }
 
                 set.Add(tuple);
             }
 
-            _isOfficialContent = false;
-
             return extraction.DistinctBy(x => $"{x.ClassName}+{x.Node}").ToList();
         }
 
-        internal static IEnumerable<TranslationEntry> ExtractDefs(SimulationResult simResult)
+        internal static IEnumerable<TranslationEntry> ExtractDefs(SimulationResult simResult, bool isOfficialContent)
         {
-            var rawExtraction = ExtractDefsInternal(simResult).ToList();
+            var rawExtraction = ExtractDefsInternal(simResult, isOfficialContent).ToList();
+#if DEBUG
             foreach (var translationEntry in rawExtraction)
             {
                 Console.WriteLine(translationEntry);
             }
+#endif
             foreach (var entry in CompatManager.DoPostProcessing(rawExtraction))
             {
                 yield return entry;
             }
         }
 
-        private static IEnumerable<TranslationEntry> ExtractDefsInternal(SimulationResult simResult)
+        private static IEnumerable<TranslationEntry> ExtractDefsInternal(SimulationResult simResult, bool isOfficialContent)
         {
             CompatManager.DoPreProcessing(simResult.DefTree);
 
@@ -125,7 +107,7 @@ namespace RimworldExtractorInternal
                 var className = node.Attribute("Class")?.Value ?? node.Name.LocalName;
                 className = className[..1].ToUpper() + className[1..];
 
-                foreach (var translationEntry in FindExtractableNodes(defName, className, node))
+                foreach (var translationEntry in FindExtractableNodes(defName, className, node, isOfficialContent))
                 {
                     yield return translationEntry with
                     {
@@ -135,7 +117,7 @@ namespace RimworldExtractorInternal
             }
         }
 
-        internal static IEnumerable<TranslationEntry> ExtractKeyed(ExtractableFolder keyed)
+        internal static IEnumerable<TranslationEntry> ExtractKeyed(ExtractableFolder keyed, bool isOfficialContent)
         {
             var keyedRoot = keyed.FullPath;
             RequiredMods? requiredMods = keyed.RequiredPackageId == null
@@ -150,7 +132,7 @@ namespace RimworldExtractorInternal
                 foreach (var node in doc.Root!.Elements())
                 {
                     yield return new TranslationEntry("Keyed", node.Name.LocalName, node.Value, null, requiredMods,
-                        _isOfficialContent ? fileName : null);
+                        isOfficialContent ? fileName : null);
                 }
             }
         }
@@ -176,16 +158,16 @@ namespace RimworldExtractorInternal
             }
         }
 
-        internal static IEnumerable<TranslationEntry> ExtractPatches(SimulationResult simResult, ExtractableFolder patches)
+        internal static IEnumerable<TranslationEntry> ExtractPatches(SimulationResult simResult, ExtractableFolder patches, bool isOfficialContent)
         {
-            var rawExtraction = ExtractPatchesInternal(simResult, patches).ToList();
+            var rawExtraction = ExtractPatchesInternal(simResult, patches, isOfficialContent).ToList();
             foreach (var entry in CompatManager.DoPostProcessing(rawExtraction))
             {
                 yield return entry;
             }
         }
 
-        private static IEnumerable<TranslationEntry> ExtractPatchesInternal(SimulationResult simResult, ExtractableFolder patches)
+        private static IEnumerable<TranslationEntry> ExtractPatchesInternal(SimulationResult simResult, ExtractableFolder patches, bool isOfficialContent)
         {
             simResult.DefsAddedByPatches.Clear();
 
@@ -236,7 +218,7 @@ namespace RimworldExtractorInternal
             }
             DefTreeSimulator.DoXmlInheritance(simResult, simResult.DefsAddedByPatches.Select(x => x.Item2));
 
-            foreach (var translation in ExtractDefs(simResult))
+            foreach (var translation in ExtractDefs(simResult, isOfficialContent))
             {
                 yield return translation with
                 {

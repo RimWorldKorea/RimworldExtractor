@@ -1,4 +1,8 @@
-﻿using RimworldExtractorInternal;
+﻿using System.IO;
+using System.Linq;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using RimworldExtractorInternal;
 using RimworldExtractorInternal.DataTypes;
 
 namespace RimworldExtractorGUI.Services;
@@ -36,7 +40,40 @@ public class ExtractionService : IExtractionService
         List<ModMetadata> referenceMods)
     {
         var extraction = await Task.Run(() =>
-            Extractor.ExtractTranslationData(targetMod, selectedFolders, referenceMods));
+        {
+            // 1. 참조 모드들로부터 Defs 경로와 PrePatches 수집
+            var refDefs = new List<string>();
+            var prePatches = new List<ExtractableFolder>();
+
+            if (referenceMods != null)
+            {
+                foreach (var referenceMod in referenceMods)
+                {
+                    refDefs.AddRange(
+                        from extractableFolder in ModLister.GetExtractableFolders(referenceMod)
+                        where extractableFolder.IsAutoSelectable() && Path.GetFileName(extractableFolder.FolderName) == "Defs"
+                        select Path.Combine(referenceMod.RootDir, extractableFolder.FolderName)
+                    );
+
+                    prePatches.AddRange(
+                        ModLister.GetExtractableFolders(referenceMod)
+                            .Where(x => x.IsAutoSelectable() && Path.GetFileName(x.FolderName) == "Patches")
+                    );
+                }
+            }
+
+            // 2. DefTree 파이프라인 시뮬레이션 실행 (Roslyn PostProcessors 및 랭귀지 오버라이드 포함)
+            var simResult = DefTreeSimulator.Execute(
+                targetMod,
+                selectedFolders,
+                prePatches,
+                refDefs,
+                targetMod.IsOfficialContent,
+                referenceMods);
+
+            // 3. 시뮬레이션 결과(SimulationResult)를 인수로 수령하여 번역 항목 추출
+            return Extractor.ExtractTranslationData(simResult);
+        });
 
         var outPath = targetMod.Identifier.StripInvaildChars();
 

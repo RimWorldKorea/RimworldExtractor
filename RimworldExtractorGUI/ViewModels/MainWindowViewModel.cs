@@ -1,13 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using RimworldExtractorGUI.Services;
-using RimworldExtractorGUI.Utils;
 using RimworldExtractorInternal;
 using RimworldExtractorInternal.DataTypes;
 
@@ -17,10 +10,12 @@ public partial class MainWindowViewModel : ViewModelBase
 {
     private readonly IDialogService _dialogService;
     private readonly IStorageService _storageService;
-    private readonly IVersionCheckService _versionService;
+    private readonly IUpdateCheckService _versionService;
+    private readonly IExtractionService _extractionService;
+    private readonly IExternalProcessService _processService;
 
     [ObservableProperty]
-    private string _selectedModsText = "모드가 선택되지 않았습니다.\n\n=== 사용 방법 ===\n1) '1. 모드 선택' 버튼을 누릅니다.\n2) '2. 추출' 버튼을 누릅니다.\n3) 변환이 완료되면 출력 디렉토리가 열립니다.\n5) 번역을 시작하세요!\n\n※ 모드를 선택하면 모드 정보가 이곳에 표시됩니다.";
+    private string _selectedModsText = "모드를 선택해주세요.\n\n=== 사용 순서 ===\n1) '1. 모드 선택' 버튼 클릭\n2) '2. 번역 데이터 추출' 버튼 클릭\n3) 언어팩 생성 완료!\n5) 즐거운 림월드 되세요!\n\n제보 및 문의: 디스코드";
 
     [ObservableProperty]
     private string _versionText = "버전 확인 중...";
@@ -33,13 +28,20 @@ public partial class MainWindowViewModel : ViewModelBase
     public List<ExtractableFolder>? SelectedFolders { get; private set; }
     public List<ModMetadata>? ReferenceMods { get; private set; }
 
-    // 생성자를 통해 Service 주입
-    public MainWindowViewModel(IDialogService dialogService, IStorageService storageService, IVersionCheckService versionService)
+    // 생성자를 통해 의존성(Service) 주입
+    public MainWindowViewModel(
+        IDialogService dialogService,
+        IStorageService storageService,
+        IUpdateCheckService versionService,
+        IExtractionService extractionService,
+        IExternalProcessService processService)
     {
         _dialogService = dialogService;
         _storageService = storageService;
         _versionService = versionService;
-        
+        _extractionService = extractionService;
+        _processService = processService;
+
         CheckVersionAsync();
     }
 
@@ -47,17 +49,16 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         try
         {
-            // 비동기로 안전하게 최신 버전 호출
+            // 비동기 버전 확인
             var latest = await _versionService.GetLatestVersionAsync();
             var current = _versionService.CurrentVersion;
-
             VersionText = latest == current
                 ? $"{current} (최신 버전)"
-                : $"{current} < {latest} (업데이트 가능)";
+                : $"{current} < {latest} (업데이트 필요)";
         }
         catch (Exception e)
         {
-            Log.Wrn($"버전 확인 실패 : {e.Message}");
+            Log.Wrn($"버전 확인 중 에러: {e.Message}");
             VersionText = "버전 확인 실패";
         }
     }
@@ -69,13 +70,13 @@ public partial class MainWindowViewModel : ViewModelBase
         ReferenceMods = refMods.Except(new[] { mod }).ToList();
         CanExtract = true;
 
-        var text = $"대상 모드 : {SelectedMod.ModName}";
+        var text = $"선택된 모드 : {SelectedMod.ModName}";
         if (ReferenceMods?.Count > 0)
         {
             var concatText = string.Join(", ", ReferenceMods.Select(x => x.ModName));
             var stripedText = concatText.Substring(0, Math.Min(concatText.Length, 200));
             if (concatText.Length > 200) stripedText += "...";
-            text += $"\n참조 모드 : {stripedText}";
+            text += $"\n기준 모드 : {stripedText}";
         }
         SelectedModsText = text;
     }
@@ -96,40 +97,16 @@ public partial class MainWindowViewModel : ViewModelBase
         if (SelectedMod == null || SelectedFolders == null || ReferenceMods == null) return;
 
         Log.Msg("추출 시작...");
-        
-        // UI가 멈추지 않도록 무거운 추출 로직은 Task.Run으로 감쌉니다.
-        var extraction = await Task.Run(() => 
-            Extractor.ExtractTranslationData(SelectedMod, SelectedFolders, ReferenceMods));
 
-        var outPath = SelectedMod.Identifier.StripInvaildChars();
+        // UI 멈춤 방지를 위해 Task.Run 내부적으로 I/O 및 추출을 수행하는 서비스 호출
+        var summary = await _extractionService.ExtractAndSaveAsync(SelectedMod, SelectedFolders, ReferenceMods);
 
-        // I/O 작업 수행
-        await Task.Run(() =>
+        // 콘솔 출력 - (Defs, Keyed, Strings, Patches)
+        Log.Msg($"추출 완료! 총 {summary.TotalCount}개 노드 (Defs {summary.DefsCount}개, Keyed {summary.KeyedCount}개, Strings {summary.StringsCount}개, Patches {summary.PatchesCount}개) 추출됨!");
+
+        if (await _dialogService.ConfirmAsync("추출 완료", "결과 폴더를 열어보시겠습니까?"))
         {
-            switch (Prefabs.Method)
-            {
-                case Prefabs.ExtractionMethod.Excel:
-                    IO.ToExcel(extraction, Path.Combine(outPath, outPath));
-                    break;
-                case Prefabs.ExtractionMethod.Languages:
-                    IO.ToLanguageXml(extraction, false, false, outPath, outPath);
-                    break;
-                case Prefabs.ExtractionMethod.LanguagesWithComments:
-                    IO.ToLanguageXml(extraction, false, true, outPath, outPath);
-                    break;
-            }
-
-            string buildYamlText = RimworldExtractorInternal.Utils.WriteBuildYamlText(SelectedMod);
-            File.WriteAllText(Path.Combine(outPath, "LoadFolders.Build.yaml"), buildYamlText);
-        });
-
-        // 튜플 요소 추출 - (Defs, Keyed, Strings, Patches)
-        var (cntDefs, cntKeyed, cntStrings, cntPatches) = RimworldExtractorInternal.Utils.Count(extraction);
-        Log.Msg($"번역 데이터 수: 총 {extraction.Count}개 중 Defs {cntDefs}개, Keyed {cntKeyed}개, Strings {cntStrings}개, Patches {cntPatches}개 완료!");
-
-        if (await _dialogService.ConfirmAsync("추출 완료", "추출된 폴더를 열어보시겠습니까?"))
-        {
-            Process.Start(new ProcessStartInfo { FileName = outPath, UseShellExecute = true });
+            _processService.OpenFolderInExplorer(summary.OutputPath);
         }
     }
 
@@ -139,18 +116,8 @@ public partial class MainWindowViewModel : ViewModelBase
         var fileNames = await _dialogService.ShowXmlisterDialogAsync();
         if (fileNames != null && fileNames.Length > 0)
         {
-            await Task.Run(() =>
-            {
-                for (var i = 0; i < fileNames.Length; i++)
-                {
-                    var root = fileNames[i];
-                    var translations = IO.FromLanguageXml(root);
-                    IO.ToExcel(translations, Path.Combine(root, Path.GetFileNameWithoutExtension(root)));
-                    Log.Msg($"{i + 1}/{fileNames.Length}::변환 완료 : {root}");
-                }
-            });
-
-            await _dialogService.ShowAlertAsync("알림", "모든 파일의 변환이 완료되었습니다!");
+            await _extractionService.ConvertXmlToXlsxAsync(fileNames);
+            await _dialogService.ShowAlertAsync("작업 완료", "변환이 완료되었습니다!");
         }
     }
 
@@ -160,15 +127,10 @@ public partial class MainWindowViewModel : ViewModelBase
         var path = await _storageService.OpenFileAsync("변환할 Excel 파일 선택", "Excel 파일", "*.xlsx");
         if (!string.IsNullOrEmpty(path))
         {
-            await Task.Run(() =>
+            await _extractionService.ConvertXlsxToXmlAsync(path);
+            if (await _dialogService.ConfirmAsync("변환 완료", "결과 폴더를 열어보시겠습니까?"))
             {
-                var translations = IO.FromExcel(path);
-                IO.ToLanguageXml(translations, true, Prefabs.CommentOriginal, Path.GetFileName(path), Path.GetDirectoryName(path) ?? "");
-            });
-
-            if (await _dialogService.ConfirmAsync("변환 완료", "변환된 폴더를 열어보시겠습니까?"))
-            {
-                Process.Start(new ProcessStartInfo { FileName = Path.GetDirectoryName(path) ?? "", UseShellExecute = true });
+                _processService.OpenFolderInExplorer(Path.GetDirectoryName(path) ?? "");
             }
         }
     }
@@ -185,13 +147,13 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void OpenVersionUrl()
     {
-        // 서비스에서 URL을 가져옴
-        Process.Start(new ProcessStartInfo { FileName = _versionService.LatestUrl, UseShellExecute = true });
+        // 깃허브 릴리즈 URL 열기
+        _processService.OpenUrlInBrowser(_versionService.LatestUrl);
     }
 
     [RelayCommand]
     private void OpenDiscordUrl()
     {
-        Process.Start(new ProcessStartInfo { FileName = _versionService.DiscordUrl, UseShellExecute = true });
+        _processService.OpenUrlInBrowser(_versionService.DiscordUrl);
     }
 }

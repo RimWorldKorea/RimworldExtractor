@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using System.Collections.ObjectModel;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using RimworldExtractorGUI.Services;
 using RimworldExtractorInternal;
 using RimworldExtractorInternal.DataTypes;
 
@@ -29,8 +24,8 @@ public class ModListItem
     {
         Metadata = metadata;
         IsHeader = false;
-        
-        string prefix = isReference ? "(참조) " : "";
+
+        string prefix = isReference ? "(기준) " : "";
         DisplayText = metadata.IsOfficialContent
             ? $"{prefix}[Official] {metadata.ModName}"
             : $"{prefix}[{metadata.Id}] {metadata.ModName}";
@@ -41,6 +36,9 @@ public class ModListItem
 
 public partial class SelectModViewModel : ViewModelBase
 {
+    private readonly IExternalProcessService _processService;
+    private readonly IExtractionService _extractionService;
+
     private readonly List<ModMetadata> _allModsCached;
     private readonly List<ModMetadata> _officialModsCached;
     private readonly List<ModMetadata> _localModsCached;
@@ -53,7 +51,7 @@ public partial class SelectModViewModel : ViewModelBase
     private bool _isFilterSelectedOnly = false;
 
     [ObservableProperty]
-    private string _selectedModInfoText = "추출할 모드를 선택하세요";
+    private string _selectedModInfoText = "선택된 모드가 없습니다.";
 
     [ObservableProperty]
     private ModListItem? _selectedModListItem;
@@ -72,15 +70,21 @@ public partial class SelectModViewModel : ViewModelBase
     public event Action? RequestClose;
     public event Func<string, Task>? RequestShowAlert;
 
-    public SelectModViewModel(ModMetadata? initialMod = null)
+    public SelectModViewModel(
+        IExternalProcessService processService,
+        IExtractionService extractionService,
+        ModMetadata? initialMod = null)
     {
+        _processService = processService;
+        _extractionService = extractionService;
+
         ModLister.ResetCache();
         _officialModsCached = ModLister.OfficialMods.ToList();
         _localModsCached = ModLister.LocalMods.ToList();
         _workshopModsCached = ModLister.WorkshopMods.ToList();
         _allModsCached = _officialModsCached.Concat(_localModsCached).Concat(_workshopModsCached).ToList();
 
-        // 기본 참조 모드 리스트 로드
+        // 저장된 기준 모드 리스트 로드
         if (!string.IsNullOrEmpty(Prefabs.PathBaseRefList) && File.Exists(Prefabs.PathBaseRefList))
         {
             var lines = File.ReadAllLines(Prefabs.PathBaseRefList);
@@ -110,11 +114,11 @@ public partial class SelectModViewModel : ViewModelBase
             return;
 
         SelectedMod = value.Metadata;
-        
+
         var info = SelectedMod.ModName;
         if (SelectedMod.ModDependencies is { Count: > 0 })
         {
-            info += $"\n[선행모드: {string.Join(';', SelectedMod.ModDependencies)}]";
+            info += $"\n[의존 모드: {string.Join(';', SelectedMod.ModDependencies)}]";
         }
         SelectedModInfoText = info;
 
@@ -183,7 +187,7 @@ public partial class SelectModViewModel : ViewModelBase
         if (requiredMods == null || requiredMods.Count == 0)
         {
             if (RequestShowAlert != null)
-                await RequestShowAlert.Invoke("이 모드는 선행 모드나 선택적 선행 모드가 없습니다!");
+                await RequestShowAlert.Invoke("선택할 수 있는 의존 모드가 없습니다!");
             return;
         }
 
@@ -201,7 +205,7 @@ public partial class SelectModViewModel : ViewModelBase
     {
         if (SelectedModListItem?.Metadata is { } mod)
         {
-            Process.Start(new ProcessStartInfo { FileName = mod.RootDir, UseShellExecute = true });
+            _processService.OpenFolderInExplorer(mod.RootDir);
         }
     }
 
@@ -210,14 +214,14 @@ public partial class SelectModViewModel : ViewModelBase
     {
         var file = await storageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title = "선택한 참조 모드의 목록을 저장합니다.",
+            Title = "기준 모드 목록 저장",
             DefaultExtension = "refMods",
-            FileTypeChoices = new[] { new FilePickerFileType("참조 모드 리스트 파일") { Patterns = new[] { "*.refMods" } } }
+            FileTypeChoices = new[] { new FilePickerFileType("기준 모드 파일") { Patterns = new[] { "*.refMods" } } }
         });
 
         if (file != null)
         {
-            await File.WriteAllLinesAsync(file.Path.LocalPath, ReferenceMods.Select(x => x.Identifier));
+            await _extractionService.SaveRefModsListAsync(file.Path.LocalPath, ReferenceMods.Select(x => x.Identifier));
         }
     }
 
@@ -226,20 +230,21 @@ public partial class SelectModViewModel : ViewModelBase
     {
         var files = await storageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "선택한 파일로부터 참조 모드의 목록을 불러옵니다.",
+            Title = "기준 모드 목록 불러오기",
             AllowMultiple = false,
-            FileTypeFilter = new[] { new FilePickerFileType("참조 모드 리스트 파일") { Patterns = new[] { "*.refMods" } } }
+            FileTypeFilter = new[] { new FilePickerFileType("기준 모드 파일") { Patterns = new[] { "*.refMods" } } }
         });
 
         if (files.Count > 0)
         {
             ReferenceMods.Clear();
-            var lines = await File.ReadAllLinesAsync(files[0].Path.LocalPath);
+            var lines = await _extractionService.LoadRefModsListAsync(files[0].Path.LocalPath);
             foreach (var mod in _allModsCached)
             {
                 if (lines.Any(x => mod.Identifier == x))
                     ReferenceMods.Add(mod);
             }
+
             RefreshModList();
         }
     }

@@ -1,10 +1,9 @@
 ﻿using Avalonia.Controls;
 using Avalonia.Input;
-
 using MsBox.Avalonia;
+using RimworldExtractorGUI.Services;
 using RimworldExtractorGUI.ViewModels;
 using RimworldExtractorInternal.DataTypes;
-using System.Collections.Generic;
 
 namespace RimworldExtractorGUI.Views;
 
@@ -15,15 +14,21 @@ public partial class SelectModWindow : Window
     public ModMetadata? SelectedMod => _viewModel.SelectedMod;
     public List<ExtractableFolder> SelectedFolders { get; } = new();
     public List<ModMetadata> ReferenceMods => _viewModel.ReferenceMods;
+
     public bool IsSuccess { get; private set; } = false;
 
     public SelectModWindow() : this(null) { }
-    
+
     public SelectModWindow(ModMetadata? initialMod = null)
     {
         InitializeComponent();
+        
+        // 의존성 주입하여 뷰모델 생성
+        _viewModel = new SelectModViewModel(
+            new ExternalProcessService(),
+            new ExtractionService(),
+            initialMod);
 
-        _viewModel = new SelectModViewModel(initialMod);
         DataContext = _viewModel;
 
         _viewModel.RequestShowAlert += async (msg) =>
@@ -43,7 +48,6 @@ public partial class SelectModWindow : Window
                         SelectedFolders.Add(folder);
                 }
             }
-
             IsSuccess = true;
             Close();
         };

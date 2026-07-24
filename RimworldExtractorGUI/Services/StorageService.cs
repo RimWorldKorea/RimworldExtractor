@@ -3,11 +3,20 @@ using Avalonia.Platform.Storage;
 
 namespace RimworldExtractorGUI.Services;
 
-public class AvaloniaStorageService : IStorageService
+public interface IStorageService
+{
+    Task<string?> OpenFileAsync(string title, string filterName, params string[] patterns);
+    Task<string[]?> OpenFilesAsync(string title, string filterName, params string[] patterns);
+    Task<string?> OpenFolderAsync(string title);
+    Task<string[]?> OpenFoldersAsync(string title);
+    Task<string?> SaveFileAsync(string title, string defaultFileName, string extension);
+}
+
+public class StorageService : IStorageService
 {
     private readonly Window _targetWindow;
 
-    public AvaloniaStorageService(Window targetWindow)
+    public StorageService(Window targetWindow)
     {
         _targetWindow = targetWindow;
     }

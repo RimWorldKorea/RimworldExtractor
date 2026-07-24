@@ -1,18 +1,17 @@
 ﻿using System.Text;
 using Avalonia.Controls;
 using Avalonia.Threading;
-using RimworldExtractorInternal;
 
 namespace RimworldExtractorGUI.Utils;
 
-public class AvaloniaLogWriter : TextWriter
+public class LogPrinter : TextWriter
 {
     private readonly TextBox _textBox;
     private readonly StreamWriter _logFileWriter;
     private readonly object _lock = new();
     public override Encoding Encoding => Encoding.UTF8;
 
-    public AvaloniaLogWriter(TextBox textBox)
+    public LogPrinter(TextBox textBox)
     {
         _textBox = textBox;
         _logFileWriter = File.CreateText("log.txt");

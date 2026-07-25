@@ -1,4 +1,5 @@
-using RimworldExtractorInternal;
+using RimworldExtractorInternal.Core;
+using RimworldExtractorInternal.DiffA;
 
 namespace RimworldExtractorTest
 {

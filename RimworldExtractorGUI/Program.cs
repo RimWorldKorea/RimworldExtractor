@@ -1,5 +1,7 @@
 using Avalonia;
 using System.Reflection;
+using System.Threading.Tasks;
+using RimworldExtractorInternal.Core; // 🟢 Internal 네임스페이스 추가
 
 namespace RimworldExtractorGUI;
 
@@ -11,6 +13,20 @@ internal static class Program
     public static void Main(string[] args)
     {
         AppDomain.CurrentDomain.AssemblyResolve += CurrentDomainOnAssemblyResolve;
+
+        // 🟢 메인 윈도우 렌더링을 방해하지 않도록 백그라운드 스레드에서 프로시저 동적 컴파일 시작
+        Task.Run(() =>
+        {
+            try
+            {
+                ExtractorCore.Initialize();
+            }
+            catch (Exception ex)
+            {
+                Log.Err($"[GUI] 초기화 중 예외 발생: {ex.Message}");
+            }
+        });
+
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 
@@ -20,7 +36,7 @@ internal static class Program
             .WithInterFont()
             .LogToTrace();
 
-    // 기존 dll 동적 로드 로직 유지[cite: 1]
+    // 기존 dll 동적 로드 로직 유지
     private static Assembly? CurrentDomainOnAssemblyResolve(object? sender, ResolveEventArgs args)
     {
         if (args.Name.Contains(".resources")) return null;

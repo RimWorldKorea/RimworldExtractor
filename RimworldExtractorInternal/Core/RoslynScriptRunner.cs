@@ -6,7 +6,7 @@ using System.Reflection;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
-namespace RimworldExtractorInternal;
+namespace RimworldExtractorInternal.Core;
 
 public static class RoslynScriptRunner
 {
@@ -61,7 +61,9 @@ public static class RoslynScriptRunner
         {
             MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(System.Xml.Linq.XDocument).Assembly.Location),
             MetadataReference.CreateFromFile(targetType.Assembly.Location)
+            
         };
 
         // 로드된 현재 AppDomain의 비동적 어셈블리 참조 추가

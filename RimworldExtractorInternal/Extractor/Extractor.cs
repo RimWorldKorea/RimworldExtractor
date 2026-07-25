@@ -3,29 +3,30 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Xml.Linq;
-using RimworldExtractorInternal.Compats;
+using RimworldExtractorInternal.Core;
 using RimworldExtractorInternal.DataTypes;
+using RimworldExtractorInternal.Procedures;
 
 namespace RimworldExtractorInternal
 {
     public static partial class Extractor
     {
         /// <summary>
-        /// 시뮬레이션 완료된 SimulationResult 데이터를 바탕으로 번역 데이터(TranslationEntry)를 추출합니다.
+        /// 완성된 SimulationResult로부터 번역 데이터(TranslationEntry)를 추출합니다.
         /// </summary>
         public static List<TranslationEntry> ExtractTranslationData(SimulationResult simResult)
         {
             bool isOfficialContent = simResult.TargetMod?.IsOfficialContent ?? false;
             var extraction = new List<TranslationEntry>();
 
-            // 1. Defs 항목 추출 (DefTree 기반)
+            // 1. Defs 폴더 처리 (DefTree 시뮬레이션 결과 기반)
             var defsFolders = simResult.TargetFolders.Where(x => Path.GetFileName(x.FolderName) == "Defs").ToList();
             if (defsFolders.Count > 0)
             {
                 extraction.AddRange(ExtractDefs(simResult, isOfficialContent));
             }
 
-            // 2. 기타 폴더(Keyed, Strings, Patches) 항목 추출
+            // 2. 그 외 폴더 처리 (Keyed, Strings, Patches)
             foreach (var extractableFolder in simResult.TargetFolders)
             {
                 switch (Path.GetFileName(extractableFolder.FolderName))
@@ -42,12 +43,12 @@ namespace RimworldExtractorInternal
                         extraction.AddRange(ExtractPatches(simResult, extractableFolder, isOfficialContent));
                         break;
                     default:
-                        Log.Wrn($"지원하지 않는 폴더입니다. {extractableFolder.FolderName}");
+                        Log.Wrn($"알 수 없는 추출 폴더입니다. {extractableFolder.FolderName}");
                         continue;
                 }
             }
 
-            // 3. 중복 노드 검사 및 로깅
+            // 3. 중복 노드 및 원문 불일치 검증
             var set = new HashSet<(string, string)>();
             foreach (var entry in extraction)
             {
@@ -57,10 +58,9 @@ namespace RimworldExtractorInternal
                 {
                     if (pair.Item2 != entry.Original)
                     {
-                        Log.Err($"원문이 다른 중복되는 노드가 있습니다. 노드: {entry.ClassName}+{entry.Node}| {pair.Item2} | {entry.Original}");
+                        Log.Err($"중복 노드 원문 불일치 발견: {entry.ClassName}+{entry.Node}| {pair.Item2} | {entry.Original}");
                     }
                 }
-
                 set.Add(tuple);
             }
 
@@ -76,16 +76,13 @@ namespace RimworldExtractorInternal
                 Console.WriteLine(translationEntry);
             }
 #endif
-            foreach (var entry in CompatManager.DoPostProcessing(rawExtraction))
-            {
-                yield return entry;
-            }
+            // 🟢 ITranslationProcedure 기반의 외부 후처리 파이프라인 일괄 실행
+            return TranslationPipelineRunner.Execute(rawExtraction);
         }
 
         private static IEnumerable<TranslationEntry> ExtractDefsInternal(SimulationResult simResult, bool isOfficialContent)
         {
-            CompatManager.DoPreProcessing(simResult.DefTree);
-
+            // 🟢 XML 전처리(DoPreProcessing)는 DefTreeSimulator 쪽으로 이관되었으므로 여기서는 순수 추출만 수행합니다.
             foreach (var node in simResult.DefTree.Root!.Elements()
                          .Where(x => x.Attribute("Reference")?.Value.ToLower() != "true"))
             {
@@ -93,7 +90,7 @@ namespace RimworldExtractorInternal
                 if (defName == null)
                 {
                     if (node.Name.LocalName != "SongDef")
-                        Log.Wrn($"SongDef과 Abstract가 아닌 XML 요소 {node.Name}에서 'defName' 태그를 찾지 못했습니다. InnerXml: {node}");
+                        Log.Wrn($"SongDef가 아닌 Abstract가 아닌 XML 요소에 'defName'이 없습니다. InnerXml: {node}");
                     continue;
                 }
 
@@ -127,8 +124,8 @@ namespace RimworldExtractorInternal
             foreach (var filePath in IO.DescendantFiles(keyedRoot).Where(x => x.ToLower().EndsWith(".xml")))
             {
                 var fileName = Path.GetFileNameWithoutExtension(filePath);
-
                 var doc = IO.ReadXml(filePath);
+
                 foreach (var node in doc.Root!.Elements())
                 {
                     yield return new TranslationEntry("Keyed", node.Name.LocalName, node.Value, null, requiredMods,
@@ -161,16 +158,14 @@ namespace RimworldExtractorInternal
         internal static IEnumerable<TranslationEntry> ExtractPatches(SimulationResult simResult, ExtractableFolder patches, bool isOfficialContent)
         {
             var rawExtraction = ExtractPatchesInternal(simResult, patches, isOfficialContent).ToList();
-            foreach (var entry in CompatManager.DoPostProcessing(rawExtraction))
-            {
-                yield return entry;
-            }
+            
+            // 🟢 ITranslationProcedure 기반의 외부 후처리 파이프라인 일괄 실행
+            return TranslationPipelineRunner.Execute(rawExtraction);
         }
 
         private static IEnumerable<TranslationEntry> ExtractPatchesInternal(SimulationResult simResult, ExtractableFolder patches, bool isOfficialContent)
         {
             simResult.DefsAddedByPatches.Clear();
-
             var patchesRoot = patches.FullPath;
             RequiredMods? requiredMods = patches.RequiredPackageId == null
                 ? null
@@ -184,7 +179,6 @@ namespace RimworldExtractorInternal
                 {
                     if (node.Name.LocalName != "Operation")
                         continue;
-
                     doc.Root!.Add(new XElement(node));
                 }
             }
@@ -203,7 +197,6 @@ namespace RimworldExtractorInternal
             if (simResult.DefsAddedByPatches.Count == 0)
                 yield break;
 
-            CompatManager.DoPreProcessing(doc);
             foreach (var (requiredModsPatches, node) in simResult.DefsAddedByPatches)
             {
                 var name = node.Attribute("Name")?.Value;
@@ -216,6 +209,7 @@ namespace RimworldExtractorInternal
                     simResult.ParentNodeLookUp[name] = node;
                 }
             }
+
             DefTreeSimulator.DoXmlInheritance(simResult, simResult.DefsAddedByPatches.Select(x => x.Item2));
 
             foreach (var translation in ExtractDefs(simResult, isOfficialContent))

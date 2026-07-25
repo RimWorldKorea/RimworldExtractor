@@ -2,8 +2,9 @@
 using System.Linq;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using RimworldExtractorInternal;
+using RimworldExtractorInternal.Core;
 using RimworldExtractorInternal.DataTypes;
+using RimworldExtractorInternal;
 
 namespace RimworldExtractorGUI.Services;
 
@@ -92,11 +93,11 @@ public class ExtractionService : IExtractionService
                     break;
             }
 
-            string buildYamlText = RimworldExtractorInternal.Utils.WriteBuildYamlText(targetMod);
+            string buildYamlText = RimworldExtractorInternal.Core.Utils.WriteBuildYamlText(targetMod);
             File.WriteAllText(Path.Combine(outPath, "LoadFolders.Build.yaml"), buildYamlText);
         });
 
-        var (cntDefs, cntKeyed, cntStrings, cntPatches) = RimworldExtractorInternal.Utils.Count(extraction);
+        var (cntDefs, cntKeyed, cntStrings, cntPatches) = RimworldExtractorInternal.Core.Utils.Count(extraction);
 
         return new ExtractionResultSummary(
             TotalCount: extraction.Count,

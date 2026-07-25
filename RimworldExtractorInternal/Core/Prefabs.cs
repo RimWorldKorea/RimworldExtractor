@@ -4,7 +4,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
-namespace RimworldExtractorInternal
+namespace RimworldExtractorInternal.Core
 {
     public static class Prefabs
     {

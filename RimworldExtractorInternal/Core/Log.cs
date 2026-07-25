@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 
-namespace RimworldExtractorInternal
+namespace RimworldExtractorInternal.Core
 {
     public static class Log
     {

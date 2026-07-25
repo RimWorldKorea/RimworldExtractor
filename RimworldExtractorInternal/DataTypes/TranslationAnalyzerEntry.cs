@@ -1,4 +1,6 @@
 ﻿using RimworldExtractorInternal.Exceptions;
+using RimworldExtractorInternal.Core;
+using RimworldExtractorInternal.DiffA;
 
 namespace RimworldExtractorInternal.DataTypes
 {

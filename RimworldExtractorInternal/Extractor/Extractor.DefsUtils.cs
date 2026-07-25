@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
+using RimworldExtractorInternal.Core;
 using RimworldExtractorInternal.DataTypes;
 
 namespace RimworldExtractorInternal
@@ -249,7 +250,7 @@ namespace RimworldExtractorInternal
             return handle;
         }
 
-        internal static XElement? GetRootDefNode(XElement node, out string? nodeName)
+        public static XElement? GetRootDefNode(XElement node, out string? nodeName)
         {
             if (node.Element("defName") != null)
             {

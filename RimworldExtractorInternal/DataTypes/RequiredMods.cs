@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using System.Text;
+using RimworldExtractorInternal.Core;
 
 namespace RimworldExtractorInternal.DataTypes
 {

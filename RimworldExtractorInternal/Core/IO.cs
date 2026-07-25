@@ -3,11 +3,11 @@ using System.Security;
 using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
-using RimworldExtractorInternal.Compats;
 using RimworldExtractorInternal.DataTypes;
 using RimworldExtractorInternal.Exceptions;
 
-namespace RimworldExtractorInternal
+namespace RimworldExtractorInternal.Core
+
 {
     public static class IO
     {
@@ -322,7 +322,7 @@ namespace RimworldExtractorInternal
                     var targetFolder = PathCombineCreateDir(conditionalBaseDir, packageIdFolder, Prefabs.TranslationLanguage, "DefInjected");
 
                     var xmls = new Dictionary<string, XDocument>();
-                    foreach (var translation in CompatManager.DoPostProcessing(group))
+                    foreach (var translation in group)
                     {
                         PathCombineCreateDir(targetFolder, translation.ClassName);
                         var key = $"{translation.ClassName}|{translation.SourceFile}";
@@ -359,7 +359,7 @@ namespace RimworldExtractorInternal
                 var defInjectedDir = PathCombineCreateDir(translationDir, "DefInjected");
                 var xmls = new Dictionary<string, XDocument>();
 
-                foreach (var translation in CompatManager.DoPostProcessing(defInjected))
+                foreach (var translation in defInjected)
                 {
                     PathCombineCreateDir(defInjectedDir, translation.ClassName);
                     var key = $"{translation.ClassName}|{translation.SourceFile}";
@@ -395,7 +395,7 @@ namespace RimworldExtractorInternal
                 var defInjectedDir = PathCombineCreateDir(translationDir, "DefInjected");
                 var xmls = new Dictionary<(string, string), XDocument>();
 
-                foreach (var translation in CompatManager.DoPostProcessing(defInjectedFullListTranslations))
+                foreach (var translation in defInjectedFullListTranslations)
                 {
                     PathCombineCreateDir(defInjectedDir, translation.ClassName);
                     var nodeParent = translation.Node[..translation.Node.LastIndexOf('.')];

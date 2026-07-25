@@ -1,7 +1,7 @@
 using System.Xml.Linq;
 using RimworldExtractorInternal.DataTypes;
 
-namespace RimworldExtractorInternal;
+namespace RimworldExtractorInternal.Core;
 
 internal static class PatchOperations
 {

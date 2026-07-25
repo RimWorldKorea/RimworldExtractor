@@ -2,7 +2,7 @@
 using RimworldExtractorGUI.Services;
 using RimworldExtractorGUI.Utils;
 using RimworldExtractorGUI.ViewModels;
-using RimworldExtractorInternal;
+using RimworldExtractorInternal.Core;
 using MsBox.Avalonia;
 
 namespace RimworldExtractorGUI.Views;

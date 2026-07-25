@@ -1,4 +1,6 @@
-﻿namespace RimworldExtractorInternal.Spreadsheet;
+﻿using RimworldExtractorInternal.Core;
+
+namespace RimworldExtractorInternal.Spreadsheet;
 
 public interface ISpreadsheetReader
 {

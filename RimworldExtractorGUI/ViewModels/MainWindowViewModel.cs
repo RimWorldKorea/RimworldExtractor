@@ -1,7 +1,7 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using RimworldExtractorGUI.Services;
-using RimworldExtractorInternal;
+using RimworldExtractorInternal.Core;
 using RimworldExtractorInternal.DataTypes;
 
 namespace RimworldExtractorGUI.ViewModels;

@@ -6,7 +6,7 @@ using System.Xml.Linq;
 using RimworldExtractorInternal.DataTypes;
 using RimworldExtractorInternal.DefTree;
 
-namespace RimworldExtractorInternal
+namespace RimworldExtractorInternal.Core
 {
     public class SimulationResult
     {

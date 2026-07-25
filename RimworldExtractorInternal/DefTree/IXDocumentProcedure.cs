@@ -10,15 +10,20 @@ public enum PipelineStage
     StageD  // 랭귀지 데이터 오버라이드 이후 (최종 DefTree 반환 전)
 }
 
-public interface IDefTreePostProcessor
+public interface IXDocumentProcedure
 {
     /// <summary>
-    /// 프로세서가 실행될 파이프라인 지점입니다.
+    /// 프로시저의 고유 식별자 이름입니다.
+    /// </summary>
+    string Name { get; }
+
+    /// <summary>
+    /// 프로시저가 실행될 파이프라인 지점입니다.
     /// </summary>
     PipelineStage Stage { get; }
 
     /// <summary>
-    /// XDocument(DefTree)를 전달받아 수정 후 다음 프로세서 또는 단계로 전달합니다.
+    /// XDocument(DefTree)를 전달받아 수정 후 다음 프로시저 또는 단계로 전달합니다.
     /// </summary>
     XDocument Process(XDocument defTree);
 }

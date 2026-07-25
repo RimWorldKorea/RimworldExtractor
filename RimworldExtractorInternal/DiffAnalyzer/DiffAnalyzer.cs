@@ -1,6 +1,7 @@
 ﻿using RimworldExtractorInternal.DataTypes;
+using RimworldExtractorInternal.Core;
 
-namespace RimworldExtractorInternal
+namespace RimworldExtractorInternal.DiffA
 {
     public static class DiffAnalyzer
     {

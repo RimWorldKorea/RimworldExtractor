@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using RimworldExtractorInternal;
+using RimworldExtractorInternal.Core;
 using RimworldExtractorInternal.DataTypes;
 
 namespace RimworldExtractorGUI.ViewModels;

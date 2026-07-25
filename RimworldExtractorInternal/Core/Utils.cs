@@ -6,7 +6,7 @@ using System.Xml.XPath;
 using ClosedXML.Excel;
 using RimworldExtractorInternal.DataTypes;
 
-namespace RimworldExtractorInternal
+namespace RimworldExtractorInternal.Core
 {
     public static partial class Utils
     {
@@ -173,9 +173,9 @@ namespace RimworldExtractorInternal
             return string.Empty;
         }
 
-        internal static bool IsListNode(this XElement? curNode) => curNode?.Name.LocalName == "li";
+        public static bool IsListNode(this XElement? curNode) => curNode?.Name.LocalName == "li";
 
-        internal static bool IsTextNode(this XElement? curNode) =>
+        public static bool IsTextNode(this XElement? curNode) =>
             curNode != null && !curNode.HasElements;
 
         public static IEnumerable<XElement>? SelectNodesSafe(this XContainer? doc, string? xpath)

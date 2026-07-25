@@ -1,4 +1,4 @@
-﻿using RimworldExtractorInternal;
+﻿using RimworldExtractorInternal.Core;
 
 namespace RimworldExtractorGUI.Services;
 

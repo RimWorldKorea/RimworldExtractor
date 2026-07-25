@@ -1,7 +1,7 @@
 ﻿using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using RimworldExtractorInternal;
+using RimworldExtractorInternal.DiffA;
 
 namespace RimworldExtractorGUI.ViewModels;
 

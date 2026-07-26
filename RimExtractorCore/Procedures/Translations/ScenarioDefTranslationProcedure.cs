@@ -1,10 +1,10 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using RimworldExtractorInternal.DataTypes;
+using RimExtractorCore.DataTypes;
 
-namespace RimworldExtractorInternal.Procedures.Translations;
+namespace RimExtractorCore.Procedures;
 
-public class ScenarioDefTranslationProcedure : ITranslationProcedure
+public class ScenarioDefTranslationProcedure : ITranslationEntryProcedure
 {
     public string Name => "ScenarioDefTranslationProcedure";
 

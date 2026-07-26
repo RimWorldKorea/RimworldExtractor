@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-using RimExtractorCore.DataTypes;
-using RimExtractorCore.DefTreeSimulator;
+﻿using RimExtractorCore.DataTypes;
 
 namespace RimExtractorCore.Extractor;
 

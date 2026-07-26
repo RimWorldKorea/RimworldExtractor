@@ -2,6 +2,7 @@
 using System.Text;
 
 namespace RimExtractorCore.DataTypes
+
 {
     public class RequiredMods : IAdditionOperators<RequiredMods?, RequiredMods?, RequiredMods?>, ICloneable
     {

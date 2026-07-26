@@ -4,6 +4,7 @@ using RimExtractorCore.DiffAnalyzer;
 using RimExtractorCore.Extractor;
 
 namespace RimExtractorCore.DataTypes
+
 {
     public class TranslationAnalyzerEntry
     {

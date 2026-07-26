@@ -1,7 +1,7 @@
 ﻿using System.Xml.Linq;
-using RimworldExtractorInternal.Core;
+using RimExtractorCore;
 
-namespace RimworldExtractorInternal.DefTree.Procedures;
+namespace RimExtractorCore.Procedures;
 
 public class VerbProcedure : IXDocumentProcedure
 {

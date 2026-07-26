@@ -1,4 +1,5 @@
 ﻿namespace RimExtractorCore.Exceptions
+
 {
     public class XlsxHeaderReadingException : XlsxReadingException
     {

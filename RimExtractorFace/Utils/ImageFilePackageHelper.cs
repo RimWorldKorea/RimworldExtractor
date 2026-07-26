@@ -1,6 +1,7 @@
 ﻿using System.IO.Compression;
 
 namespace RimExtractorFace.Utils
+
 {
     internal static class ImageFilePackageHelper
     {

@@ -1,45 +1,40 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using RimExtractorCore.DataTypes;
+﻿using RimExtractorCore.DataTypes;
 
 namespace RimExtractorCore.Extractor;
 
-public static class TranslationEntryProcedureInjector
+public class TranslationEntryProcedureInjector : IProcedureInjector
 {
-    private static readonly List<ITranslationEntryProcedure> Processors = new();
-    private static bool _isInitialized = false; // 🟢 중복 실행 방지 플래그
+    public static TranslationEntryProcedureInjector Instance { get; } = new();
 
-    static TranslationEntryProcedureInjector()
-    {
-        ReloadProcessors();
-    }
+    private readonly List<ITranslationEntryProcedure> _processors = new();
+    public bool IsInitialized { get; private set; } = false;
 
-    public static void ReloadProcessors()
+    private TranslationEntryProcedureInjector() { }
+
+    public void ReloadProcessors()
     {
-        if (_isInitialized) return;
+        if (IsInitialized) return;
         
-        Processors.Clear();
+        _processors.Clear();
         var baseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Procedures", "Translations");
-
-        // 해당 폴더의 ITranslationProcedure 인터페이스 구현체 전부 로드
+        
         var processors = RoslynScriptRunner.LoadProcessorsFromDirectory<ITranslationEntryProcedure>(baseDir);
         foreach (var processor in processors)
         {
-            if (!Processors.Any(p => p.Name == processor.Name))
+            if (!_processors.Any(p => p.Name == processor.Name))
             {
-                Processors.Add(processor);
-                Log.Msg($"[TranslationPipelineRunner] 번역 후처리 프로시저 등록 완료: {processor.Name}");
+                _processors.Add(processor);
+                Log.Msg($"[TranslationPipelineRunner] 로드 완료: {processor.Name}");
             }
         }
         
-        _isInitialized = true;
+        IsInitialized = true;
     }
 
-    public static IEnumerable<TranslationEntry> Execute(IEnumerable<TranslationEntry> entries)
+    public IEnumerable<TranslationEntry> Execute(IEnumerable<TranslationEntry> entries)
     {
         var result = entries;
-        foreach (var processor in Processors)
+        foreach (var processor in _processors)
         {
             try
             {
@@ -47,7 +42,7 @@ public static class TranslationEntryProcedureInjector
             }
             catch (Exception e)
             {
-                Log.Err($"[TranslationPipelineRunner] 프로시저 실행 에러 ({processor.Name}): {e.Message}");
+                Log.Err($"[TranslationPipelineRunner] 런타임 에러 ({processor.Name}): {e.Message}");
             }
         }
         return result;

@@ -1,12 +1,12 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using RimworldExtractorInternal.DataTypes;
-using RimworldExtractorInternal.Core;
+using RimExtractorCore.DataTypes;
+using RimExtractorCore;
 
 
-namespace RimworldExtractorInternal.Procedures.Translations;
+namespace RimExtractorCore.Procedures;
 
-public class MVCFProcedure : ITranslationProcedure
+public class MVCFProcedure : ITranslationEntryProcedure
 {
     public string Name => "MVCFProcedure";
 

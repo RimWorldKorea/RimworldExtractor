@@ -1,11 +1,11 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using RimworldExtractorInternal.DataTypes;
-using RimworldExtractorInternal.Core;
+using RimExtractorCore.DataTypes;
+using RimExtractorCore;
 
-namespace RimworldExtractorInternal.Procedures.Translations;
+namespace RimExtractorCore.Procedures;
 
-public class NodeReplacementProcedure : ITranslationProcedure
+public class NodeReplacementProcedure : ITranslationEntryProcedure
 {
     public string Name => "NodeReplacementProcedure";
 

@@ -1,23 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Xml.Linq;
+﻿using System.Xml.Linq;
 using RimExtractorCore.DataTypes;
 
 namespace RimExtractorCore.DefTreeSimulator
 {
-    public class SimulationResult
-    {
-        public XDocument DefTree { get; set; } = new(new XElement("Defs"));
-        public Dictionary<string, XElement> ParentNodeLookUp { get; } = new();
-        public List<(RequiredMods? RequiredMods, XElement Element)> DefsAddedByPatches { get; } = new();
-        
-        public ModMetadata? TargetMod { get; set; }
-        public List<ExtractableFolder> TargetFolders { get; set; } = new();
-        public List<ModMetadata> ReferenceMods { get; set; } = new();
-    }
-
     /// <summary>
     /// 림월드의 런타임 Def 계층을 시뮬레이션합니다.
     /// </summary>
@@ -43,7 +28,7 @@ namespace RimExtractorCore.DefTreeSimulator
             // ---------------------------------------------------------------------------------------------------------
 
             // 🟢 (A 지점) PostProcessors/PostA 스크립트 적용 (순수 XDocument 전달 및 반환)
-            result.DefTree = XDocumentProcedureInjector.ExecuteStage(PipelineStage.StageA, result.DefTree);
+            result.DefTree = XDocumentProcedureInjector.Instance.ExecuteStage(PipelineStage.StageA, result.DefTree);
 
             // ---------------------------------------------------------------------------------------------------------
             // [단계 1] 사전 참조 모델 구성
@@ -95,7 +80,7 @@ namespace RimExtractorCore.DefTreeSimulator
             }
 
             // 🟢 (B 지점) PostProcessors/PostB 스크립트 적용
-            result.DefTree = XDocumentProcedureInjector.ExecuteStage(PipelineStage.StageB, result.DefTree);
+            result.DefTree = XDocumentProcedureInjector.Instance.ExecuteStage(PipelineStage.StageB, result.DefTree);
 
             // ---------------------------------------------------------------------------------------------------------
             // [단계 2] 패치 오퍼레이션 적용 (PrePatch 및 XML 상속)
@@ -104,7 +89,7 @@ namespace RimExtractorCore.DefTreeSimulator
             DoXmlInheritance(result);
 
             // 🟢 (C 지점) PostProcessors/PostC 스크립트 적용
-            result.DefTree = XDocumentProcedureInjector.ExecuteStage(PipelineStage.StageC, result.DefTree);
+            result.DefTree = XDocumentProcedureInjector.Instance.ExecuteStage(PipelineStage.StageC, result.DefTree);
 
             // ---------------------------------------------------------------------------------------------------------
             // [단계 3] 랭귀지 데이터 오버라이드
@@ -112,7 +97,7 @@ namespace RimExtractorCore.DefTreeSimulator
             ApplyDefInjectedLanguages(result, ConfigManager.Current.GetLanguagePriorityList());
 
             // 🟢 (D 지점) PostProcessors/PostD 스크립트 적용
-            result.DefTree = XDocumentProcedureInjector.ExecuteStage(PipelineStage.StageD, result.DefTree);
+            result.DefTree = XDocumentProcedureInjector.Instance.ExecuteStage(PipelineStage.StageD, result.DefTree);
 
 #if DEBUG
             result.DefTree.Save("DefTree_Debug.xml");

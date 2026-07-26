@@ -1,4 +1,5 @@
 ﻿namespace RimExtractorCore.DataTypes
+
 {
     public record ModMetadata(string RootDir, string Id, string ModName, string PackageId, bool IsOfficialContent, List<string>? ModDependencies = null)
     {

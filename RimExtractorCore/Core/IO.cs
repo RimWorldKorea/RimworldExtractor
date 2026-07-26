@@ -6,10 +6,6 @@ using System.Xml.Linq;
 using RimExtractorCore.DataTypes;
 using RimExtractorCore.Exceptions;
 using RimExtractorCore.Extractor;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 
 namespace RimExtractorCore
 {

@@ -1,8 +1,4 @@
-﻿using System.IO;
-using System.Linq;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using RimExtractorCore;
+﻿using RimExtractorCore;
 using RimExtractorCore.Extractor;
 using RimExtractorCore.DataTypes;
 using RimExtractorCore.DefTreeSimulator;

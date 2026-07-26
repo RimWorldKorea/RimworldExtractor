@@ -6,9 +6,8 @@ using System.Xml.Linq;
 using RimExtractorCore.DataTypes;
 using RimExtractorCore.DefTreeSimulator;
 using RimExtractorCore.Extractor;
-using RimExtractorCore;
 
-namespace RimworldExtractorInternal.Procedures.Translations;
+namespace RimExtractorCore.Procedures;
 
 public class DefaultNodeExtractionProcedure : IExtractionProcedure
 {

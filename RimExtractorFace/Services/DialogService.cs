@@ -2,7 +2,6 @@
 using MsBox.Avalonia;
 using MsBox.Avalonia.Enums;
 using RimExtractorCore.DataTypes;
-using RimExtractorCore;
 using RimExtractorFace.Views;
 
 namespace RimExtractorFace.Services;

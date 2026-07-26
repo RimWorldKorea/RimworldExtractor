@@ -1,8 +1,6 @@
 ﻿using Avalonia.Controls;
 using MsBox.Avalonia;
 using RimExtractorCore.DataTypes;
-using System.Collections.Generic;
-using RimExtractorCore;
 using RimExtractorFace.ViewModels;
 
 namespace RimExtractorFace.Views;

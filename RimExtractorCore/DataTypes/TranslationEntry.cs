@@ -1,4 +1,5 @@
 ﻿namespace RimExtractorCore.DataTypes
+
 {
     /// <summary>
     /// 번역 데이터

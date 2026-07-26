@@ -1,4 +1,5 @@
 ﻿namespace RimExtractorCore.DataTypes
+
 {
     public record ExtractableFolder
         (ModMetadata Root, string FolderName, string? RequiredPackageId, string VersionInfo = "default")

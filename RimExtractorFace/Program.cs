@@ -1,6 +1,5 @@
 using Avalonia;
 using System.Reflection;
-using System.Threading.Tasks;
 using RimExtractorCore; // 🟢 Internal 네임스페이스 추가
 
 namespace RimExtractorFace;

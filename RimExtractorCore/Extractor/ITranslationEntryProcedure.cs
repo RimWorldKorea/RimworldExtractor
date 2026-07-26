@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using RimExtractorCore.DataTypes;
+﻿using RimExtractorCore.DataTypes;
 
 namespace RimExtractorCore.Extractor;
 

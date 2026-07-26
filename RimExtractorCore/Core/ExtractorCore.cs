@@ -1,21 +1,28 @@
-﻿using System.Threading.Tasks;
-using RimExtractorCore.DefTreeSimulator;
+﻿using RimExtractorCore.DefTreeSimulator;
 using RimExtractorCore.Extractor;
 
 namespace RimExtractorCore;
 
 public static class ExtractorCore
 {
-    /// <summary>
-    /// 동적 프로시저(.cs)를 Roslyn으로 컴파일하고 파이프라인에 등록합니다.
-    /// </summary>
+    // 인터페이스를 기반으로 한 Injector 파이프라인 레지스트리
+    private static readonly List<IProcedureInjector> Injectors = new()
+    {
+        XDocumentProcedureInjector.Instance,
+        TranslationEntryProcedureInjector.Instance,
+        ExtractionProcedureInjector.Instance
+    };
+
     public static void Initialize()
     {
-        Log.Msg("[ExtractorCore] 프로시저 초기화 및 동적 컴파일 시작...");
+        Log.Msg("[ExtractorCore] 모듈 초기화를 시작합니다...");
         
-        XDocumentProcedureInjector.ReloadProcessors();
-        TranslationEntryProcedureInjector.ReloadProcessors();
+        // 공통 인터페이스를 통해 일괄 초기화 수행
+        foreach (var injector in Injectors)
+        {
+            injector.ReloadProcessors();
+        }
         
-        Log.Msg("[ExtractorCore] 프로시저 초기화 완료.");
+        Log.Msg("[ExtractorCore] 준비 완료.");
     }
 }

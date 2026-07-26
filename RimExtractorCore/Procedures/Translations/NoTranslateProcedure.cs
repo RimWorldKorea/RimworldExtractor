@@ -1,10 +1,10 @@
 ﻿using System.Collections.Generic;
-using RimworldExtractorInternal.DataTypes;
-using RimworldExtractorInternal.Core;
+using RimExtractorCore.DataTypes;
+using RimExtractorCore;
 
-namespace RimworldExtractorInternal.Procedures.Translations;
+namespace RimExtractorCore.Procedures;
 
-public class NoTranslateProcedure : ITranslationProcedure
+public class NoTranslateProcedure : ITranslationEntryProcedure
 {
     public string Name => "NoTranslateProcedure";
     

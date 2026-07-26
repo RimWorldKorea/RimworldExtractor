@@ -1,6 +1,7 @@
 ﻿using RimExtractorCore.DataTypes;
 
 namespace RimExtractorCore.DiffAnalyzer
+
 {
     public static class AnalyzerEngine
     {

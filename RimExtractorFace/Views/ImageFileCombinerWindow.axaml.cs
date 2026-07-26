@@ -2,7 +2,6 @@
 using Avalonia.Platform.Storage;
 using MsBox.Avalonia;
 using MsBox.Avalonia.Enums;
-using System.Threading.Tasks;
 using RimExtractorFace.ViewModels;
 
 namespace RimExtractorFace.Views;

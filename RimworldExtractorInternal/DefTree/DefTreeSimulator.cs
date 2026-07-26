@@ -110,7 +110,7 @@ namespace RimworldExtractorInternal.Core
             // ---------------------------------------------------------------------------------------------------------
             // [단계 3] 랭귀지 데이터 오버라이드
             // ---------------------------------------------------------------------------------------------------------
-            ApplyDefInjectedLanguages(result, Prefabs.GetLanguagePriorityList());
+            ApplyDefInjectedLanguages(result, ConfigManager.Current.GetLanguagePriorityList());
 
             // 🟢 (D 지점) PostProcessors/PostD 스크립트 적용
             result.DefTree = DefTreePipelineRunner.ExecuteStage(PipelineStage.StageD, result.DefTree);

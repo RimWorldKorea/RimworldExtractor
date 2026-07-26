@@ -80,15 +80,16 @@ public class ExtractionService : IExtractionService
 
         await Task.Run(() =>
         {
-            switch (Prefabs.Method)
+            switch (ConfigManager.Current.Method)
             {
-                case Prefabs.ExtractionMethod.Excel:
+                // Prefabs.ExtractionMethod에서 ExtractionMethod로 직접 참조하도록 수정
+                case ExtractionMethod.Excel:
                     IO.ToExcel(extraction, Path.Combine(outPath, outPath));
                     break;
-                case Prefabs.ExtractionMethod.Languages:
+                case ExtractionMethod.Languages:
                     IO.ToLanguageXml(extraction, false, false, outPath, outPath);
                     break;
-                case Prefabs.ExtractionMethod.LanguagesWithComments:
+                case ExtractionMethod.LanguagesWithComments:
                     IO.ToLanguageXml(extraction, false, true, outPath, outPath);
                     break;
             }
@@ -128,7 +129,8 @@ public class ExtractionService : IExtractionService
         await Task.Run(() =>
         {
             var translations = IO.FromExcel(xlsxFilePath);
-            IO.ToLanguageXml(translations, true, Prefabs.CommentOriginal, Path.GetFileName(xlsxFilePath), Path.GetDirectoryName(xlsxFilePath) ?? "");
+            // Prefabs.CommentOriginal을 ConfigManager.Current.CommentOriginal로 교체
+            IO.ToLanguageXml(translations, true, ConfigManager.Current.CommentOriginal, Path.GetFileName(xlsxFilePath), Path.GetDirectoryName(xlsxFilePath) ?? "");
         });
     }
 

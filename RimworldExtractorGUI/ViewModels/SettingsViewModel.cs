@@ -1,15 +1,17 @@
 ﻿using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using RimworldExtractorGUI.Services;
 using RimworldExtractorInternal.Core;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace RimworldExtractorGUI.ViewModels;
 
 public partial class SettingsViewModel : ViewModelBase
 {
-    private readonly IPrefabSettingsService _settingsService;
-
+    // --- UI 바인딩용 정적 배열 ---
     public static string[] Languages { get; } = new[]
     {
         "English", "Korean (한국어)", "Catalan (Català)", "ChineseSimplified (简体中文)", "ChineseTraditional (繁體中文)",
@@ -21,96 +23,106 @@ public partial class SettingsViewModel : ViewModelBase
         "SpanishLatin (Español(Latinoamérica))", "Swedish (Svenska)", "Turkish (Türkçe)",
         "Ukrainian (Українська)"
     };
+    public static string[] ExtractionMethods { get; } = new[] { "엑셀 파일 (.xlsx)", "표준 언어팩 XML", "주석 포함 언어팩 XML" };
+    public static string[] DuplicationPolicies { get; } = new[] { "중단", "덮어쓰기", "기존유지" };
 
-    public static string[] ExtractionMethods { get; } = new[]
+    // --- 1. 모델 직접 바인딩 (XAML에서 {Binding Config.XXX} 사용) ---
+    public ExtractorConfig Config => ConfigManager.Current;
+
+    // --- 2. Enum ↔ ComboBox Index 어댑터 ---
+    public int SelectedExtractionMethodIndex
     {
-        "엑셀 파일 (.xlsx)",
-        "표준 언어팩 XML",
-        "주석 포함 언어팩 XML"
-    };
+        get => (int)Config.Method;
+        set
+        {
+            Config.Method = (ExtractionMethod)value;
+            OnPropertyChanged(nameof(SelectedExtractionMethodIndex));
+        }
+    }
 
-    public static string[] DuplicationPolicies { get; } = new[]
+    public int SelectedPolicyIndex
     {
-        "중단", "덮어쓰기", "기존유지"
-    };
+        get => (int)Config.Policy;
+        set
+        {
+            Config.Policy = (DuplicatesPolicy)value;
+            OnPropertyChanged(nameof(SelectedPolicyIndex));
+        }
+    }
 
-    [ObservableProperty] private string _pathRimworld = string.Empty;
-    [ObservableProperty] private string _pathWorkshop = string.Empty;
-    [ObservableProperty] private string _patternVersion = string.Empty;
-    [ObservableProperty] private string _currentVersion = string.Empty;
-    [ObservableProperty] private string _originalLanguage = "English";
-    [ObservableProperty] private string _translationLanguage = "Korean (한국어)";
-    [ObservableProperty] private int _selectedExtractionMethodIndex = 0;
-    [ObservableProperty] private int _selectedPolicyIndex = 0;
-    [ObservableProperty] private string _pathBaseRefList = string.Empty;
-    [ObservableProperty] private string _extractableTags = string.Empty;
-    [ObservableProperty] private string _translationHandles = string.Empty;
-    [ObservableProperty] private string _nodeReplacement = string.Empty;
-    [ObservableProperty] private string _fullListTranslationTags = string.Empty;
-    [ObservableProperty] private bool _enableTkey = false;
+    // --- 3. Collection ↔ TextBox String 어댑터 ---
+    public string ExtractableTagsText
+    {
+        get => string.Join('/', Config.ExtractableTags);
+        set
+        {
+            Config.ExtractableTags = new HashSet<string>(RemoveSep(value).Split('/', StringSplitOptions.RemoveEmptyEntries));
+            OnPropertyChanged(nameof(ExtractableTagsText));
+        }
+    }
+
+    public string TranslationHandlesText
+    {
+        get => string.Join('/', Config.TranslationHandles);
+        set
+        {
+            Config.TranslationHandles = new List<string>(RemoveSep(value).Split('/', StringSplitOptions.RemoveEmptyEntries));
+            OnPropertyChanged(nameof(TranslationHandlesText));
+        }
+    }
+
+    public string FullListTranslationTagsText
+    {
+        get => string.Join('/', Config.FullListTranslationTags);
+        set
+        {
+            Config.FullListTranslationTags = new HashSet<string>(RemoveSep(value).Split('/', StringSplitOptions.RemoveEmptyEntries));
+            OnPropertyChanged(nameof(FullListTranslationTagsText));
+        }
+    }
+
+    public string NodeReplacementText
+    {
+        get => string.Join("/", Config.NodeReplacement.Select(x => $"{x.Key}|{x.Value}"));
+        set
+        {
+            var replacements = RemoveSep(value).Split('/', StringSplitOptions.RemoveEmptyEntries);
+            var dict = new Dictionary<string, string>();
+            foreach (var r in replacements)
+            {
+                var token = r.Split('|');
+                if (token.Length == 2) dict[token[0]] = token[1];
+            }
+            Config.NodeReplacement = dict;
+            OnPropertyChanged(nameof(NodeReplacementText));
+        }
+    }
 
     public event Action? RequestClose;
     public event Func<string, string, Task>? RequestShowAlert;
 
-    public SettingsViewModel(IPrefabSettingsService settingsService)
+    public SettingsViewModel()
     {
-        _settingsService = settingsService;
-        _settingsService.Load();
-        FromPrefabs();
+        ConfigManager.Load();
+        RefreshAdapters();
     }
 
-    public void FromPrefabs()
+    private void RefreshAdapters()
     {
-        EnableTkey = Prefabs.EnableTkey;
-        PathRimworld = Prefabs.PathRimworld;
-        PathWorkshop = Prefabs.PathWorkshop;
-        PatternVersion = Prefabs.PatternVersion;
-        CurrentVersion = Prefabs.CurrentVersion;
-        OriginalLanguage = Prefabs.OriginalLanguage;
-        TranslationLanguage = Prefabs.TranslationLanguage;
-        SelectedExtractionMethodIndex = (int)Prefabs.Method;
-        SelectedPolicyIndex = (int)Prefabs.Policy;
-        PathBaseRefList = Prefabs.PathBaseRefList;
-        ExtractableTags = string.Join('/', Prefabs.ExtractableTags);
-        TranslationHandles = string.Join('/', Prefabs.TranslationHandles);
-        NodeReplacement = string.Join("/", Prefabs.NodeReplacement.Select(x => $"{x.Key}|{x.Value}"));
-        FullListTranslationTags = string.Join('/', Prefabs.FullListTranslationTags);
+        OnPropertyChanged(nameof(Config));
+        OnPropertyChanged(nameof(SelectedExtractionMethodIndex));
+        OnPropertyChanged(nameof(SelectedPolicyIndex));
+        OnPropertyChanged(nameof(ExtractableTagsText));
+        OnPropertyChanged(nameof(TranslationHandlesText));
+        OnPropertyChanged(nameof(FullListTranslationTagsText));
+        OnPropertyChanged(nameof(NodeReplacementText));
     }
 
-    public void ToPrefabs()
-    {
-        Prefabs.EnableTkey = EnableTkey;
-        Prefabs.PathRimworld = PathRimworld ?? string.Empty;
-        Prefabs.PathWorkshop = PathWorkshop ?? string.Empty;
-        Prefabs.PatternVersion = PatternVersion ?? string.Empty;
-        Prefabs.CurrentVersion = CurrentVersion ?? string.Empty;
-        Prefabs.OriginalLanguage = OriginalLanguage ?? "English";
-        Prefabs.TranslationLanguage = TranslationLanguage ?? "Korean (한국어)";
-        if (SelectedExtractionMethodIndex >= 0)
-            Prefabs.Method = Enum.GetValues<Prefabs.ExtractionMethod>()[SelectedExtractionMethodIndex];
-        if (SelectedPolicyIndex >= 0)
-            Prefabs.Policy = Enum.GetValues<Prefabs.DuplicatesPolicy>()[SelectedPolicyIndex];
+    private static string RemoveSep(string s) => s?.Replace(" ", "").Replace("\r", "").Replace("\n", "") ?? "";
 
-        Prefabs.PathBaseRefList = PathBaseRefList ?? string.Empty;
-        Prefabs.ExtractableTags = new HashSet<string>(RemoveSep(ExtractableTags ?? "").Split('/', StringSplitOptions.RemoveEmptyEntries));
-        Prefabs.TranslationHandles = new List<string>(RemoveSep(TranslationHandles ?? "").Split('/', StringSplitOptions.RemoveEmptyEntries));
-
-        var replacements = RemoveSep(NodeReplacement ?? "").Split('/', StringSplitOptions.RemoveEmptyEntries);
-        var dict = new Dictionary<string, string>();
-        foreach (var r in replacements)
-        {
-            var token = r.Split('|');
-            if (token.Length == 2)
-            {
-                dict[token[0]] = token[1];
-            }
-        }
-        Prefabs.NodeReplacement = dict;
-
-        Prefabs.FullListTranslationTags = new HashSet<string>(RemoveSep(FullListTranslationTags ?? "").Split('/', StringSplitOptions.RemoveEmptyEntries));
-    }
-
-    private static string RemoveSep(string s) => s.Replace(" ", "").Replace("\r", "").Replace("\n", "");
+    // ----------------------------------------------------
+    // 커맨드 영역
+    // ----------------------------------------------------
 
     [RelayCommand]
     private async Task SelectPathRimworldAsync(IStorageProvider storageProvider)
@@ -123,7 +135,8 @@ public partial class SettingsViewModel : ViewModelBase
         });
         if (files.Count > 0)
         {
-            PathRimworld = System.IO.Path.GetDirectoryName(files[0].Path.LocalPath) ?? string.Empty;
+            Config.PathRimworld = System.IO.Path.GetDirectoryName(files[0].Path.LocalPath) ?? string.Empty;
+            OnPropertyChanged(nameof(Config)); // 모델 데이터 변경 알림
         }
     }
 
@@ -137,7 +150,8 @@ public partial class SettingsViewModel : ViewModelBase
         });
         if (folders.Count > 0)
         {
-            PathWorkshop = folders[0].Path.LocalPath;
+            Config.PathWorkshop = folders[0].Path.LocalPath;
+            OnPropertyChanged(nameof(Config));
         }
     }
 
@@ -152,35 +166,38 @@ public partial class SettingsViewModel : ViewModelBase
         });
         if (files.Count > 0)
         {
-            PathBaseRefList = files[0].Path.LocalPath;
+            Config.PathBaseRefList = files[0].Path.LocalPath;
+            OnPropertyChanged(nameof(Config));
         }
     }
 
     [RelayCommand]
     private void AutoDetectVersion()
     {
-        CurrentVersion = _settingsService.AutoDetectVersion();
+        Config.CurrentVersion = ConfigManager.AutoDetectRimworldVersion();
+        OnPropertyChanged(nameof(Config));
     }
 
     [RelayCommand]
     private void SaveAndClose()
     {
-        ToPrefabs();
-        _settingsService.Save();
+        ConfigManager.Save();
         RequestClose?.Invoke();
     }
 
     [RelayCommand]
     private void Cancel()
     {
+        ConfigManager.Load(); // 변경 사항 롤백
+        RefreshAdapters();
         RequestClose?.Invoke();
     }
 
     [RelayCommand]
     private void Reset()
     {
-        _settingsService.Reset();
-        FromPrefabs();
+        ConfigManager.InitDefault(); // 기본값으로 덮어쓰기
+        RefreshAdapters();
     }
 
     #region Help Commands

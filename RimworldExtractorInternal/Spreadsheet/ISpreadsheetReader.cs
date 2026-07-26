@@ -11,14 +11,14 @@ public interface ISpreadsheetReader
     
     public static string[] HeaderOriginal => new[] 
     { 
-        $"{Prefabs.OriginalLanguage} [Source string]", 
+        $"{ConfigManager.Current.OriginalLanguage} [Source string]", 
         "EN [Source string]", 
         "Original" 
     };
     
     public static string[] HeaderTranslated => new[] 
     { 
-        $"{Prefabs.TranslationLanguage} [Translation]", 
+        $"{ConfigManager.Current.TranslationLanguage} [Translation]", 
         "KO [Translation]", 
         "Translated" 
     };

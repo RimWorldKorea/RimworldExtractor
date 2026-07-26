@@ -3,6 +3,7 @@ using System.Linq;
 using RimworldExtractorInternal.DataTypes;
 using RimworldExtractorInternal.Core;
 
+
 namespace RimworldExtractorInternal.Procedures.Translations;
 
 public class MVCFProcedure : ITranslationProcedure
@@ -72,7 +73,10 @@ public class MVCFProcedure : ITranslationProcedure
                     var tokens = mvcfForm.VerbPropsLabel.Node.Split('.');
                     tokens[^1] = "description";
                     var verbPropsDescription = (new TranslationEntry(mvcfForm.VerbPropsLabel) with { Node = string.Join('.', tokens), Original = "" });
-                    verbPropsDescription.AddExtension(Prefabs.ExtensionKeyExtraCommentTranslated, "이 항목은 gizmo에 표시될 수 있습니다.");
+                    
+                    // 💡 여기서 Prefabs 참조를 ExtractorConstants로 수정했습니다!
+                    verbPropsDescription.AddExtension(ExtractorConstants.ExtensionKeyExtraCommentTranslated, "이 항목은 gizmo에 표시될 수 있습니다.");
+                    
                     yield return verbPropsDescription;
                 }
                 else yield return mvcfForm.VerbPropsDescription;

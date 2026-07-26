@@ -21,7 +21,6 @@ public partial class MainWindow : Window
         var versionService = new UpdateCheckService();
         var extractionService = new ExtractionService();
         var processService = new ExternalProcessService();
-        var settingsService = new PrefabSettingsService();
 
         _viewModel = new MainWindowViewModel(
             dialogService,
@@ -34,16 +33,6 @@ public partial class MainWindow : Window
 
         // 2. 로그 라이터 연결
         Log.Out = new LogPrinter(TextBoxLog);
-
-        // 3. 앱 구동 시 Prefabs 로드
-        try
-        {
-            settingsService.Load();
-        }
-        catch (Exception e)
-        {
-            ShowErrorMessageAndClose($"Prefabs.dat을 읽는 중 에러 발생: {e.Message}");
-        }
     }
 
     private async void ShowErrorMessageAndClose(string message)

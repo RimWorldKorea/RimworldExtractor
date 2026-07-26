@@ -85,9 +85,9 @@ public partial class SelectModViewModel : ViewModelBase
         _allModsCached = _officialModsCached.Concat(_localModsCached).Concat(_workshopModsCached).ToList();
 
         // 저장된 기준 모드 리스트 로드
-        if (!string.IsNullOrEmpty(Prefabs.PathBaseRefList) && File.Exists(Prefabs.PathBaseRefList))
+        if (!string.IsNullOrEmpty(ConfigManager.Current.PathBaseRefList) && File.Exists(ConfigManager.Current.PathBaseRefList))
         {
-            var lines = File.ReadAllLines(Prefabs.PathBaseRefList);
+            var lines = File.ReadAllLines(ConfigManager.Current.PathBaseRefList);
             foreach (var mod in _allModsCached)
             {
                 if (lines.Any(x => mod.Identifier == x))

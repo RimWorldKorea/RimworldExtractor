@@ -5,9 +5,12 @@ using System.Xml;
 using System.Xml.Linq;
 using RimworldExtractorInternal.DataTypes;
 using RimworldExtractorInternal.Exceptions;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 
 namespace RimworldExtractorInternal.Core
-
 {
     public static class IO
     {
@@ -15,8 +18,8 @@ namespace RimworldExtractorInternal.Core
         private static readonly string HeaderClass = "Class [Not chosen]";
         private static readonly string HeaderNode = "Node [Not chosen]";
         private static readonly string HeaderRequiredMods = "Required Mods [Not chosen]";
-        private static string HeaderOriginal => $"{Prefabs.OriginalLanguage} [Source string]";
-        private static string HeaderTranslated => $"{Prefabs.TranslationLanguage} [Translation]";
+        private static string HeaderOriginal => $"{ConfigManager.Current.OriginalLanguage} [Source string]";
+        private static string HeaderTranslated => $"{ConfigManager.Current.TranslationLanguage} [Translation]";
 
         public static void ToExcel(List<TranslationEntry> translations, string outPath = "result",
             bool markNoTranslation = false)
@@ -60,7 +63,7 @@ namespace RimworldExtractorInternal.Core
                     sheet.Cell(2 + i, 6).Style.Fill.SetBackgroundColor(XLColor.SkyBlue);
                 }
 
-                if (entry.TryGetExtension(Prefabs.ExtensionKeyExtraCommentTranslated, out object? extension) &&
+                if (entry.TryGetExtension(ExtractorConstants.ExtensionKeyExtraCommentTranslated, out object? extension) &&
                     extension is string extensionStr)
                 {
                     var comment = sheet.Cell(2 + i, 6).CreateComment();
@@ -213,7 +216,7 @@ namespace RimworldExtractorInternal.Core
                         mainSheet.Cell(2 + i + rows.Count, colTranslated).Value = entry.Translated;
                     }
 
-                    if (entry.TryGetExtension(Prefabs.ExtensionKeyExtraCommentTranslated, out object? extension) &&
+                    if (entry.TryGetExtension(ExtractorConstants.ExtensionKeyExtraCommentTranslated, out object? extension) &&
                         extension is string extensionStr)
                     {
                         var comment = mainSheet.Cell(2 + i + rows.Count, 6).GetComment();
@@ -253,7 +256,7 @@ namespace RimworldExtractorInternal.Core
         public static void ToLanguageXml(List<TranslationEntry> translations, bool skipNoTranslation, bool commentOriginal, string ModName, string rootDirPath)
         {
             var languagesDir = PathCombineCreateDir(rootDirPath, "Languages");
-            var translationDir = PathCombineCreateDir(languagesDir, Prefabs.TranslationLanguage);
+            var translationDir = PathCombineCreateDir(languagesDir, ConfigManager.Current.TranslationLanguage);
             var defInjected = new List<TranslationEntry>();
             var defInjectedFullListTranslations = new List<TranslationEntry>();
             var keyed = new List<TranslationEntry>();
@@ -296,7 +299,7 @@ namespace RimworldExtractorInternal.Core
                         break;
                     default:
                         {
-                            if (!isOfficial && Prefabs.FullListTranslationTags.Any(translation.Node.Contains))
+                            if (!isOfficial && ConfigManager.Current.FullListTranslationTags.Any(translation.Node.Contains))
                                 defInjectedFullListTranslations.Add(translation);
                             else
                                 defInjected.Add(translation);
@@ -319,7 +322,7 @@ namespace RimworldExtractorInternal.Core
                 foreach (var group in groupedByMods)
                 {
                     var packageIdFolder = group.Key.Replace("::", "_").Replace("/", "_").Replace('\\', '_');
-                    var targetFolder = PathCombineCreateDir(conditionalBaseDir, packageIdFolder, Prefabs.TranslationLanguage, "DefInjected");
+                    var targetFolder = PathCombineCreateDir(conditionalBaseDir, packageIdFolder, ConfigManager.Current.TranslationLanguage, "DefInjected");
 
                     var xmls = new Dictionary<string, XDocument>();
                     foreach (var translation in group)
@@ -440,7 +443,7 @@ namespace RimworldExtractorInternal.Core
                     }
 
                     if (commentOriginal)
-                        doc.Root!.AppendComment($"{Prefabs.OriginalLanguage}={SecurityElement.Escape(translation.Original).Replace('-', 'ー')}");
+                        doc.Root!.AppendComment($"{ConfigManager.Current.OriginalLanguage}={SecurityElement.Escape(translation.Original).Replace('-', 'ー')}");
 
                     doc.Root!.AppendElement(translation.Node, translation.Translated ?? translation.Original);
                 }
@@ -498,9 +501,9 @@ namespace RimworldExtractorInternal.Core
 
         public static List<TranslationEntry> FromLanguageXml(string rootPath, bool isOfficialContent = false)
         {
-            var translationsDir = Path.Combine(rootPath, "Languages", Prefabs.TranslationLanguage);
+            var translationsDir = Path.Combine(rootPath, "Languages", ConfigManager.Current.TranslationLanguage);
             if (!Directory.Exists(translationsDir))
-                translationsDir = Path.Combine(rootPath, "Languages", Prefabs.TranslationLanguage.Split(' ').First());
+                translationsDir = Path.Combine(rootPath, "Languages", ConfigManager.Current.TranslationLanguage.Split(' ').First());
 
             var defInjectedDir = Path.Combine(translationsDir, "DefInjected");
             var keyedDir = Path.Combine(translationsDir, "Keyed");
@@ -561,16 +564,16 @@ namespace RimworldExtractorInternal.Core
                 return;
             }
 
-            switch (Prefabs.Policy)
+            switch (ConfigManager.Current.Policy)
             {
-                case Prefabs.DuplicatesPolicy.Stop:
-                    var stopCallback = Prefabs.StopCallbackXlsx;
+                case DuplicatesPolicy.Stop:
+                    var stopCallback = ExtractorConstants.StopCallbackXlsx;
                     if (stopCallback != null)
                         stopCallback(xlsx, path);
                     else
                         throw new ArgumentNullException(nameof(stopCallback));
                     return;
-                case Prefabs.DuplicatesPolicy.Overwrite:
+                case DuplicatesPolicy.Overwrite:
                     try
                     {
                         xlsx.SaveAs(path);
@@ -580,7 +583,7 @@ namespace RimworldExtractorInternal.Core
                         Log.Err($"{Path.GetFileName(path)}: 파일이 이미 사용 중이기 때문에 파일을 저장할 수 없었습니다. 종료 후 재시도 해주세요.");
                     }
                     return;
-                case Prefabs.DuplicatesPolicy.KeepOriginal:
+                case DuplicatesPolicy.KeepOriginal:
                     return;
                 default:
                     throw new ArgumentOutOfRangeException();
@@ -595,19 +598,19 @@ namespace RimworldExtractorInternal.Core
                 return;
             }
 
-            switch (Prefabs.Policy)
+            switch (ConfigManager.Current.Policy)
             {
-                case Prefabs.DuplicatesPolicy.Stop:
-                    var stopCallback = Prefabs.StopCallbackXml;
+                case DuplicatesPolicy.Stop:
+                    var stopCallback = ExtractorConstants.StopCallbackXml;
                     if (stopCallback != null)
                         stopCallback(doc, path);
                     else
                         throw new ArgumentNullException(nameof(stopCallback));
                     return;
-                case Prefabs.DuplicatesPolicy.Overwrite:
+                case DuplicatesPolicy.Overwrite:
                     doc.Save(path);
                     return;
-                case Prefabs.DuplicatesPolicy.KeepOriginal:
+                case DuplicatesPolicy.KeepOriginal:
                     return;
                 default:
                     throw new ArgumentOutOfRangeException();
@@ -622,19 +625,19 @@ namespace RimworldExtractorInternal.Core
                 return;
             }
 
-            switch (Prefabs.Policy)
+            switch (ConfigManager.Current.Policy)
             {
-                case Prefabs.DuplicatesPolicy.Stop:
-                    var stopCallback = Prefabs.StopCallbackTxt;
+                case DuplicatesPolicy.Stop:
+                    var stopCallback = ExtractorConstants.StopCallbackTxt;
                     if (stopCallback != null)
                         stopCallback(lines, path);
                     else
                         throw new ArgumentNullException(nameof(stopCallback));
                     return;
-                case Prefabs.DuplicatesPolicy.Overwrite:
+                case DuplicatesPolicy.Overwrite:
                     File.WriteAllLines(path, lines);
                     return;
-                case Prefabs.DuplicatesPolicy.KeepOriginal:
+                case DuplicatesPolicy.KeepOriginal:
                     return;
                 default:
                     throw new ArgumentOutOfRangeException();
@@ -651,7 +654,7 @@ namespace RimworldExtractorInternal.Core
 
         private static void DoFullListTranslation(this XDocument defInjectedDoc)
         {
-            var patterns = Prefabs.FullListTranslationTags.Select(x => $".+?\\.{x}\\.\\d+").ToList();
+            var patterns = ConfigManager.Current.FullListTranslationTags.Select(x => $".+?\\.{x}\\.\\d+").ToList();
 
             var fullListdic = new Dictionary<string, XElement>();
             var removedNodesDic = new Dictionary<string, List<XElement>>();

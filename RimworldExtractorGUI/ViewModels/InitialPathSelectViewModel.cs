@@ -22,9 +22,9 @@ public partial class InitialPathSelectViewModel : ViewModelBase
 
     public InitialPathSelectViewModel()
     {
-        Prefabs.Init();
-        PathRimworld = Prefabs.PathRimworld;
-        PathWorkshop = Prefabs.PathWorkshop;
+        ConfigManager.InitDefault();
+        PathRimworld = ConfigManager.Current.PathRimworld;
+        PathWorkshop = ConfigManager.Current.PathWorkshop;
     }
 
     // 림월드 실행 파일 선택 명령
@@ -70,9 +70,9 @@ public partial class InitialPathSelectViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanComplete))]
     private void Complete()
     {
-        Prefabs.PathRimworld = PathRimworld;
-        Prefabs.PathWorkshop = PathWorkshop;
-        Prefabs.Save();
+        ConfigManager.Current.PathRimworld = PathRimworld;
+        ConfigManager.Current.PathWorkshop = PathWorkshop;
+        ConfigManager.Save();
 
         RequestClose?.Invoke();
     }

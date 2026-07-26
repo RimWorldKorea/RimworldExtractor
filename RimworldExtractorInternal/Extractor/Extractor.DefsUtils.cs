@@ -60,13 +60,13 @@ namespace RimworldExtractorInternal
                 if (curNode.IsTextNode())
                 {
                     var isListNode = token.Length > 1 && int.TryParse(lastTag, out _) &&
-                                     Prefabs.CanExtract(token[^2], defName);
-                    if (Prefabs.CanExtract(lastTag, defName) || isListNode)
+                                     ConfigManager.Current.CanExtract(token[^2], defName);
+                    if (ConfigManager.Current.CanExtract(lastTag, defName) || isListNode)
                     {
                         var nodeName = $"{defName}.{curPath}";
                         if (curNormalizedPath != null)
                             nodeName = curPath;
-                        else if (Prefabs.EnableTkey && curNode.Attribute("TKey")?.Value != null)
+                        else if (ConfigManager.Current.EnableTkey && curNode.Attribute("TKey")?.Value != null)
                         {
                             var tKey = curNode.Attribute("TKey")!.Value;
                             nodeName = $"{defName}.{tKey}.slateRef";
@@ -177,7 +177,7 @@ namespace RimworldExtractorInternal
             translationHandleResult = string.Empty;
             if (!node.HasElements)
                 return false;
-            foreach (var handle in Prefabs.TranslationHandles)
+            foreach (var handle in ConfigManager.Current.TranslationHandles)
             {
                 var isTypeField = handle.StartsWith('*');
                 var translationHandleMatcher = isTypeField ? handle[1..] : handle;

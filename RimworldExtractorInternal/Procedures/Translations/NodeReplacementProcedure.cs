@@ -27,7 +27,8 @@ public class NodeReplacementProcedure : ITranslationProcedure
         var defName = entry.Node.Split('.')[0];
         var nodeAfterDefName = entry.Node[(entry.Node.IndexOf('.') + 1)..];
 
-        foreach (var (key, value) in Prefabs.NodeReplacement)
+        // 💡 Prefabs.NodeReplacement를 ConfigManager.Current.NodeReplacement로 교체했습니다.
+        foreach (var (key, value) in ConfigManager.Current.NodeReplacement)
         {
             var tokenKey = key.Split('+');
             var tokenValue = value.Split("+");

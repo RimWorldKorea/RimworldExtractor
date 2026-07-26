@@ -10,7 +10,7 @@ namespace RimworldExtractorInternal.Core
         {
             get
             {
-                var dirOfficial = Path.Combine(Prefabs.PathRimworld, "Data");
+                var dirOfficial = Path.Combine(ConfigManager.Current.PathRimworld, "Data");
                 if (Directory.Exists(dirOfficial))
                     foreach (var dir in Directory.EnumerateDirectories(dirOfficial))
                         yield return dir;
@@ -21,7 +21,7 @@ namespace RimworldExtractorInternal.Core
         {
             get
             {
-                var dirLocalMods = Path.Combine(Prefabs.PathRimworld, "Mods");
+                var dirLocalMods = Path.Combine(ConfigManager.Current.PathRimworld, "Mods");
                 if (Directory.Exists(dirLocalMods))
                     foreach (var dir in Directory.EnumerateDirectories(dirLocalMods))
                         yield return dir;
@@ -32,7 +32,7 @@ namespace RimworldExtractorInternal.Core
         {
             get
             {
-                var dirWorkshopMods = Prefabs.PathWorkshop;
+                var dirWorkshopMods = ConfigManager.Current.PathWorkshop;
                 if (Directory.Exists(dirWorkshopMods))
                     foreach (var dir in Directory.EnumerateDirectories(dirWorkshopMods))
                         yield return dir;
@@ -113,7 +113,7 @@ namespace RimworldExtractorInternal.Core
                     var modDependenciesByVersionNode = doc.Root?.Element("modDependenciesByVersion");
                     if (modDependenciesByVersionNode != null)
                     {
-                        var nodes = modDependenciesByVersionNode.Element("v" + Prefabs.CurrentVersion)?.Elements();
+                        var nodes = modDependenciesByVersionNode.Element("v" + ConfigManager.Current.CurrentVersion)?.Elements();
                         nodes ??= modDependenciesByVersionNode.Elements().LastOrDefault()?.Elements();
                         if (nodes != null)
                         {
@@ -157,10 +157,10 @@ namespace RimworldExtractorInternal.Core
             var pathLoadFolders = Path.Combine(root, "LoadFolders.xml");
             string[] targetFolders = {
                 "Defs", "Patches", "Keyed", 
-                Path.Combine("Languages", Prefabs.OriginalLanguage, "Keyed"),
-                Path.Combine("Languages", Prefabs.OriginalLanguage.Split(' ').First(), "Keyed"),
-                Path.Combine("Languages", Prefabs.OriginalLanguage, "Strings"),
-                Path.Combine("Languages", Prefabs.OriginalLanguage.Split(' ').First(), "Strings")
+                Path.Combine("Languages", ConfigManager.Current.OriginalLanguage, "Keyed"),
+                Path.Combine("Languages", ConfigManager.Current.OriginalLanguage.Split(' ').First(), "Keyed"),
+                Path.Combine("Languages", ConfigManager.Current.OriginalLanguage, "Strings"),
+                Path.Combine("Languages", ConfigManager.Current.OriginalLanguage.Split(' ').First(), "Strings")
             };
 
             IEnumerable<string> GetExtractableFoldersInternal(string path)
@@ -202,7 +202,7 @@ namespace RimworldExtractorInternal.Core
                 foreach (var directory in Directory.EnumerateDirectories(root))
                 {
                     var lastDir = Path.GetFileName(directory);
-                    if (Regex.IsMatch(lastDir, Prefabs.PatternVersion))
+                    if (Regex.IsMatch(lastDir, ConfigManager.Current.PatternVersion))
                     {
                         foreach (var extractableFolder in GetExtractableFoldersInternal(directory)
                                      .Select(x => new ExtractableFolder(modMetadata, x, null, lastDir)))
@@ -288,7 +288,7 @@ namespace RimworldExtractorInternal.Core
         public static bool IsAutoSelectable(this ExtractableFolder extractableFolder)
         {
             return extractableFolder.VersionInfo is "default" or "Common" ||
-                   extractableFolder.VersionInfo == Prefabs.CurrentVersion;
+                   extractableFolder.VersionInfo == ConfigManager.Current.CurrentVersion;
         }
 
         internal static bool TryGetModMetadataByPackageId(string? packageId, out ModMetadata? modMetadata)

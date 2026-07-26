@@ -1,7 +1,8 @@
 using System.Xml.Linq;
 using RimExtractorCore.DataTypes;
+using RimExtractorCore.Extractor;
 
-namespace RimExtractorCore;
+namespace RimExtractorCore.DefTreeSimulator;
 
 internal static class PatchOperations
 {
@@ -119,7 +120,7 @@ internal static class PatchOperations
                 Log.Wrn($"선택된 노드 {selectNode.Name.LocalName}의 부모 노드가 없습니다.");
                 continue;
             }
-            var rootDefNode = Extractor.GetRootDefNode(parentNode, out var nodeName);
+            var rootDefNode = ExtractorEngine.GetRootDefNode(parentNode, out var nodeName);
             var currentTarget = selectNode;
             foreach (XElement valueChildNode in value.Elements())
             {
@@ -135,7 +136,7 @@ internal static class PatchOperations
                 }
 
                 // 🟢 bool isOfficial 인수 추가 반영
-                foreach (var translation in Extractor.FindExtractableNodes(
+                foreach (var translation in ExtractorEngine.FindExtractableNodes(
                              curRootDefNode.Element("defName")!.Value,
                              curRootDefNode.Attribute("Class")?.Value ?? curRootDefNode.Name.LocalName, 
                              selectNodeImported, 
@@ -170,7 +171,7 @@ internal static class PatchOperations
         if (selectNodes == null) yield break;
         foreach (XElement selectNode in selectNodes)
         {
-            var rootDefNode = Extractor.GetRootDefNode(selectNode, out var nodeName);
+            var rootDefNode = ExtractorEngine.GetRootDefNode(selectNode, out var nodeName);
             var modExtensionNode = selectNode.Element("modExtensions");
             if (modExtensionNode == null)
             {
@@ -185,7 +186,7 @@ internal static class PatchOperations
                 var curRootDefNode = rootDefNode ?? selectNodeImported;
 
                 // 🟢 bool isOfficial 인수 추가 반영
-                foreach (var translation in Extractor.FindExtractableNodes(
+                foreach (var translation in ExtractorEngine.FindExtractableNodes(
                              curRootDefNode.Element("defName")!.Value,
                              curRootDefNode.Attribute("Class")?.Value ?? curRootDefNode.Name.LocalName, 
                              selectNodeImported, 
@@ -221,7 +222,7 @@ internal static class PatchOperations
         foreach (XElement selectNode in selectNodes)
         {
             var parentNode = selectNode.Parent!;
-            var rootDefNode = Extractor.GetRootDefNode(parentNode, out var nodeName);
+            var rootDefNode = ExtractorEngine.GetRootDefNode(parentNode, out var nodeName);
             var defName = rootDefNode?.Element("defName")?.Value;
             var className = (rootDefNode?.Attribute("Class")?.Value ?? rootDefNode?.Name.LocalName);
                             
@@ -240,7 +241,7 @@ internal static class PatchOperations
                 currentTarget.AddBeforeSelf(selectNodeImported);
 
                 // 🟢 bool isOfficial 인수 추가 반영
-                foreach (var translation in Extractor.FindExtractableNodes(defName, className, selectNodeImported, isOfficial, nodeName))
+                foreach (var translation in ExtractorEngine.FindExtractableNodes(defName, className, selectNodeImported, isOfficial, nodeName))
                 {
                     yield return translation with
                     {
@@ -271,7 +272,7 @@ internal static class PatchOperations
         if (selectNodes == null) yield break;
         foreach (XElement selectNode in selectNodes)
         {
-            var rootDefNode = Extractor.GetRootDefNode(selectNode, out var nodeName);
+            var rootDefNode = ExtractorEngine.GetRootDefNode(selectNode, out var nodeName);
             foreach (XElement valueChildNode in value.Elements())
             {
                 var selectNodeImported = new XElement(valueChildNode);
@@ -292,7 +293,7 @@ internal static class PatchOperations
                 }
 
                 // 🟢 bool isOfficial 인수 추가 반영
-                foreach (var translation in Extractor.FindExtractableNodes(
+                foreach (var translation in ExtractorEngine.FindExtractableNodes(
                              defName,
                              curRootDefNode.Attribute("Class")?.Value ?? curRootDefNode.Name.LocalName, 
                              selectNodeImported, 

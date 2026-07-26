@@ -3,7 +3,9 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using RimExtractorCore;
+using RimExtractorCore.Extractor;
 using RimExtractorCore.DataTypes;
+using RimExtractorCore.DefTreeSimulator;
 
 namespace RimExtractorFace.Services;
 
@@ -63,7 +65,7 @@ public class ExtractionService : IExtractionService
             }
 
             // 2. DefTree 파이프라인 시뮬레이션 실행 (Roslyn PostProcessors 및 랭귀지 오버라이드 포함)
-            var simResult = DefTreeSimulator.Execute(
+            var simResult = SimulatorEngine.Execute(
                 targetMod,
                 selectedFolders,
                 prePatches,
@@ -72,7 +74,7 @@ public class ExtractionService : IExtractionService
                 referenceMods);
 
             // 3. 시뮬레이션 결과(SimulationResult)를 인수로 수령하여 번역 항목 추출
-            return Extractor.ExtractTranslationData(simResult);
+            return ExtractorEngine.ExtractTranslationData(simResult);
         });
 
         var outPath = targetMod.Identifier.StripInvaildChars();

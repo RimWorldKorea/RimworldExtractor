@@ -1,5 +1,5 @@
 using RimExtractorCore;
-using RimExtractorCore.DiffA;
+using RimExtractorCore.DiffAnalyzer;
 
 namespace RimExtractorTest
 {
@@ -20,7 +20,7 @@ namespace RimExtractorTest
                          "Data\\test\\Nephilim Xenotype - 2997308585.xlsx"
                      })
             {
-                var modMetadata = DiffAnalyzer.GetModMetadataFromFilePath(path);
+                var modMetadata = AnalyzerEngine.GetModMetadataFromFilePath(path);
                 Assert.IsNotNull(modMetadata);
                 Console.WriteLine(modMetadata);
             }

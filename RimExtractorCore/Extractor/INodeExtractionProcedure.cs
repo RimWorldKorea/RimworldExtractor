@@ -1,7 +1,8 @@
 ﻿using System.Collections.Generic;
 using RimExtractorCore.DataTypes;
+using RimExtractorCore.DefTreeSimulator;
 
-namespace RimExtractorCore;
+namespace RimExtractorCore.Extractor;
 
 public interface INodeExtractionProcedure
 {

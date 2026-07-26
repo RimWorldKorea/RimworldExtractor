@@ -1,6 +1,7 @@
 ﻿using RimExtractorCore.Exceptions;
-using RimExtractorCore;
-using RimExtractorCore.DiffA;
+using RimExtractorCore.DefTreeSimulator;
+using RimExtractorCore.DiffAnalyzer;
+using RimExtractorCore.Extractor;
 
 namespace RimExtractorCore.DataTypes
 {
@@ -100,7 +101,7 @@ namespace RimExtractorCore.DataTypes
         {
             FilePath = path;
             SaveMethod = SaveMethodEnum.Append;
-            Metadata = DiffAnalyzer.GetModMetadataFromFilePath(path);
+            Metadata = AnalyzerEngine.GetModMetadataFromFilePath(path);
             try
             {
                 OriginalTranslations = IO.FromExcel(path);
@@ -149,7 +150,7 @@ namespace RimExtractorCore.DataTypes
             }
 
             // DefTreeSimulator로 SimulationResult 생성
-            var simResult = DefTreeSimulator.Execute(
+            var simResult = SimulatorEngine.Execute(
                 Metadata,
                 selectedFolders,
                 prePatches,
@@ -158,7 +159,7 @@ namespace RimExtractorCore.DataTypes
                 referenceMods);
 
             // 💡 ExtractionResult에서 Entries만 추출하여 List로 대입
-            var extractionResult = Extractor.ExtractTranslationData(simResult);
+            var extractionResult = ExtractorEngine.ExtractTranslationData(simResult);
             NewTranslations = extractionResult.Entries.ToList();
         }
 

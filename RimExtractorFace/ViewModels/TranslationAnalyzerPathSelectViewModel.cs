@@ -1,7 +1,7 @@
 ﻿using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using RimExtractorCore.DiffA;
+using RimExtractorCore.DiffAnalyzer;
 
 namespace RimExtractorFace.ViewModels;
 
@@ -55,7 +55,7 @@ public partial class TranslationAnalyzerPathSelectViewModel : ViewModelBase
         var tokens = (PathText ?? "").Split('|', StringSplitOptions.RemoveEmptyEntries);
         if (tokens.Length > 0 && Directory.Exists(tokens[0]))
         {
-            tokens = tokens.SelectMany(DiffAnalyzer.GetXlsxPaths).ToArray();
+            tokens = tokens.SelectMany(AnalyzerEngine.GetXlsxPaths).ToArray();
         }
         Paths = tokens;
         IsSuccess = true;

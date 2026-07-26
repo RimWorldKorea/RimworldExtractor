@@ -5,6 +5,7 @@ using System.Xml;
 using System.Xml.Linq;
 using RimExtractorCore.DataTypes;
 using RimExtractorCore.Exceptions;
+using RimExtractorCore.Extractor;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -546,11 +547,11 @@ namespace RimExtractorCore
 
             // 🟢 bool isOfficialContent 인수 전달
             var keyed = new ExtractableFolder(ModMetadata.Emptry, keyedDir, null);
-            translations.AddRange(Extractor.ExtractKeyed(keyed, isOfficialContent)
+            translations.AddRange(ExtractorEngine.ExtractKeyed(keyed, isOfficialContent)
                 .Select(x => x with { Translated = x.Original, Original = "" }));
 
             var strings = new ExtractableFolder(ModMetadata.Emptry, stringsDir, null);
-            translations.AddRange(Extractor.ExtractStrings(strings)
+            translations.AddRange(ExtractorEngine.ExtractStrings(strings)
                 .Select(x => x with { Translated = x.Original, Original = "" }));
 
             return translations;

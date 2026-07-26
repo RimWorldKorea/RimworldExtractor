@@ -12,6 +12,7 @@
     <UseWindowsForms>false</UseWindowsForms>
     
     <!-- Build Configurations -->
+    <AssemblyName>RimExtractor</AssemblyName>
     <PublishSingleFile>true</PublishSingleFile>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>false</SelfContained>

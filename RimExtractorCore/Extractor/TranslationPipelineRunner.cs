@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using RimExtractorCore.DataTypes;
+using RimExtractorCore.Extractor;
 
 namespace RimExtractorCore.Procedures;
 

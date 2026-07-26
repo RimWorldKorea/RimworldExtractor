@@ -4,9 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Xml.Linq;
 using RimExtractorCore.DataTypes;
-using RimExtractorCore.DefTree;
 
-namespace RimExtractorCore
+namespace RimExtractorCore.DefTreeSimulator
 {
     public class SimulationResult
     {
@@ -22,7 +21,7 @@ namespace RimExtractorCore
     /// <summary>
     /// 림월드의 런타임 Def 계층을 시뮬레이션합니다.
     /// </summary>
-    public static class DefTreeSimulator
+    public static class SimulatorEngine
     {
         // 이 클래스에 멤버 변수 정의하지 마세요
         

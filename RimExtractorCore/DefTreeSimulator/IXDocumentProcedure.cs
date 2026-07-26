@@ -1,6 +1,6 @@
 ﻿using System.Xml.Linq;
 
-namespace RimExtractorCore.DefTree;
+namespace RimExtractorCore.DefTreeSimulator;
 
 public enum PipelineStage
 {

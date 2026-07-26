@@ -1,8 +1,8 @@
 ﻿using RimExtractorCore.DataTypes;
 
-namespace RimExtractorCore.DiffA
+namespace RimExtractorCore.DiffAnalyzer
 {
-    public static class DiffAnalyzer
+    public static class AnalyzerEngine
     {
         public static string[] GetXlsxPaths(string rootPath) =>
             IO.DescendantFiles(rootPath)

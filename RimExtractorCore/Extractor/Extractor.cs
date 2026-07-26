@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using RimExtractorCore.DataTypes;
 using RimExtractorCore.Procedures;
+using RimExtractorCore.DefTreeSimulator;
 
-namespace RimExtractorCore
+namespace RimExtractorCore.Extractor
 {
-    public static partial class Extractor
+    public static partial class ExtractorEngine
     {
         // [XDoc->TranslationEntries 타입 프로시저 주입 포인트] (단일 실행)
         public static INodeExtractionProcedure PrimaryExtractor { get; set; } = new DefaultNodeExtractionProcedure();

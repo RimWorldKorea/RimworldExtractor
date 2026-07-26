@@ -4,8 +4,9 @@ using System.IO;
 using System.Linq;
 using System.Xml.Linq;
 using RimExtractorCore.DataTypes;
+using RimExtractorCore.DefTreeSimulator;
 
-namespace RimExtractorCore;
+namespace RimExtractorCore.Extractor;
 
 public class DefaultNodeExtractionProcedure : INodeExtractionProcedure
 {
@@ -62,7 +63,7 @@ public class DefaultNodeExtractionProcedure : INodeExtractionProcedure
             var className = node.Attribute("Class")?.Value ?? node.Name.LocalName;
             className = className[..1].ToUpper() + className[1..];
 
-            foreach (var translationEntry in Extractor.FindExtractableNodes(defName, className, node, isOfficialContent))
+            foreach (var translationEntry in ExtractorEngine.FindExtractableNodes(defName, className, node, isOfficialContent))
             {
                 yield return translationEntry with { RequiredMods = translationEntry.RequiredMods + requiredMods };
             }
@@ -140,7 +141,7 @@ public class DefaultNodeExtractionProcedure : INodeExtractionProcedure
                 simResult.ParentNodeLookUp[name] = node;
         }
 
-        DefTreeSimulator.DoXmlInheritance(simResult, simResult.DefsAddedByPatches.Select(x => x.Item2));
+        SimulatorEngine.DoXmlInheritance(simResult, simResult.DefsAddedByPatches.Select(x => x.Item2));
 
         foreach (var translation in ExtractDefs(simResult, isOfficialContent))
         {

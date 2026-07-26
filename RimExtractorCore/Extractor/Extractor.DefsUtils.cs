@@ -6,9 +6,9 @@ using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using RimExtractorCore.DataTypes;
 
-namespace RimExtractorCore
+namespace RimExtractorCore.Extractor
 {
-    public static partial class Extractor
+    public static partial class ExtractorEngine
     {
         internal static IEnumerable<TranslationEntry> FindExtractableNodes(
             string defName, 

@@ -1,5 +1,5 @@
 ﻿using System.Threading.Tasks;
-using RimExtractorCore.DefTree;
+using RimExtractorCore.DefTreeSimulator;
 using RimExtractorCore.Procedures;
 
 namespace RimExtractorCore;

@@ -5,23 +5,20 @@ namespace RimExtractorCore.Extractor
 {
     public static partial class ExtractorEngine
     {
-        // [XDoc->TranslationEntries 타입 프로시저 주입 포인트] (단일 실행)
-        public static IExtractionProcedure? PrimaryExtractor { get; set; }
-
         /// <summary>
         /// 시뮬레이션 결과(DefTree)를 받아 최종 가공된 TranslationEntry 컨테이너를 반환합니다.
         /// </summary>
         public static ExtractionResult ExtractTranslationData(SimulationResult simResult)
         {
-            if (PrimaryExtractor == null)
+            // 1. 단일 추출 프로시저 실행 (원시 데이터 추출)
+            var rawEntries = ExtractionProcedureInjector.Instance.Execute(simResult)?.ToList();
+
+            if (rawEntries == null)
             {
                 Log.Err("PrimaryExtractor가 로드되지 않았습니다.");
                 return new ExtractionResult(simResult.TargetMod!, new List<TranslationEntry>());
             }
             
-            // 1. 단일 추출 프로시저 실행 (원시 데이터 추출)
-            var rawEntries = PrimaryExtractor.Extract(simResult).ToList();
-
             // 2. 고유성 검증 및 중복 필터링
             var distinctEntries = FilterDuplicates(rawEntries);
 

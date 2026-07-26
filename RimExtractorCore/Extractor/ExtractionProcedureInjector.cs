@@ -1,10 +1,14 @@
-﻿namespace RimExtractorCore.Extractor;
+﻿using RimExtractorCore.DataTypes;
+
+namespace RimExtractorCore.Extractor;
 
 public class ExtractionProcedureInjector : IProcedureInjector
 {
     public static ExtractionProcedureInjector Instance { get; } = new();
-
     public bool IsInitialized { get; private set; } = false;
+
+    // 1. 내부 상태로 캡슐화
+    private IExtractionProcedure? _primaryExtractor; 
 
     private ExtractionProcedureInjector() { }
 
@@ -12,22 +16,29 @@ public class ExtractionProcedureInjector : IProcedureInjector
     {
         if (IsInitialized) return;
 
-        // DefaultNodeExtractionProcedure.cs를 Procedures/Extractors 폴더에 위치시킵니다.
         var baseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Procedures", "Extractor");
-        
         var processors = RoslynScriptRunner.LoadProcessorsFromDirectory<IExtractionProcedure>(baseDir);
-        var primary = processors.FirstOrDefault(p => p.Name == "DefaultNodeExtractionProcedure") ?? processors.FirstOrDefault();
+        _primaryExtractor = processors.FirstOrDefault(p => p.Name == "DefaultNodeExtractionProcedure") ?? processors.FirstOrDefault();
         
-        if (primary != null)
+        if (_primaryExtractor != null)
         {
-            ExtractorEngine.PrimaryExtractor = primary;
-            Log.Msg($"[ExtractionPipelineRunner] 로드 완료: {primary.Name}");
+            Log.Msg($"[ExtractionPipelineRunner] 로드 완료: {_primaryExtractor.Name}");
         }
         else
         {
-            Log.Wrn("[ExtractionPipelineRunner] IExtractionProcedure를 찾을 수 없습니다.");
+            Log.Err("[ExtractionPipelineRunner] IExtractionProcedure를 찾을 수 없습니다.");
         }
         
         IsInitialized = true;
+    }
+    
+    public IEnumerable<TranslationEntry>? Execute(SimulationResult simResult)
+    {
+        if (_primaryExtractor == null)
+        {
+            throw new InvalidOperationException("등록된 ExtractionProcedure가 존재하지 않아 추출을 진행할 수 없습니다.");
+        }
+        
+        return _primaryExtractor?.Extract(simResult);
     }
 }

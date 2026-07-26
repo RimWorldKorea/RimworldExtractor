@@ -98,16 +98,27 @@ public partial class MainWindowViewModel : ViewModelBase
 
         Log.Msg("추출 시작...");
 
-        // UI 멈춤 방지를 위해 Task.Run 내부적으로 I/O 및 추출을 수행하는 서비스 호출
-        var summary = await _extractionService.ExtractAndSaveAsync(SelectedMod, SelectedFolders, ReferenceMods);
-
-        // 콘솔 출력 - (Defs, Keyed, Strings, Patches)
-        Log.Msg($"추출 완료! 총 {summary.TotalCount}개 노드 (Defs {summary.DefsCount}개, Keyed {summary.KeyedCount}개, Strings {summary.StringsCount}개, Patches {summary.PatchesCount}개) 추출됨!");
-
-        if (await _dialogService.ConfirmAsync("추출 완료", "결과 폴더를 열어보시겠습니까?"))
+        try
         {
-            _processService.OpenFolderInExplorer(summary.OutputPath);
+            // UI 멈춤 방지를 위해 Task.Run 내부적으로 I/O 및 추출을 수행하는 서비스 호출
+            var summary = await _extractionService.ExtractAndSaveAsync(SelectedMod, SelectedFolders, ReferenceMods);
+
+            // 콘솔 출력 - (Defs, Keyed, Strings, Patches)
+            Log.Msg(
+                $"추출 완료! 총 {summary.TotalCount}개 노드 (Defs {summary.DefsCount}개, Keyed {summary.KeyedCount}개, Strings {summary.StringsCount}개, Patches {summary.PatchesCount}개) 추출됨!");
+
+            if (await _dialogService.ConfirmAsync("추출 완료", "결과 폴더를 열어보시겠습니까?"))
+            {
+                _processService.OpenFolderInExplorer(summary.OutputPath);
+            }
         }
+        catch (Exception e)
+        {
+            // 🚨 코어 엔진에서 던진 예외를 여기서 잡아내어 프로그램 크래시 방지!
+            Log.Err(e.Message);
+            await _dialogService.ShowAlertAsync("추출 실패", e.Message);
+        }
+
     }
 
     [RelayCommand]

@@ -1,0 +1,26 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:RimExtractorFace.ViewModels"
+        x:Class="RimExtractorFace.Views.XmlisterWindow"
+        x:DataType="vm:XmlisterViewModel"
+        Title="XML -&gt; XLSX 추출 툴"
+        Width="600" Height="140"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+
+    <Grid RowDefinitions="Auto, Auto, Auto" Margin="12">
+        <TextBlock Grid.Row="0" Text="Languages 폴더가 있는 루트 폴더를 지정해주세요. (다중선택 가능)" 
+                   HorizontalAlignment="Center" Margin="0,0,0,8"/>
+        
+        <Grid Grid.Row="1" ColumnDefinitions="*, Auto" Margin="0,0,0,12">
+            <TextBox Grid.Column="0" Text="{Binding FolderPathText, Mode=TwoWay}" Margin="0,0,6,0"/>
+            <Button Grid.Column="1" Content="..." Width="40" HorizontalContentAlignment="Center"
+                    Command="{Binding SelectFoldersCommand}"
+                    CommandParameter="{Binding $parent[Window].StorageProvider}"/>
+        </Grid>
+
+        <Button Grid.Row="2" Content="완료" Width="100" 
+                HorizontalAlignment="Right" HorizontalContentAlignment="Center"
+                Command="{Binding CompleteCommand}"/>
+    </Grid>
+</Window>

@@ -1,0 +1,83 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:RimExtractorFace.ViewModels"
+        x:Class="RimExtractorFace.Views.TranslationAnalyzerWindow"
+        x:DataType="vm:TranslationAnalyzerViewModel"
+        Title="번역 분석기"
+        Width="1020" Height="460"
+        WindowStartupLocation="CenterOwner">
+
+    <Grid ColumnDefinitions="*, 280" Margin="12">
+        <!-- 좌측 결과 목록 -->
+        <Grid Grid.Column="0" RowDefinitions="Auto, *, Auto" Margin="0,0,12,0">
+            <DockPanel Grid.Row="0" Margin="0,0,0,8">
+                <TextBlock Text="{Binding TitleText}" VerticalAlignment="Center"/>
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" Spacing="4">
+                    <Button Content="가능한 모두 선택" Command="{Binding SelectAllCommand}"/>
+                    <Button Content="모두 해제" Command="{Binding DeselectAllCommand}"/>
+                </StackPanel>
+            </DockPanel>
+
+            <Border Grid.Row="1" BorderBrush="LightGray" BorderThickness="1" CornerRadius="4">
+                <DockPanel>
+                    <!-- Header -->
+                    <Grid DockPanel.Dock="Top" ColumnDefinitions="40, 140, *, 70, 120, 80" Background="#EEEEEE" Height="30">
+                        <TextBlock Grid.Column="0" Text="선택" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
+                        <TextBlock Grid.Column="1" Text="모드 정보" VerticalAlignment="Center" FontWeight="Bold"/>
+                        <TextBlock Grid.Column="2" Text="파일 경로" VerticalAlignment="Center" FontWeight="Bold"/>
+                        <TextBlock Grid.Column="3" Text="원본수" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
+                        <TextBlock Grid.Column="4" Text="변동 사항" VerticalAlignment="Center" FontWeight="Bold"/>
+                        <TextBlock Grid.Column="5" Text="저장방법" VerticalAlignment="Center" FontWeight="Bold"/>
+                    </Grid>
+
+                    <!-- Items -->
+                    <ListBox ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem, Mode=TwoWay}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="vm:TranslationAnalyzerItemViewModel">
+                                <Grid ColumnDefinitions="40, 140, *, 70, 120, 80" Height="28">
+                                    <CheckBox Grid.Column="0" IsChecked="{Binding IsChecked, Mode=TwoWay}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ModIdentifier}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding FilePath}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Grid.Column="3" Text="{Binding OriginalCount}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="4" Text="{Binding ChangesString}" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="5" Text="{Binding SaveMethodText}" VerticalAlignment="Center"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+        </Grid>
+
+        <!-- 우측 제어 패널 -->
+        <StackPanel Grid.Column="1" Spacing="10">
+            <Border Background="#F5F5F5" CornerRadius="4" Padding="10" Height="80">
+                <ScrollViewer>
+                    <TextBlock Text="{Binding SelectedModTitle}" TextWrapping="Wrap"/>
+                </ScrollViewer>
+            </Border>
+
+            <Button Content="재추출할 모드 직접 지정" Height="40" 
+                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" 
+                    IsEnabled="{Binding IsControlEnabled}"
+                    Command="{Binding OpenSelectModCommand}"/>
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="저장방법 지정:"/>
+                <ComboBox SelectedIndex="{Binding SelectedSaveMethodIndex, Mode=TwoWay}" 
+                          HorizontalAlignment="Stretch" 
+                          IsEnabled="{Binding IsControlEnabled}">
+                    <ComboBoxItem Content="덧붙이기"/>
+                    <ComboBoxItem Content="재구성하기(덮어씌우기)"/>
+                    <ComboBoxItem Content="재구성하기(새로만들기)"/>
+                    <ComboBoxItem Content="추가된 노드만 새로만들기"/>
+                </ComboBox>
+            </StackPanel>
+
+            <Button Content="선택된 파일들 수정" Height="45" 
+                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" 
+                    Margin="0,20,0,0" 
+                    Command="{Binding ApplyCommand}"/>
+        </StackPanel>
+    </Grid>
+</Window>

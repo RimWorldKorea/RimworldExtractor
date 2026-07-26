@@ -1,0 +1,62 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ProduceReferenceAssembly>True</ProduceReferenceAssembly>
+    <SignAssembly>False</SignAssembly>
+    <NoWin32Manifest>true</NoWin32Manifest>
+    <LangVersion>14</LangVersion>
+    <UseWindowsForms>false</UseWindowsForms>
+    
+    <!-- Build Configurations -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    
+    <!-- Avlonia -->
+    <UseAvalonia>true</UseAvalonia>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <ApplicationHighDpiMod>SystemAware</ApplicationHighDpiMod>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DebugType>embedded</DebugType>
+    <GenerateAssemblyInfo>True</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DebugType>embedded</DebugType>
+    <GenerateAssemblyInfo>True</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.0" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.0" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.0" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.0" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="MessageBox.Avalonia" Version="12.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RimExtractorCore\RimExtractorCore.csproj">
+      <Private>True</Private>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Views\InitialPathSelectWindow.axaml.cs">
+      <DependentUpon>InitialPathSelectWindow.axaml</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="xcopy /Y &quot;$(OutDir)ClosedXML.dll&quot; &quot;$(OutDir)bin\&quot;&#xD;&#xA;del /Q &quot;$(OutDir)ClosedXML.dll&quot;&#xD;&#xA;xcopy /Y &quot;$(OutDir)ClosedXML.Parser.dll&quot; &quot;$(OutDir)bin\&quot;&#xD;&#xA;del /Q &quot;$(OutDir)ClosedXML.Parser.dll&quot;&#xD;&#xA;xcopy /Y &quot;$(OutDir)DocumentFormat.OpenXml.dll&quot; &quot;$(OutDir)bin\&quot;&#xD;&#xA;del /Q &quot;$(OutDir)DocumentFormat.OpenXml.dll&quot;&#xD;&#xA;xcopy /Y &quot;$(OutDir)ExcelNumberFormat.dll&quot; &quot;$(OutDir)bin\&quot;&#xD;&#xA;del /Q &quot;$(OutDir)ExcelNumberFormat.dll&quot;&#xD;&#xA;xcopy /Y &quot;$(OutDir)RBush.dll&quot; &quot;$(OutDir)bin\&quot;&#xD;&#xA;del /Q &quot;$(OutDir)RBush.dll&quot;&#xD;&#xA;xcopy /Y &quot;$(OutDir)RimExtractorCore.dll&quot; &quot;$(OutDir)bin\&quot;&#xD;&#xA;del /Q &quot;$(OutDir)RimworldExtractorInternal.dll&quot;&#xD;&#xA;xcopy /Y &quot;$(OutDir)SixLabors.Fonts.dll&quot; &quot;$(OutDir)bin\&quot;&#xD;&#xA;del /Q &quot;$(OutDir)SixLabors.Fonts.dll&quot;" />
+  </Target>
+
+</Project>

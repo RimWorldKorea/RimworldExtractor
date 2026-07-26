@@ -1,0 +1,32 @@
+﻿<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="RimExtractorFace.App"
+             RequestedThemeVariant="Default">
+    
+    <Application.Resources>
+        <ResourceDictionary>
+            <SolidColorBrush x:Key="SystemControlBackgroundAltHighBrush" 
+                             Color="{DynamicResource SystemAccentColor}" />
+        </ResourceDictionary>
+    </Application.Resources>
+    
+    <Application.Styles>
+        <FluentTheme DensityStyle="Compact" />
+        
+        <!-- 모든 Window 배경색을 OS 테마 Accent 색상으로 자동 바인딩 -->
+        <Style Selector="Window">
+            <Setter Property="Background" Value="{DynamicResource SystemAccentColor}" />
+            
+            <!-- 2. 상단 타이틀바 영역까지 클라이언트 영역 확장 -->
+            <Setter Property="ExtendClientAreaToDecorationsHint" Value="True" />
+            <Setter Property="ExtendClientAreaTitleBarHeightHint" Value="-1" />
+            
+            <Setter Property="Padding" Value="0,32,0,0"/>
+        </Style>
+        
+        <Style Selector="Button">
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+    </Application.Styles>
+</Application>

@@ -1,0 +1,79 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:RimExtractorFace.ViewModels"
+        x:Class="RimExtractorFace.Views.SelectModWindow"
+        x:DataType="vm:SelectModViewModel"
+        Title="추출할 모드를 선택하세요"
+        Width="820" Height="520"
+        WindowStartupLocation="CenterOwner"
+        KeyDown="Window_KeyDown">
+
+    <Grid RowDefinitions="Auto, Auto, *, Auto, Auto" Margin="12">
+        <!-- 1행: 검색 및 selected 정보 -->
+        <Grid Grid.Row="0" ColumnDefinitions="*, *" Margin="0,0,0,8">
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="추출할 모드를 선택하세요" FontWeight="Bold" Margin="0,0,0,4"/>
+                <TextBox Text="{Binding SearchText, Mode=TwoWay}" PlaceholderText="모드 이름/ID 검색..."/>
+            </StackPanel>
+            
+            <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                <TextBlock Text="선택된 모드 정보" FontWeight="Bold" Margin="0,0,0,4"/>
+                <Border Background="Black" CornerRadius="4" Padding="8" Height="50">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <TextBlock Text="{Binding SelectedModInfoText}" TextWrapping="Wrap"/>
+                    </ScrollViewer>
+                </Border>
+            </StackPanel>
+        </Grid>
+
+        <!-- 2행: 필터 옵션 -->
+        <DockPanel Grid.Row="1" Margin="0,4,0,8">
+            <CheckBox Content="선택한 모드만 보기 (S로 참조선택 가능)" 
+                      IsChecked="{Binding IsFilterSelectedOnly, Mode=TwoWay}"
+                      DockPanel.Dock="Right"/>
+            <TextBlock Text="추출할 폴더 선택 (우측)" VerticalAlignment="Center" Foreground="Gray"/>
+        </DockPanel>
+
+        <!-- 3행: 모드 리스트 및 폴더 리스트 -->
+        <Grid Grid.Row="2" ColumnDefinitions="*, 300" Margin="0,0,0,8">
+            <!-- 모드 목록 -->
+            <ListBox Grid.Column="0" ItemsSource="{Binding FilteredMods}"
+                     SelectedItem="{Binding SelectedModListItem}" Margin="0,0,8,0">
+                <ListBox.ItemTemplate>
+                    <DataTemplate DataType="vm:ModListItem">
+                        <TextBlock Text="{Binding DisplayText}" VerticalAlignment="Center"/>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+                <ListBox.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="파일 탐색기에서 열기" Command="{Binding OpenExplorerCommand}"/>
+                        <Separator/>
+                        <MenuItem Header="참조 모드로 선택/해제" Command="{Binding ToggleRefModCommand}"/>
+                        <MenuItem Header="이 모드와 관련된 모든 모드를 참조 모드로 선택" Command="{Binding SelectAllRefModsCommand}"/>
+                        <Separator/>
+                        <MenuItem Header="(선택) 참조 모드 목록 저장" Command="{Binding SaveRefModsListCommand}" CommandParameter="{Binding $parent[Window].StorageProvider}"/>
+                        <MenuItem Header="(선택) 참조 모드 목록 불러오기" Command="{Binding LoadRefModsListCommand}" CommandParameter="{Binding $parent[Window].StorageProvider}"/>
+                    </ContextMenu>
+                </ListBox.ContextMenu>
+            </ListBox>
+
+            <!-- 추출 폴더 목록 -->
+            <ListBox Grid.Column="1" Name="ListBoxFolders" ItemsSource="{Binding ExtractableFolders}" SelectionMode="Multiple,Toggle">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding}" ToolTip.Tip="{Binding FullPath}" TextWrapping="Wrap"/>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Grid>
+
+        <!-- 4행: 조작법 안내 -->
+        <TextBlock Grid.Row="3" Text="조작법: '좌클릭' = 추출 모드 선택 | '우클릭' = 메뉴 | 'A' = 탐색기 열기 | 'S' = 참조 모드 토글 | 'D' = 선택 모드만 보기"
+                   Foreground="Gray" FontSize="11" Margin="0,0,0,8" HorizontalAlignment="Center"/>
+
+        <!-- 5행: 완료 버튼 -->
+        <Button Grid.Row="4" Content="선택 완료" Height="40" 
+                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                Command="{Binding CompleteCommand}"/>
+    </Grid>
+</Window>

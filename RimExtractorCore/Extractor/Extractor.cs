@@ -2,15 +2,15 @@
 using System.Collections.Generic;
 using System.Linq;
 using RimExtractorCore.DataTypes;
-using RimExtractorCore.Procedures;
 using RimExtractorCore.DefTreeSimulator;
+using RimworldExtractorInternal.Procedures.Translations;
 
 namespace RimExtractorCore.Extractor
 {
     public static partial class ExtractorEngine
     {
         // [XDoc->TranslationEntries 타입 프로시저 주입 포인트] (단일 실행)
-        public static INodeExtractionProcedure PrimaryExtractor { get; set; } = new DefaultNodeExtractionProcedure();
+        public static IExtractionProcedure PrimaryExtractor { get; set; } = new DefaultNodeExtractionProcedure();
 
         /// <summary>
         /// 시뮬레이션 결과(DefTree)를 받아 최종 가공된 TranslationEntry 컨테이너를 반환합니다.
@@ -25,7 +25,7 @@ namespace RimExtractorCore.Extractor
 
             // 3. 다중 후처리 파이프라인 실행 (원시 데이터 가공/필터링)
             // (MVCF, NodeReplacement 등의 ITranslationProcedure들이 통합적으로 1회 순차 실행됨)
-            var processedEntries = TranslationPipelineRunner.Execute(distinctEntries).ToList();
+            var processedEntries = TranslationEntryProcedureInjector.Execute(distinctEntries).ToList();
 
             // 4. 추출된 데이터를 컨테이너에 담아 반환 (파일 IO 역할 완벽히 분리)
             return new ExtractionResult(simResult.TargetMod!, processedEntries);

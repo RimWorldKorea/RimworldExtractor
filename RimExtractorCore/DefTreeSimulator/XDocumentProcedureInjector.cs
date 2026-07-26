@@ -5,12 +5,12 @@ using System.Xml.Linq;
 
 namespace RimExtractorCore.DefTreeSimulator;
 
-public static class DefTreePipelineRunner
+public static class XDocumentProcedureInjector
 {
     private static readonly Dictionary<PipelineStage, List<IXDocumentProcedure>> ProcessorsByStage = new();
     private static bool _isInitialized = false;
 
-    static DefTreePipelineRunner()
+    static XDocumentProcedureInjector()
     {
         ReloadProcessors();
     }

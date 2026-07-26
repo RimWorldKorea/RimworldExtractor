@@ -1,6 +1,6 @@
 ﻿using System.Threading.Tasks;
 using RimExtractorCore.DefTreeSimulator;
-using RimExtractorCore.Procedures;
+using RimExtractorCore.Extractor;
 
 namespace RimExtractorCore;
 
@@ -13,8 +13,8 @@ public static class ExtractorCore
     {
         Log.Msg("[ExtractorCore] 프로시저 초기화 및 동적 컴파일 시작...");
         
-        DefTreePipelineRunner.ReloadProcessors();
-        TranslationPipelineRunner.ReloadProcessors();
+        XDocumentProcedureInjector.ReloadProcessors();
+        TranslationEntryProcedureInjector.ReloadProcessors();
         
         Log.Msg("[ExtractorCore] 프로시저 초기화 완료.");
     }

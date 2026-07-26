@@ -2,16 +2,15 @@
 using System.Collections.Generic;
 using System.IO;
 using RimExtractorCore.DataTypes;
-using RimExtractorCore.Extractor;
 
-namespace RimExtractorCore.Procedures;
+namespace RimExtractorCore.Extractor;
 
-public static class TranslationPipelineRunner
+public static class TranslationEntryProcedureInjector
 {
-    private static readonly List<ITranslationProcedure> Processors = new();
+    private static readonly List<ITranslationEntryProcedure> Processors = new();
     private static bool _isInitialized = false; // 🟢 중복 실행 방지 플래그
 
-    static TranslationPipelineRunner()
+    static TranslationEntryProcedureInjector()
     {
         ReloadProcessors();
     }
@@ -24,7 +23,7 @@ public static class TranslationPipelineRunner
         var baseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Procedures", "Translations");
 
         // 해당 폴더의 ITranslationProcedure 인터페이스 구현체 전부 로드
-        var processors = RoslynScriptRunner.LoadProcessorsFromDirectory<ITranslationProcedure>(baseDir);
+        var processors = RoslynScriptRunner.LoadProcessorsFromDirectory<ITranslationEntryProcedure>(baseDir);
         foreach (var processor in processors)
         {
             if (!Processors.Any(p => p.Name == processor.Name))

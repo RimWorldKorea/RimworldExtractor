@@ -43,7 +43,7 @@ namespace RimExtractorCore.DefTreeSimulator
             // ---------------------------------------------------------------------------------------------------------
 
             // 🟢 (A 지점) PostProcessors/PostA 스크립트 적용 (순수 XDocument 전달 및 반환)
-            result.DefTree = DefTreePipelineRunner.ExecuteStage(PipelineStage.StageA, result.DefTree);
+            result.DefTree = XDocumentProcedureInjector.ExecuteStage(PipelineStage.StageA, result.DefTree);
 
             // ---------------------------------------------------------------------------------------------------------
             // [단계 1] 사전 참조 모델 구성
@@ -95,7 +95,7 @@ namespace RimExtractorCore.DefTreeSimulator
             }
 
             // 🟢 (B 지점) PostProcessors/PostB 스크립트 적용
-            result.DefTree = DefTreePipelineRunner.ExecuteStage(PipelineStage.StageB, result.DefTree);
+            result.DefTree = XDocumentProcedureInjector.ExecuteStage(PipelineStage.StageB, result.DefTree);
 
             // ---------------------------------------------------------------------------------------------------------
             // [단계 2] 패치 오퍼레이션 적용 (PrePatch 및 XML 상속)
@@ -104,7 +104,7 @@ namespace RimExtractorCore.DefTreeSimulator
             DoXmlInheritance(result);
 
             // 🟢 (C 지점) PostProcessors/PostC 스크립트 적용
-            result.DefTree = DefTreePipelineRunner.ExecuteStage(PipelineStage.StageC, result.DefTree);
+            result.DefTree = XDocumentProcedureInjector.ExecuteStage(PipelineStage.StageC, result.DefTree);
 
             // ---------------------------------------------------------------------------------------------------------
             // [단계 3] 랭귀지 데이터 오버라이드
@@ -112,7 +112,7 @@ namespace RimExtractorCore.DefTreeSimulator
             ApplyDefInjectedLanguages(result, ConfigManager.Current.GetLanguagePriorityList());
 
             // 🟢 (D 지점) PostProcessors/PostD 스크립트 적용
-            result.DefTree = DefTreePipelineRunner.ExecuteStage(PipelineStage.StageD, result.DefTree);
+            result.DefTree = XDocumentProcedureInjector.ExecuteStage(PipelineStage.StageD, result.DefTree);
 
 #if DEBUG
             result.DefTree.Save("DefTree_Debug.xml");

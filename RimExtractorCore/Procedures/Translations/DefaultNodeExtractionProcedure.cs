@@ -5,10 +5,12 @@ using System.Linq;
 using System.Xml.Linq;
 using RimExtractorCore.DataTypes;
 using RimExtractorCore.DefTreeSimulator;
+using RimExtractorCore.Extractor;
+using RimExtractorCore;
 
-namespace RimExtractorCore.Extractor;
+namespace RimworldExtractorInternal.Procedures.Translations;
 
-public class DefaultNodeExtractionProcedure : INodeExtractionProcedure
+public class DefaultNodeExtractionProcedure : IExtractionProcedure
 {
     public string Name => "DefaultNodeExtractionProcedure";
 

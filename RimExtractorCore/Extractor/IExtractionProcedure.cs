@@ -4,7 +4,7 @@ using RimExtractorCore.DefTreeSimulator;
 
 namespace RimExtractorCore.Extractor;
 
-public interface INodeExtractionProcedure
+public interface IExtractionProcedure
 {
     string Name { get; }
     IEnumerable<TranslationEntry> Extract(SimulationResult simResult);

@@ -18,14 +18,14 @@ public class XDocumentProcedureInjector : IProcedureInjector
         }
     }
 
-    public void ReloadProcessors()
+    public void RegisterProcedures()
     {
         if (IsInitialized) return;
         
         foreach (var list in _processorsByStage.Values) list.Clear();
         var baseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Procedures", "DefTree");
         
-        var processors = ProcedureLoader.LoadProcessorsFromDirectory<IXDocumentProcedure>(baseDir);
+        var processors = ProcedureLoader.LoadProceduresFromDirectory<IXDocumentProcedure>(baseDir);
         foreach (var processor in processors)
         {
             if (_processorsByStage.TryGetValue(processor.Stage, out var list))
@@ -33,7 +33,7 @@ public class XDocumentProcedureInjector : IProcedureInjector
                 if (!list.Any(p => p.Name == processor.Name))
                 {
                     list.Add(processor);
-                    Log.Msg($"로드 완료: {processor.Name} ({processor.Stage})");
+                    Log.Msg($"{processor.Stage}에 {processor.Name} 등록");
                 }
             }
         }

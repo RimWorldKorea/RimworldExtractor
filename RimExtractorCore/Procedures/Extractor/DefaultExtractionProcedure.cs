@@ -1,14 +1,16 @@
-﻿using System.Xml.Linq;
-using System.Collections;
+﻿using System.IO;
+using System.Linq;
+using System.Xml.Linq;
+using System.Collections.Generic;
 using RimExtractorCore.DataTypes;
 using RimExtractorCore.DefTreeSimulator;
 using RimExtractorCore.Extractor;
 
 namespace RimExtractorCore.Procedures;
 
-public class DefaultNodeExtractionProcedure : IExtractionProcedure
+public class DefaultExtractionProcedure : IExtractionProcedure
 {
-    public string Name => "DefaultNodeExtractionProcedure";
+    public string Name => "기본 추출 규칙";
 
     public IEnumerable<TranslationEntry> Extract(SimulationResult simResult)
     {

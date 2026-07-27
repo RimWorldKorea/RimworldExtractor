@@ -4,7 +4,7 @@ using RimExtractorCore.Extractor;
 
 namespace RimExtractorCore.DefTreeSimulator;
 
-internal static class PatchOperations
+public static class PatchOperations
 {
     public static void ExecutePrePatches(SimulationResult simResult, ExtractableFolder patchDir)
     {

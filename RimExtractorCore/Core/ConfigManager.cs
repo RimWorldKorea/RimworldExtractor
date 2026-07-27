@@ -3,6 +3,9 @@ using System.Text.RegularExpressions;
 
 namespace RimExtractorCore
 {
+    /// <summary>
+    /// 모든 유저 설정은 나에게로
+    /// </summary>
     public static class ConfigManager
     {
         public const string ConfigFileName = "config.json";
@@ -27,7 +30,6 @@ namespace RimExtractorCore
             {
                 var jsonString = File.ReadAllText(ConfigFileName);
                 Current = JsonSerializer.Deserialize<Settings>(jsonString, JsonOptions) ?? new Settings();
-                Current.InvalidateCache();
             }
             catch (Exception ex)
             {
@@ -41,7 +43,6 @@ namespace RimExtractorCore
         {
             try
             {
-                Current.InvalidateCache();
                 var jsonString = JsonSerializer.Serialize(Current, JsonOptions);
                 File.WriteAllText(ConfigFileName, jsonString);
             }
@@ -53,44 +54,7 @@ namespace RimExtractorCore
 
         public static void InitDefault()
         {
-            Current = new Settings
-            {
-                // 기존 Prefabs.Init()에 있던 모든 기본 태그 복원
-                ExtractableTags = new HashSet<string>(
-                    "label/rulesStrings/description/baseDesc/title/titleShort/customLabel/symbol/jobString/reportString/labelNoun/slateRef/verb/gerund/adjective/member/tips/ideoName/thoughtStageDescriptions/jobReportString/theme/labelShortAdj/labelPlural/letterText/deathMessage/labelShort/letterLabel/helpText/text/baseInspectLine/labelFemale/descriptionShort/beginLetter/ingestCommandString/ingestReportString/titleShortFemale/titleFemale/gerundLabel/pawnLabel/stageName/shortDescription/customEffectDescriptions/endMessage/leaderTitle/pawnSingular/pawnsPlural/desc/recoveryMessage/chargeNoun/cooldownGerund/type/potentialExtraOutcomeDesc/labelNounPretty/headerTip/rejectInputMessage/spectatorGerund/spectatorsLabel/fuelLabel/formatString/useLabel/RMBLabel/permanentLabel/name/missingDesc/worshipRoomLabel/labelAbstract/fuelGizmoLabel/destroyedLabel/outOfFuelMessage/summary/ritualExpectedDesc/customSummary/meatLabel/labelForFullStatList/tooltip/gizmoLabel/onMapInstruction/letterTitle/textEnemy/destroyedOutLabel/beginLetterLabel/labelMale/groupName/gizmoDescription/names/arrivalTextEnemy/letterLabelEnemy/arrivedLetter/calledOffMessage/finishedMessage/approachingReportString/approachOrderString/expectedThingLabelTip/skillLabel/extraPredictedOutcomeDescriptions/modNameReadable/descriptionFuture/textWillArrive/arrivalTextFriendly/letterLabelFriendly/helpTextController/successfullyRemovedHediffMessage/textFriendly/eventLabel/textController/descOverride/shortDescOverride/content/discoveredLetterText/discoveredLetterTitle/beginLetterContinue/resourceLabel/message/overrideLabel/extraTooltip/offMessage/successMessage/effectDesc/letterInfoText/categoryLabel/groupLabel/battleStateLabel/customizationTitle/fixedName/noun/lockedReason/descriptionExtra/labelPrefix/labelMechanoids/ingestReportStringEat/failMessage/valueFormat/structureLabel/labelSocial/labelInBracketsExtraForHediff/ChooseDesc/ChooseLabel/ritualExplanation/resourceDescription/discoverLetterText/countdownLabel/inspectString/completedLetterText/completedLetterTitle/leaderDescription/formatStringUnfinalized/jobReportOverride/discoverLetterLabel/instantlyPermanentLabel/notifyMessage/onCooldownString/invalidTargetPawn/noAssignablePawnsDesc/reportText/statLabel/visualLabel/commandDescriptions/successMessageNoNegativeThought/tipLabelOverride/mainPartAllThreatsLabel/customChildDisallowMessage/ritualExpectedDescNoAdjective/loweredName/cancelLabel/texName/labelOverride/messageText/proficiencyAdjective/stuffAdjective/unit/labelTendedWell/labelTendedWellInner/labelSolidTendedWell/overrideTooltip/royalFavorLabel/extraReportString/spawnInBackstories/customLetterLabel/customLetterText/confirmationDialogText/tip/outcomeDescription/generalDescription/generalTitle/dialogue/activateDescString/activateLabelString/completedLetter/completedLetterLabel/guiLabelString/gizmoDesc/activatedMessageKey/appendString/gizmoDesc1/gizmoDesc2/gizmoLabel1/gizmoLabel".Split('/')
-                ),
-                FullListTranslationTags = new HashSet<string> { "rulesFiles", "rulesStrings", "pathList" },
-                TranslationHandles = new List<string> { "*verbClass", "*compClass" },
-                
-                // 기존 NodeReplacement 복원
-                NodeReplacement = new Dictionary<string, string>
-                {
-                    { "CombatExtended.AmmoDef+*", "ThingDef+*" },
-                    { "VFECore.ExpandableProjectileDef+*", "ThingDef+*" },
-                    { "AbilityUser.ProjectileDef_AbilityLaser+*", "ThingDef+*" },
-                    { "AbilityUser.ProjectileDef_Ability+*", "ThingDef+*" },
-                    { "NewRatkin.CustomThingDef+*", "ThingDef+*" },
-                    { "AlienRace.AlienBackstoryDef+*", "BackstoryDef+*" },
-                    { "RatkinGeneExpanded.FactionDefExtended+*", "FactionDef+*" },
-                    { "RatkinGeneExpanded.ThingDefExtended+*", "ThingDef+*" },
-                    { "AlienRace.ThingDef_AlienRace+*", "ThingDef+*" },
-                    { "Rimlaser.Building_LaserGunDef+*", "ThingDef+*" },
-                    { "Rimlaser.LaserBeamDef+*", "ThingDef+*" },
-                    { "Rimlaser.LaserGunDef+*", "ThingDef+*" },
-                    { "Rimlaser.SpinningLaserGunDef+*", "ThingDef+*" },
-                    { "JecsTools.BackstoryDef+baseDesc", "JescTools.BackstoryDef+description" },
-                    { "AnestheticGunMod2.AnestheticBulletDef+*", "ThingDef+*" },
-                    { "BackstoryDef+baseDesc", "BackstoryDef+description" },
-                    { "DubsBadHygiene.WashingJobDef+*", "JobDef+*" },
-                    { "DubsBadHygiene.Needy+*", "NeedDef+*" },
-                    { "VarietyMatters.FoodVariety_NeedDef+*", "NeedDef+*" },
-                    { "Kiiro.StorytellerDef_Custom+*", "StorytellerDef+*" },
-                    { "Vehicles.SkinDef+*", "Vehicles.PatternDef+*" },
-                    { "Vehicles.AntiAircraftDef+*", "WorldObjectDef+*" },
-                    { "Vehicles.AirdropDef+*", "ThingDef+*" },
-                    { "Meow.FactionDefExtended+*", "FactionDef+*" }
-                }
-            };
+            Current = new Settings();
         }
 
         public static string AutoDetectRimworldVersion()

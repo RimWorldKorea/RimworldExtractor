@@ -12,20 +12,20 @@ public class TranslationEntryProcedureInjector : IProcedureInjector
 
     private TranslationEntryProcedureInjector() { }
 
-    public void ReloadProcessors()
+    public void RegisterProcedures()
     {
         if (IsInitialized) return;
         
         _processors.Clear();
         var baseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Procedures", "Translations");
         
-        var processors = ProcedureLoader.LoadProcessorsFromDirectory<ITranslationEntryProcedure>(baseDir);
+        var processors = ProcedureLoader.LoadProceduresFromDirectory<ITranslationEntryProcedure>(baseDir);
         foreach (var processor in processors)
         {
             if (!_processors.Any(p => p.Name == processor.Name))
             {
                 _processors.Add(processor);
-                Log.Msg($"로드 완료: {processor.Name}");
+                Log.Msg($"{processor.Name} 등록");
             }
         }
         

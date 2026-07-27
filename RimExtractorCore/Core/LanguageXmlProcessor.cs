@@ -7,6 +7,9 @@ namespace RimExtractorCore
 {
     public static class LanguageXmlProcessor
     {
+        //TODO 리팩토링중 임시
+        private static readonly HashSet<string> FullListTranslationTags = new() { "rulesFiles", "rulesStrings", "pathList" };
+        
         /// <summary>
         /// 번역 데이터를 분석하여 저장해야 할 XML 파일들과 TXT 파일들의 내용을 경로와 함께 반환합니다.
         /// (물리적 디스크 I/O를 수행하지 않는 순수 데이터 가공 메서드)
@@ -60,7 +63,7 @@ namespace RimExtractorCore
                         strings.Add(translation);
                         break;
                     default:
-                        if (!isOfficial && ConfigManager.Current.FullListTranslationTags.Any(translation.Node.Contains))
+                        if (!isOfficial && FullListTranslationTags.Any(translation.Node.Contains))
                             defInjectedFullListTranslations.Add(translation);
                         else
                             defInjected.Add(translation);
@@ -258,7 +261,7 @@ namespace RimExtractorCore
 
         public static void DoFullListTranslation(this XDocument defInjectedDoc)
         {
-            var patterns = ConfigManager.Current.FullListTranslationTags.Select(x => $".+?\\.{x}\\.\\d+").ToList();
+            var patterns = FullListTranslationTags.Select(x => $".+?\\.{x}\\.\\d+").ToList();
             var fullListdic = new Dictionary<string, XElement>();
             var removedNodesDic = new Dictionary<string, List<XElement>>();
 

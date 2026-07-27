@@ -13,17 +13,17 @@ public class ExtractionProcedureInjector : IProcedureInjector
 
     private ExtractionProcedureInjector() { }
 
-    public void ReloadProcessors()
+    public void RegisterProcedures()
     {
         if (IsInitialized) return;
 
         var baseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Procedures", "Extractor");
-        var processors = ProcedureLoader.LoadProcessorsFromDirectory<IExtractionProcedure>(baseDir);
+        var processors = ProcedureLoader.LoadProceduresFromDirectory<IExtractionProcedure>(baseDir);
         _primaryExtractor = processors.FirstOrDefault(p => p.Name == "DefaultNodeExtractionProcedure") ?? processors.FirstOrDefault();
         
         if (_primaryExtractor != null)
         {
-            Log.Msg($"로드 완료: {_primaryExtractor.Name}");
+            Log.Msg($"{_primaryExtractor.Name} 등록");
         }
         else
         {

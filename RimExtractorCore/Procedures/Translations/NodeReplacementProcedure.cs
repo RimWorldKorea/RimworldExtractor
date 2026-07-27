@@ -8,6 +8,35 @@ namespace RimExtractorCore.Procedures;
 public class NodeReplacementProcedure : ITranslationEntryProcedure
 {
     public string Name => "NodeReplacementProcedure";
+    
+    //TODO 리팩토링용 임시
+    private readonly Dictionary<string, string> NodeReplacements = new()
+    {
+        { "CombatExtended.AmmoDef+*", "ThingDef+*" },
+        { "VFECore.ExpandableProjectileDef+*", "ThingDef+*" },
+        { "AbilityUser.ProjectileDef_AbilityLaser+*", "ThingDef+*" },
+        { "AbilityUser.ProjectileDef_Ability+*", "ThingDef+*" },
+        { "NewRatkin.CustomThingDef+*", "ThingDef+*" },
+        { "AlienRace.AlienBackstoryDef+*", "BackstoryDef+*" },
+        { "RatkinGeneExpanded.FactionDefExtended+*", "FactionDef+*" },
+        { "RatkinGeneExpanded.ThingDefExtended+*", "ThingDef+*" },
+        { "AlienRace.ThingDef_AlienRace+*", "ThingDef+*" },
+        { "Rimlaser.Building_LaserGunDef+*", "ThingDef+*" },
+        { "Rimlaser.LaserBeamDef+*", "ThingDef+*" },
+        { "Rimlaser.LaserGunDef+*", "ThingDef+*" },
+        { "Rimlaser.SpinningLaserGunDef+*", "ThingDef+*" },
+        { "JecsTools.BackstoryDef+baseDesc", "JescTools.BackstoryDef+description" },
+        { "AnestheticGunMod2.AnestheticBulletDef+*", "ThingDef+*" },
+        { "BackstoryDef+baseDesc", "BackstoryDef+description" },
+        { "DubsBadHygiene.WashingJobDef+*", "JobDef+*" },
+        { "DubsBadHygiene.Needy+*", "NeedDef+*" },
+        { "VarietyMatters.FoodVariety_NeedDef+*", "NeedDef+*" },
+        { "Kiiro.StorytellerDef_Custom+*", "StorytellerDef+*" },
+        { "Vehicles.SkinDef+*", "Vehicles.PatternDef+*" },
+        { "Vehicles.AntiAircraftDef+*", "WorldObjectDef+*" },
+        { "Vehicles.AirdropDef+*", "ThingDef+*" },
+        { "Meow.FactionDefExtended+*", "FactionDef+*" }
+    };
 
     public IEnumerable<TranslationEntry> Process(IEnumerable<TranslationEntry> entries)
     {
@@ -26,9 +55,8 @@ public class NodeReplacementProcedure : ITranslationEntryProcedure
         var defType = isPatches ? entry.ClassName[("Patches.".Length + 1)..] : entry.ClassName;
         var defName = entry.Node.Split('.')[0];
         var nodeAfterDefName = entry.Node[(entry.Node.IndexOf('.') + 1)..];
-
-        // 💡 Prefabs.NodeReplacement를 ConfigManager.Current.NodeReplacement로 교체했습니다.
-        foreach (var (key, value) in ConfigManager.Current.NodeReplacement)
+        
+        foreach (var (key, value) in this.NodeReplacements)
         {
             var tokenKey = key.Split('+');
             var tokenValue = value.Split("+");

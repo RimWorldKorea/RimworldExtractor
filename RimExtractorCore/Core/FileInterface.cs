@@ -163,7 +163,7 @@ namespace RimExtractorCore
             }
         }
 
-        internal static XDocument ReadXml(string filePath)
+        public static XDocument ReadXml(string filePath)
         {
             var readerSettings = new XmlReaderSettings
             {
@@ -177,7 +177,7 @@ namespace RimExtractorCore
             return XDocument.Load(xmlReader);
         }
 
-        internal static IEnumerable<string> DescendantFiles(string root)
+        public static IEnumerable<string> DescendantFiles(string root)
         {
             if (!Directory.Exists(root))
                 yield break;
@@ -199,5 +199,7 @@ namespace RimExtractorCore
                 }
             }
         }
+        
+        
     }
 }

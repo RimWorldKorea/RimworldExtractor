@@ -15,14 +15,14 @@ public static class ExtractorCore
 
     public static void Initialize()
     {
-        Log.Msg("[ExtractorCore] 모듈 초기화를 시작합니다...");
+        Log.Msg("초기화 시작");
         
         // 공통 인터페이스를 통해 일괄 초기화 수행
         foreach (var injector in Injectors)
         {
-            injector.ReloadProcessors();
+            injector.RegisterProcedures();
         }
         
-        Log.Msg("[ExtractorCore] 준비 완료.");
+        Log.Msg("초기화 완료");
     }
 }

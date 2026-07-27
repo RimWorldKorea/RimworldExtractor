@@ -2,10 +2,10 @@
 
 {
     /// <summary>
-    /// 번역 데이터
+    /// 번역 데이터를 다루는 매개 타입입니다. 기본적으로 XML LanguageData 구문에 일대일 대응합니다.
     /// </summary>
-    /// <param name="ClassName">번역 데이터의 종류. ○○Def, Keyed, Strings, Patches.○○Def</param>
-    /// <param name="Node">위치</param>
+    /// <param name="ClassName">번역 데이터의 종류 (*Def, Keyed, Strings)</param>
+    /// <param name="Node">바인딩 위치</param>
     /// <param name="Original">원문</param>
     /// <param name="Translated">번역문</param>
     /// <param name="RequiredMods">요구 모드</param>
@@ -59,10 +59,7 @@
         public string RealNode => Node.Contains('.') ? Node[(Node.IndexOf('.') + 1)..] : Node;
         
         /// <summary>
-        /// 현재 번역 항목을 스프레드시트의 한 행(Row) 문자열 리스트로 변환합니다.
-        /// </summary>
-        /// <summary>
-        /// 현재 항목을 스프레드시트의 한 행(Row)으로 변환합니다.
+        /// 현재 Entry를 Grid 타입으로 변환합니다.
         /// </summary>
         public List<string> ToGridRow()
         {

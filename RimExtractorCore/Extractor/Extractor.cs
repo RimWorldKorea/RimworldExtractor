@@ -90,8 +90,6 @@ namespace RimExtractorCore.Extractor
             }
         }
         
-        
-        // Tap 유틸리티는 Extractor 내부에서 여전히 사용되므로 유지
-        internal static T Tap<T>(this T obj, Action<T> action) { action(obj); return obj; }
+        public static T Tap<T>(this T obj, Action<T> action) { action(obj); return obj; }
     }
 }

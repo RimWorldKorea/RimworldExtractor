@@ -36,7 +36,7 @@ namespace RimExtractorCore
         {
             var str = $"{PrefixWarning}{Separator}{GetCallStack()}{Separator}{message}";
             Out.WriteLine(str);
-            StoreMessage(message);
+            StoreMessage(str);
         }
 
         public static void WrnOnce(string message, int hash)
@@ -51,7 +51,7 @@ namespace RimExtractorCore
         {
             var str = $"{PrefixMessage}{Separator}{GetCallStack()}{Separator}{message}";
             Out.WriteLine(str);
-            StoreMessage(message);
+            StoreMessage(str);
         }
 
         private static string GetCallStack()

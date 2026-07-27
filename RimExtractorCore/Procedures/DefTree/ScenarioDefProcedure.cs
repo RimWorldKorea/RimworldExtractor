@@ -8,7 +8,7 @@ public class ScenarioDefProcedure : IXDocumentProcedure
 {
     public string Name => "ScenarioDefProcedure";
 
-    public PipelineStage Stage => PipelineStage.StageB;
+    public InjectionStage Stage => InjectionStage.StageB;
 
     public XDocument Process(XDocument defTree)
     {

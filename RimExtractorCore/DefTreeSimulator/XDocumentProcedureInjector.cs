@@ -7,12 +7,12 @@ public class XDocumentProcedureInjector : IProcedureInjector
 {
     public static XDocumentProcedureInjector Instance { get; } = new();
 
-    private readonly Dictionary<PipelineStage, List<IXDocumentProcedure>> _processorsByStage = new();
+    private readonly Dictionary<InjectionStage, List<IXDocumentProcedure>> _processorsByStage = new();
     public bool IsInitialized { get; private set; } = false;
 
     private XDocumentProcedureInjector()
     {
-        foreach (PipelineStage stage in Enum.GetValues(typeof(PipelineStage)))
+        foreach (InjectionStage stage in Enum.GetValues(typeof(InjectionStage)))
         {
             _processorsByStage[stage] = new List<IXDocumentProcedure>();
         }
@@ -41,7 +41,7 @@ public class XDocumentProcedureInjector : IProcedureInjector
         IsInitialized = true;
     }
 
-    public XDocument ExecuteStage(PipelineStage stage, XDocument currentDefTree)
+    public XDocument ExecuteStage(InjectionStage stage, XDocument currentDefTree)
     {
         if (!_processorsByStage.TryGetValue(stage, out var processors) || processors.Count == 0)
         {

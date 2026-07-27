@@ -8,7 +8,7 @@ public class VerbProcedure : IXDocumentProcedure
 {
     public string Name => "VerbProcedure";
 
-    public PipelineStage Stage => PipelineStage.StageB;
+    public InjectionStage Stage => InjectionStage.StageB;
 
     public XDocument Process(XDocument defTree)
     {

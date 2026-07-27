@@ -8,7 +8,7 @@ public class FactionDefProcedure : IXDocumentProcedure
     public string Name => "FactionDefProcedure";
     
     // Defs 데이터 로드 완료 직후, 상속/패치 적용 전 실행
-    public PipelineStage Stage => PipelineStage.StageB;
+    public InjectionStage Stage => InjectionStage.StageB;
 
     public XDocument Process(XDocument defTree)
     {

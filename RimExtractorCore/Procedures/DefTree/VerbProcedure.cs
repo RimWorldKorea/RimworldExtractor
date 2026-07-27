@@ -1,5 +1,6 @@
 ﻿using System.Xml.Linq;
 using RimExtractorCore;
+using RimExtractorCore.Extractor;
 
 namespace RimExtractorCore.Procedures;
 
@@ -17,7 +18,7 @@ public class VerbProcedure : IXDocumentProcedure
 
         foreach (var node in nodes)
         {
-            var root = Extractor.GetRootDefNode(node, out _);
+            var root = ExtractorEngine.GetRootDefNode(node, out _);
             if (root == null || root.HasAttribute("Abstract"))
                 continue;
 

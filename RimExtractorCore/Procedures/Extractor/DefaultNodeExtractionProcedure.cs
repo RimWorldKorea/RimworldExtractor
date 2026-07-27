@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Xml.Linq;
+﻿using System.Xml.Linq;
+using System.Collections;
 using RimExtractorCore.DataTypes;
 using RimExtractorCore.DefTreeSimulator;
 using RimExtractorCore.Extractor;
@@ -43,7 +40,7 @@ public class DefaultNodeExtractionProcedure : IExtractionProcedure
         return extraction;
     }
 
-    private IEnumerable<TranslationEntry> ExtractDefs(SimulationResult simResult, bool isOfficialContent)
+    internal IEnumerable<TranslationEntry> ExtractDefs(SimulationResult simResult, bool isOfficialContent)
     {
         foreach (var node in simResult.DefTree.Root!.Elements()
                      .Where(x => x.Attribute("Reference")?.Value.ToLower() != "true"))
@@ -77,10 +74,10 @@ public class DefaultNodeExtractionProcedure : IExtractionProcedure
         RequiredMods? requiredMods = keyed.RequiredPackageId == null
             ? null : new RequiredMods().Tap(rm => rm.AddAllowedByPackageIds(keyed.RequiredPackageId.Split(',')));
 
-        foreach (var filePath in IO.DescendantFiles(keyedRoot).Where(x => x.ToLower().EndsWith(".xml")))
+        foreach (var filePath in FileInterface.DescendantFiles(keyedRoot).Where(x => x.ToLower().EndsWith(".xml")))
         {
             var fileName = Path.GetFileNameWithoutExtension(filePath);
-            var doc = IO.ReadXml(filePath);
+            var doc = FileInterface.ReadXml(filePath);
             foreach (var node in doc.Root!.Elements())
             {
                 yield return new TranslationEntry("Keyed", node.Name.LocalName, node.Value, null, requiredMods,
@@ -95,7 +92,7 @@ public class DefaultNodeExtractionProcedure : IExtractionProcedure
         RequiredMods? requiredMods = strings.RequiredPackageId == null
             ? null : new RequiredMods().Tap(rm => rm.AddAllowedByPackageIds(strings.RequiredPackageId.Split(',')));
 
-        foreach (var filePath in IO.DescendantFiles(stringsRoot).Where(x => x.ToLower().EndsWith(".txt")))
+        foreach (var filePath in FileInterface.DescendantFiles(stringsRoot).Where(x => x.ToLower().EndsWith(".txt")))
         {
             var nodeName = Path.GetRelativePath(stringsRoot, filePath);
             nodeName = Path.GetFileNameWithoutExtension(nodeName.Replace('\\', '.'));
@@ -115,9 +112,9 @@ public class DefaultNodeExtractionProcedure : IExtractionProcedure
             ? null : new RequiredMods().Tap(rm => rm.AddAllowedByPackageIds(patches.RequiredPackageId.Split(',')));
 
         var doc = new XDocument(new XElement("Patch"));
-        foreach (var filePath in IO.DescendantFiles(patchesRoot).Where(x => x.ToLower().EndsWith(".xml")))
+        foreach (var filePath in FileInterface.DescendantFiles(patchesRoot).Where(x => x.ToLower().EndsWith(".xml")))
         {
-            var childDoc = IO.ReadXml(filePath);
+            var childDoc = FileInterface.ReadXml(filePath);
             foreach (var node in childDoc.Root!.Elements())
             {
                 if (node.Name.LocalName == "Operation")

@@ -1,4 +1,5 @@
 ﻿using System.Xml.Linq;
+using RimExtractorCore.Procedures;
 
 namespace RimExtractorCore.DefTreeSimulator;
 
@@ -24,7 +25,7 @@ public class XDocumentProcedureInjector : IProcedureInjector
         foreach (var list in _processorsByStage.Values) list.Clear();
         var baseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Procedures", "DefTree");
         
-        var processors = RoslynScriptRunner.LoadProcessorsFromDirectory<IXDocumentProcedure>(baseDir);
+        var processors = ProcedureLoader.LoadProcessorsFromDirectory<IXDocumentProcedure>(baseDir);
         foreach (var processor in processors)
         {
             if (_processorsByStage.TryGetValue(processor.Stage, out var list))
@@ -32,7 +33,7 @@ public class XDocumentProcedureInjector : IProcedureInjector
                 if (!list.Any(p => p.Name == processor.Name))
                 {
                     list.Add(processor);
-                    Log.Msg($"[DefTreePipelineRunner] 로드 완료: {processor.Name} ({processor.Stage})");
+                    Log.Msg($"로드 완료: {processor.Name} ({processor.Stage})");
                 }
             }
         }
@@ -56,7 +57,7 @@ public class XDocumentProcedureInjector : IProcedureInjector
             }
             catch (Exception e)
             {
-                Log.Err($"[DefTreePipelineRunner] 런타임 에러 ({processor.Name}): {e.Message}");
+                Log.Err($"런타임 에러 ({processor.Name}): {e.Message}");
             }
         }
         return resultDoc;

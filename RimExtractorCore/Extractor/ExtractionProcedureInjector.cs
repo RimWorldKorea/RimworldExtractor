@@ -1,4 +1,5 @@
 ﻿using RimExtractorCore.DataTypes;
+using RimExtractorCore.Procedures;
 
 namespace RimExtractorCore.Extractor;
 
@@ -17,16 +18,16 @@ public class ExtractionProcedureInjector : IProcedureInjector
         if (IsInitialized) return;
 
         var baseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Procedures", "Extractor");
-        var processors = RoslynScriptRunner.LoadProcessorsFromDirectory<IExtractionProcedure>(baseDir);
+        var processors = ProcedureLoader.LoadProcessorsFromDirectory<IExtractionProcedure>(baseDir);
         _primaryExtractor = processors.FirstOrDefault(p => p.Name == "DefaultNodeExtractionProcedure") ?? processors.FirstOrDefault();
         
         if (_primaryExtractor != null)
         {
-            Log.Msg($"[ExtractionPipelineRunner] 로드 완료: {_primaryExtractor.Name}");
+            Log.Msg($"로드 완료: {_primaryExtractor.Name}");
         }
         else
         {
-            Log.Err("[ExtractionPipelineRunner] IExtractionProcedure를 찾을 수 없습니다.");
+            Log.Err("IExtractionProcedure를 찾을 수 없습니다.");
         }
         
         IsInitialized = true;

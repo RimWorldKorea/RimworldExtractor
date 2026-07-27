@@ -56,8 +56,4 @@
     </Compile>
   </ItemGroup>
   
-  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="xcopy /Y &quot;$(OutDir)ClosedXML.dll&quot; &quot;$(OutDir)bin\&quot;&#xD;&#xA;del /Q &quot;$(OutDir)ClosedXML.dll&quot;&#xD;&#xA;xcopy /Y &quot;$(OutDir)ClosedXML.Parser.dll&quot; &quot;$(OutDir)bin\&quot;&#xD;&#xA;del /Q &quot;$(OutDir)ClosedXML.Parser.dll&quot;&#xD;&#xA;xcopy /Y &quot;$(OutDir)DocumentFormat.OpenXml.dll&quot; &quot;$(OutDir)bin\&quot;&#xD;&#xA;del /Q &quot;$(OutDir)DocumentFormat.OpenXml.dll&quot;&#xD;&#xA;xcopy /Y &quot;$(OutDir)ExcelNumberFormat.dll&quot; &quot;$(OutDir)bin\&quot;&#xD;&#xA;del /Q &quot;$(OutDir)ExcelNumberFormat.dll&quot;&#xD;&#xA;xcopy /Y &quot;$(OutDir)RBush.dll&quot; &quot;$(OutDir)bin\&quot;&#xD;&#xA;del /Q &quot;$(OutDir)RBush.dll&quot;&#xD;&#xA;xcopy /Y &quot;$(OutDir)RimExtractorCore.dll&quot; &quot;$(OutDir)bin\&quot;&#xD;&#xA;del /Q &quot;$(OutDir)RimworldExtractorInternal.dll&quot;&#xD;&#xA;xcopy /Y &quot;$(OutDir)SixLabors.Fonts.dll&quot; &quot;$(OutDir)bin\&quot;&#xD;&#xA;del /Q &quot;$(OutDir)SixLabors.Fonts.dll&quot;" />
-  </Target>
-
 </Project>

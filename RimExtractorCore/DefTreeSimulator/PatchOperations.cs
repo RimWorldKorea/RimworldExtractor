@@ -10,9 +10,9 @@ internal static class PatchOperations
     {
         var patchesRoot = patchDir.FullPath;
         var doc = new XDocument(new XElement("Patch"));
-        foreach (var filePath in IO.DescendantFiles(patchesRoot).Where(x => x.ToLower().EndsWith(".xml")))
+        foreach (var filePath in FileInterface.DescendantFiles(patchesRoot).Where(x => x.ToLower().EndsWith(".xml")))
         {
-            var childDoc = IO.ReadXml(filePath);
+            var childDoc = FileInterface.ReadXml(filePath);
             foreach (var node in childDoc.Root!.Elements())
             {
                 if (node.Name.LocalName != "Operation")

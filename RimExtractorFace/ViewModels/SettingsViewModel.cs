@@ -22,7 +22,7 @@ public partial class SettingsViewModel : ViewModelBase
     public static string[] DuplicationPolicies { get; } = new[] { "중단", "덮어쓰기", "기존유지" };
 
     // --- 1. 모델 직접 바인딩 (XAML에서 {Binding Config.XXX} 사용) ---
-    public ExtractorConfig Config => ConfigManager.Current;
+    public Settings Config => ConfigManager.Current;
 
     // --- 2. Enum ↔ ComboBox Index 어댑터 ---
     public int SelectedExtractionMethodIndex

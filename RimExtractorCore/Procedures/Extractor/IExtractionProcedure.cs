@@ -1,6 +1,6 @@
 ﻿using RimExtractorCore.DataTypes;
 
-namespace RimExtractorCore.Extractor;
+namespace RimExtractorCore.Procedures;
 
 public interface IExtractionProcedure
 {

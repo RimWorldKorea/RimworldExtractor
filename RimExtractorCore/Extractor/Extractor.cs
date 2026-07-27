@@ -60,10 +60,10 @@ namespace RimExtractorCore.Extractor
             RequiredMods? requiredMods = keyed.RequiredPackageId == null
                 ? null : new RequiredMods().Tap(rm => rm.AddAllowedByPackageIds(keyed.RequiredPackageId.Split(',')));
 
-            foreach (var filePath in IO.DescendantFiles(keyedRoot).Where(x => x.ToLower().EndsWith(".xml")))
+            foreach (var filePath in FileInterface.DescendantFiles(keyedRoot).Where(x => x.ToLower().EndsWith(".xml")))
             {
                 var fileName = Path.GetFileNameWithoutExtension(filePath);
-                var doc = IO.ReadXml(filePath);
+                var doc = FileInterface.ReadXml(filePath);
                 foreach (var node in doc.Root!.Elements())
                 {
                     yield return new TranslationEntry("Keyed", node.Name.LocalName, node.Value, null, requiredMods,
@@ -78,7 +78,7 @@ namespace RimExtractorCore.Extractor
             RequiredMods? requiredMods = strings.RequiredPackageId == null
                 ? null : new RequiredMods().Tap(rm => rm.AddAllowedByPackageIds(strings.RequiredPackageId.Split(',')));
 
-            foreach (var filePath in IO.DescendantFiles(stringsRoot).Where(x => x.ToLower().EndsWith(".txt")))
+            foreach (var filePath in FileInterface.DescendantFiles(stringsRoot).Where(x => x.ToLower().EndsWith(".txt")))
             {
                 var nodeName = Path.GetRelativePath(stringsRoot, filePath);
                 nodeName = Path.GetFileNameWithoutExtension(nodeName.Replace('\\', '.'));

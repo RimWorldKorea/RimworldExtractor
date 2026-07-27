@@ -1,4 +1,5 @@
 ﻿using RimExtractorCore.DataTypes;
+using RimExtractorCore.Procedures;
 
 namespace RimExtractorCore.Extractor;
 
@@ -18,13 +19,13 @@ public class TranslationEntryProcedureInjector : IProcedureInjector
         _processors.Clear();
         var baseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Procedures", "Translations");
         
-        var processors = RoslynScriptRunner.LoadProcessorsFromDirectory<ITranslationEntryProcedure>(baseDir);
+        var processors = ProcedureLoader.LoadProcessorsFromDirectory<ITranslationEntryProcedure>(baseDir);
         foreach (var processor in processors)
         {
             if (!_processors.Any(p => p.Name == processor.Name))
             {
                 _processors.Add(processor);
-                Log.Msg($"[TranslationPipelineRunner] 로드 완료: {processor.Name}");
+                Log.Msg($"로드 완료: {processor.Name}");
             }
         }
         
@@ -42,7 +43,7 @@ public class TranslationEntryProcedureInjector : IProcedureInjector
             }
             catch (Exception e)
             {
-                Log.Err($"[TranslationPipelineRunner] 런타임 에러 ({processor.Name}): {e.Message}");
+                Log.Err($"런타임 에러 ({processor.Name}): {e.Message}");
             }
         }
         return result;

@@ -7,7 +7,7 @@ namespace RimExtractorCore
     {
         public const string ConfigFileName = "config.json";
         
-        public static ExtractorConfig Current { get; private set; } = new();
+        public static Settings Current { get; private set; } = new();
 
         private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions 
         { 
@@ -26,7 +26,7 @@ namespace RimExtractorCore
             try
             {
                 var jsonString = File.ReadAllText(ConfigFileName);
-                Current = JsonSerializer.Deserialize<ExtractorConfig>(jsonString, JsonOptions) ?? new ExtractorConfig();
+                Current = JsonSerializer.Deserialize<Settings>(jsonString, JsonOptions) ?? new Settings();
                 Current.InvalidateCache();
             }
             catch (Exception ex)
@@ -53,7 +53,7 @@ namespace RimExtractorCore
 
         public static void InitDefault()
         {
-            Current = new ExtractorConfig
+            Current = new Settings
             {
                 // 기존 Prefabs.Init()에 있던 모든 기본 태그 복원
                 ExtractableTags = new HashSet<string>(

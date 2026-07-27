@@ -12,4 +12,17 @@ public class Grid
 
     public List<string> GetRow(int rowIndex) =>
         rowIndex >= 0 && rowIndex < Rows.Count ? Rows[rowIndex] : new List<string>();
+    
+    public void AppendRow(IEnumerable<string> row)
+    {
+        Rows.Add(row.ToList());
+    }
+
+    public void AppendRows(IEnumerable<IEnumerable<string>> rows)
+    {
+        foreach (var row in rows)
+        {
+            AppendRow(row);
+        }
+    }
 }

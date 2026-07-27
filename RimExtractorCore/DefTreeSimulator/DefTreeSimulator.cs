@@ -1,5 +1,6 @@
 ﻿using System.Xml.Linq;
 using RimExtractorCore.DataTypes;
+using RimExtractorCore.Procedures;
 
 namespace RimExtractorCore.DefTreeSimulator
 {
@@ -43,12 +44,12 @@ namespace RimExtractorCore.DefTreeSimulator
             {
                 var defsRoot = extractableFolder.FullPath;
                 var requiredPackageId = extractableFolder.RequiredPackageId;
-                foreach (var filePath in IO.DescendantFiles(defsRoot).Where(x => x.ToLower().EndsWith(".xml")))
+                foreach (var filePath in FileInterface.DescendantFiles(defsRoot).Where(x => x.ToLower().EndsWith(".xml")))
                 {
                     try
                     {
                         var fileName = Path.GetFileNameWithoutExtension(filePath);
-                        var childDoc = IO.ReadXml(filePath);
+                        var childDoc = FileInterface.ReadXml(filePath);
                         if (childDoc.Root == null) continue;
 
                         foreach (var node in childDoc.Root.Elements())
@@ -109,12 +110,12 @@ namespace RimExtractorCore.DefTreeSimulator
         {
             foreach (var referenceDefsRoot in referenceDefsRoots)
             {
-                foreach (var filePath in IO.DescendantFiles(referenceDefsRoot)
+                foreach (var filePath in FileInterface.DescendantFiles(referenceDefsRoot)
                              .Where(x => x.ToLower().EndsWith(".xml")))
                 {
                     try
                     {
-                        var childDoc = IO.ReadXml(filePath);
+                        var childDoc = FileInterface.ReadXml(filePath);
                         if (childDoc.Root == null) continue;
 
                         foreach (var node in childDoc.Root.Elements())
@@ -400,11 +401,11 @@ namespace RimExtractorCore.DefTreeSimulator
                             continue;
                         }
 
-                        foreach (var filePath in IO.DescendantFiles(dir).Where(x => x.ToLower().EndsWith(".xml")))
+                        foreach (var filePath in FileInterface.DescendantFiles(dir).Where(x => x.ToLower().EndsWith(".xml")))
                         {
                             try
                             {
-                                var doc = IO.ReadXml(filePath);
+                                var doc = FileInterface.ReadXml(filePath);
                                 if (doc.Root is null) continue;
 
                                 // 🟢 상대 경로의 첫 번째 폴더명을 통해 DefType 추출

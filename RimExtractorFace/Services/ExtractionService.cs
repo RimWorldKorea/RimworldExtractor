@@ -81,13 +81,13 @@ public class ExtractionService : IExtractionService
             {
                 // Prefabs.ExtractionMethod에서 ExtractionMethod로 직접 참조하도록 수정
                 case ExtractionMethod.Excel:
-                    IO.ToExcel(extraction.Entries.ToList(), Path.Combine(outPath, outPath));
+                    FileInterface.ToOds(extraction.Entries.ToList(), Path.Combine(outPath, outPath));
                     break;
                 case ExtractionMethod.Languages:
-                    IO.ToLanguageXml(extraction.Entries.ToList(), false, false, outPath, outPath);
+                    FileInterface.ToLanguageXml(extraction.Entries.ToList(), false, false, outPath, outPath);
                     break;
                 case ExtractionMethod.LanguagesWithComments:
-                    IO.ToLanguageXml(extraction.Entries.ToList(), false, true, outPath, outPath);
+                    FileInterface.ToLanguageXml(extraction.Entries.ToList(), false, true, outPath, outPath);
                     break;
             }
 
@@ -114,8 +114,8 @@ public class ExtractionService : IExtractionService
             for (var i = 0; i < rootFolderPaths.Length; i++)
             {
                 var root = rootFolderPaths[i];
-                var translations = IO.FromLanguageXml(root);
-                IO.ToExcel(translations, Path.Combine(root, Path.GetFileNameWithoutExtension(root)));
+                var translations = FileInterface.FromLanguageXml(root);
+                FileInterface.ToOds(translations, Path.Combine(root, Path.GetFileNameWithoutExtension(root)));
                 Log.Msg($"{i + 1}/{rootFolderPaths.Length}:: 작업 완료: {root}");
             }
         });
@@ -125,9 +125,9 @@ public class ExtractionService : IExtractionService
     {
         await Task.Run(() =>
         {
-            var translations = IO.FromExcel(xlsxFilePath);
+            var translations = FileInterface.FromExcel(xlsxFilePath);
             // Prefabs.CommentOriginal을 ConfigManager.Current.CommentOriginal로 교체
-            IO.ToLanguageXml(translations, true, ConfigManager.Current.CommentOriginal, Path.GetFileName(xlsxFilePath), Path.GetDirectoryName(xlsxFilePath) ?? "");
+            FileInterface.ToLanguageXml(translations, true, ConfigManager.Current.CommentOriginal, Path.GetFileName(xlsxFilePath), Path.GetDirectoryName(xlsxFilePath) ?? "");
         });
     }
 

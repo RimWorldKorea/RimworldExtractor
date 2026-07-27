@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace RimExtractorCore
 {
-    public class ExtractorConfig
+    public class Settings
     {
         // 1. 기본 경로 및 버전 (기존 Prefabs의 기본값 복원)
         public bool EnableTkey { get; set; } = false;

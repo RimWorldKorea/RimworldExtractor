@@ -75,7 +75,7 @@ public class MVCFProcedure : ITranslationEntryProcedure
                     var verbPropsDescription = (new TranslationEntry(mvcfForm.VerbPropsLabel) with { Node = string.Join('.', tokens), Original = "" });
                     
                     // 💡 여기서 Prefabs 참조를 ExtractorConstants로 수정했습니다!
-                    verbPropsDescription.AddExtension(ExtractorConstants.ExtensionKeyExtraCommentTranslated, "이 항목은 gizmo에 표시될 수 있습니다.");
+                    verbPropsDescription.AddExtension(Constants.ExtensionKeyExtraCommentTranslated, "이 항목은 gizmo에 표시될 수 있습니다.");
                     
                     yield return verbPropsDescription;
                 }

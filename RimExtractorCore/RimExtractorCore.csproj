@@ -13,18 +13,35 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ClosedXML" Version="0.105.1" />
     <PackageReference Include="ExcelDataReader" Version="3.9.0" />
     <PackageReference Include="ICSharpCode.Decompiler" Version="10.1.1.8388" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.6.0" />
   </ItemGroup>
-
-  <!-- Procedures 폴더 하위의 모든 .cs 파일을 컴파일 대상에서 제외 후 빌드 경로에 그대로 복사 -->
+    
+  <!-- Procedures 폴더 빌드 설정 -->
   <ItemGroup>
-    <Compile Remove="Procedures\*\**\*.cs" />
-    <None Include="Procedures\**\*.cs">
+    
+    <!-- Procedures 폴더에 있는 모든 .cs 파일 빌드에서 제외 -->
+    <Compile Remove="Procedures\**\*.cs" />
+    
+    <!-- Procedure 인터페이스 정의 파일만 빌드에 포함 -->
+    <Compile Include="Procedures\Extractor\IExtractionProcedure.cs" />
+    <Compile Include="Procedures\Translations\ITranslationEntryProcedure.cs" />
+    <Compile Include="Procedures\DefTree\IXDocumentProcedure.cs" />
+
+    <!-- Procedure 인터페이스 정의 파일을 출력 디렉토리에 복사 -->
+    <!--
+    <Compile Update="Procedures\Extractor\IExtractionProcedure.cs;Procedures\Translations\ITranslationEntryProcedure.cs;Procedures\DefTree\IXDocumentProcedure.cs">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Compile>
+    -->
+
+    <!-- Procedure 구현 파일을 출력 디렉토리에 복사 -->
+    <None Include="Procedures\**\*.cs"
+          Exclude="Procedures\Extractor\IExtractionProcedure.cs;Procedures\Translations\ITranslationEntryProcedure.cs;Procedures\DefTree\IXDocumentProcedure.cs">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    
   </ItemGroup>
 
 </Project>

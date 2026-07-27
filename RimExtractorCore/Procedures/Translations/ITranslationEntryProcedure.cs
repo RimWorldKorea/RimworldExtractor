@@ -1,6 +1,6 @@
 ﻿using RimExtractorCore.DataTypes;
 
-namespace RimExtractorCore.Extractor;
+namespace RimExtractorCore.Procedures;
 
 /// <summary>
 /// XML 트리에서 추출이 완료된 번역 항목(TranslationEntry) 리스트를 가공하는 후처리 절차를 정의합니다.

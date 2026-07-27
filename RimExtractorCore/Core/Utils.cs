@@ -3,7 +3,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using System.Xml.XPath;
-using ClosedXML.Excel;
 using RimExtractorCore.DataTypes;
 
 namespace RimExtractorCore
@@ -42,6 +41,9 @@ namespace RimExtractorCore
             return BitConverter.ToUInt32(hashBytes, 0);
         }
         
+        /// <summary>
+        /// 입력값을 [0-9, a-z]의 36개 문자로 구성된 문자열로 인코딩합니다.
+        /// </summary>
         public static string ToBase36(uint value)
         {
             const string chars = "0123456789abcdefghijklmnopqrstuvwxyz";
@@ -158,21 +160,6 @@ namespace RimExtractorCore
             return nodeName;
         }
 
-        public static string StrVal(this IXLCell cell)
-        {
-            try
-            {
-                var value = cell.Value;
-                if (value.TryGetText(out string str))
-                    return str;
-            }
-            catch (Exception e)
-            {
-                Log.Msg($"엑셀 파일 속 텍스트를 읽는 중 에러 발생: {cell.Address}-{e.Message}");
-            }
-            return string.Empty;
-        }
-
         public static bool IsListNode(this XElement? curNode) => curNode?.Name.LocalName == "li";
 
         public static bool IsTextNode(this XElement? curNode) =>
@@ -223,7 +210,7 @@ namespace RimExtractorCore
         private static partial Regex StripSpace();
 
         /// <summary>
-        /// RimWorld Mod Korean용 빌드 파일을 생성합니다.
+        /// RimWorld Mod Korean용 빌드 파일 텍스트를 생성합니다.
         /// </summary>
         public static string WriteBuildYamlText(ModMetadata ModInfo)
         {

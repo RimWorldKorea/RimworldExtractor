@@ -57,6 +57,24 @@
         public string ClassNode => $"{ClassName}+{Node}";
         public string DefName => Node.Contains('.') ? Node[..Node.IndexOf('.')] : Node;
         public string RealNode => Node.Contains('.') ? Node[(Node.IndexOf('.') + 1)..] : Node;
-
+        
+        /// <summary>
+        /// 현재 번역 항목을 스프레드시트의 한 행(Row) 문자열 리스트로 변환합니다.
+        /// </summary>
+        /// <summary>
+        /// 현재 항목을 스프레드시트의 한 행(Row)으로 변환합니다.
+        /// </summary>
+        public List<string> ToGridRow()
+        {
+            return new List<string>
+            {
+                $"{ClassName}+{Node}",
+                ClassName,
+                Node,
+                RequiredMods?.ToString() ?? string.Empty,
+                Original,
+                Translated ?? string.Empty
+            };
+        }
     }
 }

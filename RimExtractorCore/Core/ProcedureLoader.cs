@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis.CSharp;
 
 namespace RimExtractorCore;
 
-public static class RoslynScriptRunner
+public static class ProcedureLoader
 {
     /// <summary>
     /// 지정된 디렉터리의 .cs 파일들을 런타임에 컴파일하여 TInterface를 구현하는 인스턴스 목록을 생성합니다.
@@ -30,12 +30,12 @@ public static class RoslynScriptRunner
                 if (instance != null)
                 {
                     result.Add(instance);
-                    Log.Msg($"[RoslynScriptRunner] 스크립트 로드 성공 ({Path.GetFileName(folderPath)}): {Path.GetFileName(scriptFile)}");
+                    Log.Msg($"스크립트 로드 성공 ({Path.GetFileName(folderPath)}): {Path.GetFileName(scriptFile)}");
                 }
             }
             catch (Exception e)
             {
-                Log.Err($"[RoslynScriptRunner] 스크립트 컴파일/로드 실패 ({scriptFile}): {e.Message}");
+                Log.Err($"스크립트 컴파일/로드 실패 ({scriptFile}): {e.Message}");
             }
         }
 

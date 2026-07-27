@@ -6,7 +6,7 @@ namespace RimExtractorCore.DiffAnalyzer
     public static class AnalyzerEngine
     {
         public static string[] GetXlsxPaths(string rootPath) =>
-            IO.DescendantFiles(rootPath)
+            FileInterface.DescendantFiles(rootPath)
                 .Where(x => x.ToLower().EndsWith(".xlsx") || x.ToLower().EndsWith(".ods"))
                 .ToArray();
         

@@ -10,24 +10,63 @@ namespace RimExtractorCore.Extractor
         /// </summary>
         public static ExtractionResult ExtractTranslationData(SimulationResult simResult)
         {
-            // 1. 단일 추출 프로시저 실행 (원시 데이터 추출)
-            var rawEntries = ExtractionProcedureInjector.Instance.Execute(simResult)?.ToList();
-
-            if (rawEntries == null)
-            {
-                Log.Err("PrimaryExtractor가 로드되지 않았습니다.");
-                return new ExtractionResult(simResult.TargetMod!, new List<TranslationEntry>());
-            }
+            var finalEntries = new List<TranslationEntry>();
             
-            // 2. 고유성 검증 및 중복 필터링
-            var distinctEntries = FilterDuplicates(rawEntries);
+            if (simResult.Snapshots.Count == 0)
+                return new ExtractionResult(simResult.TargetMod, finalEntries);
 
-            // 3. 다중 후처리 파이프라인 실행 (원시 데이터 가공/필터링)
-            // (MVCF, NodeReplacement 등의 ITranslationProcedure들이 통합적으로 1회 순차 실행됨)
+            // 1. Base 우주(인덱스 0) 추출
+            var baseSnapshot = simResult.Snapshots[0];
+            var baseEntries = ExtractionProcedureInjector.Instance.Execute(baseSnapshot, simResult.TargetMod)?.ToList() ?? new List<TranslationEntry>();
+            
+            // Base 항목들은 기본 리스트에 추가
+            finalEntries.AddRange(baseEntries);
+
+            // Base의 키와 원본 텍스트를 캐싱 (차분 비교용)
+            var baseDictionary = new Dictionary<string, string>(); 
+            foreach (var entry in baseEntries)
+            {
+                baseDictionary[entry.ClassNode] = entry.Original;
+            }
+
+            // 2. 평행 우주(분기) 차분(Diff) 추출
+            for (int i = 1; i < simResult.Snapshots.Count; i++)
+            {
+                var branchSnapshot = simResult.Snapshots[i];
+                var branchEntries = ExtractionProcedureInjector.Instance.Execute(branchSnapshot, simResult.TargetMod)?.ToList() ?? new List<TranslationEntry>();
+
+                var branchCondition = new RequiredMods();
+                branchCondition.AddAllowedByModNames(branchSnapshot.RequiredModIds);
+
+                foreach (var branchEntry in branchEntries)
+                {
+                    bool isUniqueToBranch = false;
+
+                    // 차분 조건 1: Base에 아예 없는 새로운 번역 키인가?
+                    if (!baseDictionary.TryGetValue(branchEntry.ClassNode, out var baseOriginalText))
+                    {
+                        isUniqueToBranch = true;
+                    }
+                    // 차분 조건 2: 키는 있는데 원본 텍스트가 Base와 다른가?
+                    else if (baseOriginalText != branchEntry.Original)
+                    {
+                        isUniqueToBranch = true;
+                    }
+
+                    if (isUniqueToBranch)
+                    {
+                        // 이 분기에만 존재하는 고유한 번역이므로, 조건 꼬리표를 달아서 추가
+                        // (Patches. 클래스 네임 스탬프도 원하신다면 여기서 찍어줄 수 있습니다)
+                        finalEntries.Add(branchEntry with { RequiredMods = branchCondition });
+                    }
+                }
+            }
+
+            // 3. 중복 필터링 및 후처리 파이프라인
+            var distinctEntries = FilterDuplicates(finalEntries);
             var processedEntries = TranslationEntryProcedureInjector.Instance.Execute(distinctEntries).ToList();
 
-            // 4. 추출된 데이터를 컨테이너에 담아 반환 (파일 IO 역할 완벽히 분리)
-            return new ExtractionResult(simResult.TargetMod!, processedEntries);
+            return new ExtractionResult(simResult.TargetMod, processedEntries);
         }
 
         private static List<TranslationEntry> FilterDuplicates(List<TranslationEntry> extraction)
@@ -54,7 +93,7 @@ namespace RimExtractorCore.Extractor
             return distinctList;
         }
 
-        internal static IEnumerable<TranslationEntry> ExtractKeyed(ExtractableFolder keyed, bool isOfficialContent)
+        public static IEnumerable<TranslationEntry> ExtractKeyed(ExtractableFolder keyed, bool isOfficialContent)
         {
             var keyedRoot = keyed.FullPath;
             RequiredMods? requiredMods = keyed.RequiredPackageId == null
@@ -72,7 +111,7 @@ namespace RimExtractorCore.Extractor
             }
         }
 
-        internal static IEnumerable<TranslationEntry> ExtractStrings(ExtractableFolder strings)
+        public static IEnumerable<TranslationEntry> ExtractStrings(ExtractableFolder strings)
         {
             var stringsRoot = strings.FullPath;
             RequiredMods? requiredMods = strings.RequiredPackageId == null

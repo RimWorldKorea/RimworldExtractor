@@ -61,7 +61,7 @@ public class ExtractionService : IExtractionService
             }
 
             // 2. DefTree 파이프라인 시뮬레이션 실행 (Roslyn PostProcessors 및 랭귀지 오버라이드 포함)
-            var simResult = SimulatorEngine.Execute(
+            var simResult = DefTreeSimulator.Execute(
                 targetMod,
                 selectedFolders,
                 prePatches,

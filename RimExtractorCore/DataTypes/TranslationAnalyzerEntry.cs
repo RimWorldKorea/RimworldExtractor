@@ -151,7 +151,7 @@ namespace RimExtractorCore.DataTypes
             }
 
             // DefTreeSimulator로 SimulationResult 생성
-            var simResult = SimulatorEngine.Execute(
+            var simResult = DefTreeSimulator.DefTreeSimulator.Execute(
                 Metadata,
                 selectedFolders,
                 prePatches,

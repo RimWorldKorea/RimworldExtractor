@@ -25,9 +25,9 @@
     <Compile Remove="Procedures\**\*.cs" />
     
     <!-- Procedure 인터페이스 정의 파일만 빌드에 포함 -->
-    <Compile Include="Procedures\Extractor\IExtractionProcedure.cs" />
     <Compile Include="Procedures\Translations\ITranslationEntryProcedure.cs" />
     <Compile Include="Procedures\DefTree\IXDocumentProcedure.cs" />
+    <Compile Include="Procedures\Extractor\IExtractionProcedure.cs" />
 
     <!-- Procedure 인터페이스 정의 파일을 출력 디렉토리에 복사 -->
     <!--
@@ -37,8 +37,7 @@
     -->
 
     <!-- Procedure 구현 파일을 출력 디렉토리에 복사 -->
-    <None Include="Procedures\**\*.cs"
-          Exclude="Procedures\Extractor\IExtractionProcedure.cs;Procedures\Translations\ITranslationEntryProcedure.cs;Procedures\DefTree\IXDocumentProcedure.cs">
+    <None Include="Procedures\**\*.cs" Exclude="Procedures\Extractor\IExtractionProcedure.cs;Procedures\Translations\ITranslationEntryProcedure.cs;Procedures\DefTree\IXDocumentProcedure.cs">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     

@@ -6,14 +6,14 @@ using RimExtractorCore.DataTypes;
 using RimExtractorCore.Procedures;
 
 namespace RimExtractorCore.Extractor
-
 {
     public class ExtractionProcedureInjector : IProcedureInjector
     {
         public static ExtractionProcedureInjector Instance { get; } = new();
         public bool IsInitialized { get; private set; } = false;
 
-        private IExtractionProcedure? _primaryExtractor;
+        // 단일 Extractor가 아닌 리스트로 관리합니다.
+        private readonly List<IExtractionProcedure> _extractors = new();
 
         private ExtractionProcedureInjector() { }
 
@@ -24,29 +24,43 @@ namespace RimExtractorCore.Extractor
             var baseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Procedures", "Extractor");
             var processors = ProcedureLoader.LoadProceduresFromDirectory<IExtractionProcedure>(baseDir);
 
-            _primaryExtractor = processors.FirstOrDefault(p => p.Name == "DefaultExtractionProcedure") ?? processors.FirstOrDefault();
-            
-            if (_primaryExtractor != null)
+            _extractors.Clear();
+            foreach (var processor in processors)
             {
-                Log.Msg($"{_primaryExtractor.Name} 등록 완료");
+                _extractors.Add(processor);
+                Log.Msg($"{processor.Name} 등록 완료");
             }
-            else
+            
+            if (_extractors.Count == 0)
             {
-                Log.Err("IExtractionProcedure를 찾을 수 없습니다.");
+                Log.Err("등록된 IExtractionProcedure가 없습니다.");
             }
             
             IsInitialized = true;
         }
         
-        // [수정됨] SimulationResult 전체가 아닌 단일 DefSnapshot을 받습니다.
-        public IEnumerable<TranslationEntry>? Execute(DefSnapshot snapshot, ModMetadata targetMod)
+        // 스냅샷을 받아 등록된 모든 추출기를 순회하며 결과를 합칩니다.
+        public IEnumerable<TranslationEntry> Execute(DefSnapshot snapshot, ModMetadata targetMod)
         {
-            if (_primaryExtractor == null)
+            var combinedEntries = new List<TranslationEntry>();
+
+            foreach (var extractor in _extractors)
             {
-                throw new InvalidOperationException("기본 ExtractionProcedure가 초기화되지 않았습니다.");
+                try
+                {
+                    var results = extractor.Extract(snapshot, targetMod);
+                    if (results != null)
+                    {
+                        combinedEntries.AddRange(results);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Log.Err($"추출기({extractor.Name}) 실행 중 오류 발생: {e.Message}");
+                }
             }
             
-            return _primaryExtractor?.Extract(snapshot, targetMod);
+            return combinedEntries;
         }
     }
 }

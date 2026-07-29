@@ -4,7 +4,7 @@
         x:Class="RimExtractorFace.Views.SettingsWindow"
         x:DataType="vm:SettingsViewModel"
         Title="설정"
-        Width="500" Height="480"
+        Width="600" Height="600"
         CanResize="False"
         WindowStartupLocation="CenterOwner">
     <Grid RowDefinitions="*, Auto" Margin="12">
@@ -48,28 +48,39 @@
                 <!-- 2. 추출 및 저장 설정 -->
                 <Border BorderBrush="LightGray" BorderThickness="1" CornerRadius="4" Padding="10">
                     <StackPanel Spacing="6">
-                        <TextBlock Text="추출 및 저장 설정" FontWeight="Bold" Foreground="#333333" Margin="0,0,0,4"/>
+                        <TextBlock Text="언어 및 추출 설정" FontWeight="Bold" Foreground="#333333" Margin="0,0,0,4"/>
+                        
+                        <!-- [수정됨] 1차 / 2차 추출 언어 나란히 배치 -->
                         <Grid ColumnDefinitions="*, *">
                             <StackPanel Grid.Column="0" Margin="0,0,4,0">
-                                <TextBlock Text="원본 언어:"/>
+                                <TextBlock Text="1차 추출 언어:"/>
                                 <ComboBox ItemsSource="{Binding Languages}" SelectedItem="{Binding Config.OriginalLanguage, Mode=TwoWay}" HorizontalAlignment="Stretch"/>
                             </StackPanel>
                             <StackPanel Grid.Column="1" Margin="4,0,0,0">
-                                <TextBlock Text="번역 언어:"/>
-                                <ComboBox ItemsSource="{Binding Languages}" SelectedItem="{Binding Config.TranslationLanguage, Mode=TwoWay}" HorizontalAlignment="Stretch"/>
+                                <TextBlock Text="2차 추출 언어:"/>
+                                <ComboBox ItemsSource="{Binding SecondaryLanguages}" SelectedItem="{Binding SelectedSecondaryLanguage, Mode=TwoWay}" HorizontalAlignment="Stretch"/>
                             </StackPanel>
                         </Grid>
-                        <Grid ColumnDefinitions="*, *" Margin="0,4,0,0">
+                        
+                        <!-- [수정됨] 번역 언어는 아래로 이동 -->
+                        <StackPanel Margin="0,4,0,0">
+                            <TextBlock Text="번역(목표) 언어:"/>
+                            <ComboBox ItemsSource="{Binding Languages}" SelectedItem="{Binding Config.TranslationLanguage, Mode=TwoWay}" HorizontalAlignment="Stretch"/>
+                        </StackPanel>
+
+                        <!-- 추출 방식 / 중복 처리 정책 -->
+                        <Grid ColumnDefinitions="*, *" Margin="0,8,0,0">
                             <StackPanel Grid.Column="0" Margin="0,0,4,0">
-                                <TextBlock Text="저장 방식:"/>
+                                <TextBlock Text="추출 방식:"/>
                                 <ComboBox ItemsSource="{Binding ExtractionMethods}" SelectedIndex="{Binding SelectedExtractionMethodIndex, Mode=TwoWay}" HorizontalAlignment="Stretch"/>
                             </StackPanel>
                             <StackPanel Grid.Column="1" Margin="4,0,0,0">
-                                <TextBlock Text="중복 정책:"/>
+                                <TextBlock Text="중복 번역 처리:"/>
                                 <ComboBox ItemsSource="{Binding DuplicationPolicies}" SelectedIndex="{Binding SelectedPolicyIndex, Mode=TwoWay}" HorizontalAlignment="Stretch"/>
                             </StackPanel>
                         </Grid>
-                        <TextBlock Text="기본 참조 모드 리스트 경로 (.refMods):" Margin="0,4,0,0"/>
+                        
+                        <TextBlock Text="레퍼런스 모드 목록 (.refMods):" Margin="0,8,0,0"/>
                         <Grid ColumnDefinitions="*, Auto">
                             <TextBox Grid.Column="0" Text="{Binding Config.PathBaseRefList, Mode=TwoWay}" Margin="0,0,6,0"/>
                             <Button Grid.Column="1" Content="..." Width="40" HorizontalContentAlignment="Center"

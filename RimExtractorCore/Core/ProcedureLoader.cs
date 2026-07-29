@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using ICSharpCode.Decompiler.CSharp;
 
 namespace RimExtractorCore;
 
@@ -58,8 +59,7 @@ public static class ProcedureLoader
             MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(System.Xml.Linq.XDocument).Assembly.Location),
-            MetadataReference.CreateFromFile(targetType.Assembly.Location)
-            
+            MetadataReference.CreateFromFile(targetType.Assembly.Location),
         };
 
         // 로드된 현재 AppDomain의 비동적 어셈블리 참조 추가

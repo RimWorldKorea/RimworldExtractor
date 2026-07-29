@@ -18,11 +18,26 @@ public partial class SettingsViewModel : ViewModelBase
         "SpanishLatin (Español(Latinoamérica))", "Swedish (Svenska)", "Turkish (Türkçe)",
         "Ukrainian (Українська)"
     };
+    
+    // [추가됨] 2차 언어용 목록 (없음 옵션 포함)
+    public static string[] SecondaryLanguages { get; } = new[] { "None" }.Concat(Languages).ToArray();
+    
     public static string[] ExtractionMethods { get; } = new[] { "엑셀 파일 (.xlsx)", "표준 언어팩 XML", "주석 포함 언어팩 XML" };
     public static string[] DuplicationPolicies { get; } = new[] { "중단", "덮어쓰기", "기존유지" };
 
     // --- 1. 모델 직접 바인딩 (XAML에서 {Binding Config.XXX} 사용) ---
     public Settings Config => ConfigManager.Current;
+    
+    // [추가됨] 2차 언어 값이 비어있을 때 "None"으로 매핑해주는 Wrapper
+    public string SelectedSecondaryLanguage
+    {
+        get => string.IsNullOrEmpty(Config.SecondaryLanguage) ? "None" : Config.SecondaryLanguage;
+        set
+        {
+            Config.SecondaryLanguage = (value == "None") ? "" : value;
+            OnPropertyChanged(nameof(SelectedSecondaryLanguage));
+        }
+    }
 
     // --- 2. Enum ↔ ComboBox Index 어댑터 ---
     public int SelectedExtractionMethodIndex
@@ -59,6 +74,7 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(Config));
         OnPropertyChanged(nameof(SelectedExtractionMethodIndex));
         OnPropertyChanged(nameof(SelectedPolicyIndex));
+        OnPropertyChanged(nameof(SelectedSecondaryLanguage));
     }
 
     private static string RemoveSep(string s) => s?.Replace(" ", "").Replace("\r", "").Replace("\n", "") ?? "";

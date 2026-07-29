@@ -152,20 +152,29 @@ namespace RimExtractorCore
         public static List<ExtractableFolder> GetExtractableFolders(ModMetadata modMetadata)
         {
             var root = modMetadata.RootDir;
-
             var sets = new HashSet<ExtractableFolder>(new ExtractableFolderComparer());
             var pathLoadFolders = Path.Combine(root, "LoadFolders.xml");
-            string[] targetFolders = {
-                "Defs", "Patches", "Keyed", 
-                Path.Combine("Languages", ConfigManager.Current.OriginalLanguage, "Keyed"),
-                Path.Combine("Languages", ConfigManager.Current.OriginalLanguage.Split(' ').First(), "Keyed"),
-                Path.Combine("Languages", ConfigManager.Current.OriginalLanguage, "Strings"),
-                Path.Combine("Languages", ConfigManager.Current.OriginalLanguage.Split(' ').First(), "Strings")
-            };
+
+            // [수정됨] 하드코딩된 배열 대신 List로 동적 생성
+            var targetFolders = new List<string> { "Defs", "Patches", "Keyed" };
+            
+            // 1차, 2차, 그리고 기본(English) 언어 폴더를 모두 탐색 대상에 추가합니다.
+            foreach (var lang in ConfigManager.Current.GetLanguagePriorityList())
+            {
+                var shortLang = lang.Split(' ').First(); // 예: "Korean (한국어)" -> "Korean"
+                
+                targetFolders.Add(Path.Combine("Languages", lang, "Keyed"));
+                targetFolders.Add(Path.Combine("Languages", shortLang, "Keyed"));
+                targetFolders.Add(Path.Combine("Languages", lang, "Strings"));
+                targetFolders.Add(Path.Combine("Languages", shortLang, "Strings"));
+            }
+            
+            // 중복 경로 제거
+            var distinctTargetFolders = targetFolders.Distinct().ToArray();
 
             IEnumerable<string> GetExtractableFoldersInternal(string path)
             {
-                foreach (var folder in targetFolders)
+                foreach (var folder in distinctTargetFolders)
                 {
                     var subDir = Path.Combine(path, folder);
                     if (Directory.Exists(subDir))

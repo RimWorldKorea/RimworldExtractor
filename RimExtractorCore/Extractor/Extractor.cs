@@ -19,6 +19,9 @@ namespace RimExtractorCore.Extractor
             var baseSnapshot = simResult.Snapshots[0];
             var baseEntries = ExtractionProcedureInjector.Instance.Execute(baseSnapshot, simResult.TargetMod)?.ToList() ?? new List<TranslationEntry>();
             
+            // 👇 [추가됨] 어셈블리에서 Keyed 데이터를 직접 뽑아와서 베이스 리스트에 합침
+            baseEntries.AddRange(KeyExtractor.Extract(baseSnapshot, simResult.TargetMod));
+            
             // Base 항목들은 기본 리스트에 추가
             finalEntries.AddRange(baseEntries);
 
@@ -35,6 +38,9 @@ namespace RimExtractorCore.Extractor
                 var branchSnapshot = simResult.Snapshots[i];
                 var branchEntries = ExtractionProcedureInjector.Instance.Execute(branchSnapshot, simResult.TargetMod)?.ToList() ?? new List<TranslationEntry>();
 
+                // 👇 [추가됨] 분기 우주의 어셈블리 Keyed 데이터도 뽑아옵니다.
+                branchEntries.AddRange(KeyExtractor.Extract(branchSnapshot, simResult.TargetMod));
+                
                 var branchCondition = new RequiredMods();
                 branchCondition.AddAllowedByModNames(branchSnapshot.RequiredModIds);
 

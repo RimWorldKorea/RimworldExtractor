@@ -1,4 +1,6 @@
-﻿using System.Collections.ObjectModel;
+﻿// ViewModels/SelectModViewModel.cs 전체 코드를 아래로 교체해주세요.
+
+using System.Collections.ObjectModel;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -8,11 +10,16 @@ using RimExtractorFace.Services;
 
 namespace RimExtractorFace.ViewModels;
 
-public class ModListItem
+// [수정됨] 체크박스 상태 변경을 감지하기 위해 ObservableObject 상속 및 partial 클래스로 변경
+public partial class ModListItem : ObservableObject
 {
+    private readonly SelectModViewModel? _parentVm;
     public ModMetadata? Metadata { get; }
     public string DisplayText { get; }
     public bool IsHeader { get; }
+
+    [ObservableProperty]
+    private bool _isReference;
 
     public ModListItem(string header)
     {
@@ -20,15 +27,33 @@ public class ModListItem
         IsHeader = true;
     }
 
-    public ModListItem(ModMetadata metadata, bool isReference)
+    public ModListItem(ModMetadata metadata, bool isReference, SelectModViewModel parentVm)
     {
         Metadata = metadata;
         IsHeader = false;
-
-        string prefix = isReference ? "(기준) " : "";
+        _isReference = isReference;
+        _parentVm = parentVm;
+        
+        // (참조) 접두사는 체크박스로 대체하므로 제거
         DisplayText = metadata.IsOfficialContent
-            ? $"{prefix}[Official] {metadata.ModName}"
-            : $"{prefix}[{metadata.Id}] {metadata.ModName}";
+            ? $"[Official] {metadata.ModName}"
+            : $"[{metadata.Id}] {metadata.ModName}";
+    }
+
+    // 체크박스가 눌려 상태가 변할 때 리스트에 넣고 빼기
+    partial void OnIsReferenceChanged(bool value)
+    {
+        if (Metadata == null || _parentVm == null) return;
+        
+        if (value)
+        {
+            if (!_parentVm.ReferenceMods.Contains(Metadata))
+                _parentVm.ReferenceMods.Add(Metadata);
+        }
+        else
+        {
+            _parentVm.ReferenceMods.Remove(Metadata);
+        }
     }
 
     public override string ToString() => DisplayText;
@@ -38,26 +63,16 @@ public partial class SelectModViewModel : ViewModelBase
 {
     private readonly IExternalProcessService _processService;
     private readonly IExtractionService _extractionService;
-
     private readonly List<ModMetadata> _allModsCached;
     private readonly List<ModMetadata> _officialModsCached;
     private readonly List<ModMetadata> _localModsCached;
     private readonly List<ModMetadata> _workshopModsCached;
 
-    [ObservableProperty]
-    private string _searchText = string.Empty;
-
-    [ObservableProperty]
-    private bool _isFilterSelectedOnly = false;
-
-    [ObservableProperty]
-    private string _selectedModInfoText = "선택된 모드가 없습니다.";
-
-    [ObservableProperty]
-    private ModListItem? _selectedModListItem;
-
-    [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(CompleteCommand))]
+    [ObservableProperty] private string _searchText = string.Empty;
+    [ObservableProperty] private bool _isFilterSelectedOnly = false;
+    [ObservableProperty] private string _selectedModInfoText = "선택된 모드가 없습니다.";
+    [ObservableProperty] private ModListItem? _selectedModListItem;
+    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(CompleteCommand))]
     private bool _canComplete = false;
 
     public ModMetadata? SelectedMod { get; private set; }
@@ -77,23 +92,19 @@ public partial class SelectModViewModel : ViewModelBase
     {
         _processService = processService;
         _extractionService = extractionService;
-
+        
         ModLister.ResetCache();
         _officialModsCached = ModLister.OfficialMods.ToList();
         _localModsCached = ModLister.LocalMods.ToList();
         _workshopModsCached = ModLister.WorkshopMods.ToList();
         _allModsCached = _officialModsCached.Concat(_localModsCached).Concat(_workshopModsCached).ToList();
 
-        // 저장된 기준 모드 리스트 로드
-        if (!string.IsNullOrEmpty(ConfigManager.Current.PathBaseRefList) && File.Exists(ConfigManager.Current.PathBaseRefList))
+        // [수정됨] 더 이상 refMods 파일을 읽지 않고, 공식(Official) 모드들을 무조건 기본 기준 모드로 추가합니다.
+        foreach (var officialMod in _officialModsCached)
         {
-            var lines = File.ReadAllLines(ConfigManager.Current.PathBaseRefList);
-            foreach (var mod in _allModsCached)
+            if (!ReferenceMods.Contains(officialMod))
             {
-                if (lines.Any(x => mod.Identifier == x))
-                {
-                    ReferenceMods.Add(mod);
-                }
+                ReferenceMods.Add(officialMod);
             }
         }
 
@@ -107,28 +118,24 @@ public partial class SelectModViewModel : ViewModelBase
 
     partial void OnSearchTextChanged(string value) => RefreshModList();
     partial void OnIsFilterSelectedOnlyChanged(bool value) => RefreshModList();
-
     partial void OnSelectedModListItemChanged(ModListItem? value)
     {
         if (value == null || value.IsHeader || value.Metadata == null)
             return;
-
+            
         SelectedMod = value.Metadata;
-
         var info = SelectedMod.ModName;
         if (SelectedMod.ModDependencies is { Count: > 0 })
         {
-            info += $"\n[의존 모드: {string.Join(';', SelectedMod.ModDependencies)}]";
+            info += $"\n[종속성: {string.Join(';', SelectedMod.ModDependencies)}]";
         }
         SelectedModInfoText = info;
-
         ExtractableFolders.Clear();
         var folders = ModLister.GetExtractableFolders(SelectedMod);
         foreach (var folder in folders)
         {
             ExtractableFolders.Add(folder);
         }
-
         CanComplete = ExtractableFolders.Count > 0;
     }
 
@@ -137,15 +144,12 @@ public partial class SelectModViewModel : ViewModelBase
         FilteredMods.Clear();
         var keyword = SearchText.Trim().ToLower();
 
-        // Official
         FilteredMods.Add(new ModListItem("==================== OFFICIAL ===================="));
         AddFilteredItems(_officialModsCached, keyword);
 
-        // Local
         FilteredMods.Add(new ModListItem("==================== LOCAL MODS ===================="));
         AddFilteredItems(_localModsCached, keyword);
 
-        // Workshop
         FilteredMods.Add(new ModListItem("==================== WORKSHOP MODS ===================="));
         AddFilteredItems(_workshopModsCached, keyword);
     }
@@ -159,44 +163,32 @@ public partial class SelectModViewModel : ViewModelBase
                 bool isRef = ReferenceMods.Contains(mod);
                 if (IsFilterSelectedOnly && !isRef && SelectedMod != mod)
                     continue;
-
-                FilteredMods.Add(new ModListItem(mod, isRef));
+                // [수정됨] ViewModel 자신을 넘겨주어 체크박스 이벤트를 처리할 수 있게 합니다.
+                FilteredMods.Add(new ModListItem(mod, isRef, this));
             }
         }
-    }
-
-    [RelayCommand]
-    private void ToggleRefMod()
-    {
-        if (SelectedModListItem?.Metadata is not { } mod) return;
-
-        if (ReferenceMods.Contains(mod))
-            ReferenceMods.Remove(mod);
-        else
-            ReferenceMods.Add(mod);
-
-        RefreshModList();
     }
 
     [RelayCommand]
     private async Task SelectAllRefModsAsync()
     {
         if (SelectedModListItem?.Metadata is not { } mod) return;
-
+        
         var requiredMods = mod.ModDependencies?.Select(x => _allModsCached.Find(y => y.PackageId == x)).ToList();
         if (requiredMods == null || requiredMods.Count == 0)
         {
             if (RequestShowAlert != null)
-                await RequestShowAlert.Invoke("선택할 수 있는 의존 모드가 없습니다!");
+                await RequestShowAlert.Invoke("종속성이 선언되지 않은 모드입니다!");
             return;
         }
-
+        
         foreach (var refMod in ModLister.FindAllReferenceMods(mod))
         {
             if (!ReferenceMods.Contains(refMod))
                 ReferenceMods.Add(refMod);
         }
-
+        
+        // 추가 후 UI 체크박스 상태 동기화를 위해 새로고침
         RefreshModList();
     }
 
@@ -209,48 +201,7 @@ public partial class SelectModViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand]
-    private async Task SaveRefModsListAsync(IStorageProvider storageProvider)
-    {
-        var file = await storageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
-        {
-            Title = "기준 모드 목록 저장",
-            DefaultExtension = "refMods",
-            FileTypeChoices = new[] { new FilePickerFileType("기준 모드 파일") { Patterns = new[] { "*.refMods" } } }
-        });
-
-        if (file != null)
-        {
-            await _extractionService.SaveRefModsListAsync(file.Path.LocalPath, ReferenceMods.Select(x => x.Identifier));
-        }
-    }
-
-    [RelayCommand]
-    private async Task LoadRefModsListAsync(IStorageProvider storageProvider)
-    {
-        var files = await storageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = "기준 모드 목록 불러오기",
-            AllowMultiple = false,
-            FileTypeFilter = new[] { new FilePickerFileType("기준 모드 파일") { Patterns = new[] { "*.refMods" } } }
-        });
-
-        if (files.Count > 0)
-        {
-            ReferenceMods.Clear();
-            var lines = await _extractionService.LoadRefModsListAsync(files[0].Path.LocalPath);
-            foreach (var mod in _allModsCached)
-            {
-                if (lines.Any(x => mod.Identifier == x))
-                    ReferenceMods.Add(mod);
-            }
-
-            RefreshModList();
-        }
-    }
-
     private bool CanExecuteComplete() => CanComplete && SelectedMod != null;
-
     [RelayCommand(CanExecute = nameof(CanExecuteComplete))]
     private void Complete()
     {

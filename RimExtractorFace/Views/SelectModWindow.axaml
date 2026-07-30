@@ -41,18 +41,20 @@
                      SelectedItem="{Binding SelectedModListItem}" Margin="0,0,8,0">
                 <ListBox.ItemTemplate>
                     <DataTemplate DataType="vm:ModListItem">
-                        <TextBlock Text="{Binding DisplayText}" VerticalAlignment="Center"/>
+                        <Grid ColumnDefinitions="*, Auto">
+                            <TextBlock Grid.Column="0" Text="{Binding DisplayText}" VerticalAlignment="Center"/>
+                            <CheckBox Grid.Column="1" 
+                                      IsChecked="{Binding IsReference, Mode=TwoWay}"
+                                      IsVisible="{Binding !IsHeader}"
+                                      Margin="8,0,0,0"/>
+                        </Grid>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
                 <ListBox.ContextMenu>
                     <ContextMenu>
                         <MenuItem Header="파일 탐색기에서 열기" Command="{Binding OpenExplorerCommand}"/>
                         <Separator/>
-                        <MenuItem Header="참조 모드로 선택/해제" Command="{Binding ToggleRefModCommand}"/>
                         <MenuItem Header="이 모드와 관련된 모든 모드를 참조 모드로 선택" Command="{Binding SelectAllRefModsCommand}"/>
-                        <Separator/>
-                        <MenuItem Header="(선택) 참조 모드 목록 저장" Command="{Binding SaveRefModsListCommand}" CommandParameter="{Binding $parent[Window].StorageProvider}"/>
-                        <MenuItem Header="(선택) 참조 모드 목록 불러오기" Command="{Binding LoadRefModsListCommand}" CommandParameter="{Binding $parent[Window].StorageProvider}"/>
                     </ContextMenu>
                 </ListBox.ContextMenu>
             </ListBox>
@@ -68,7 +70,7 @@
         </Grid>
 
         <!-- 4행: 조작법 안내 -->
-        <TextBlock Grid.Row="3" Text="조작법: '좌클릭' = 추출 모드 선택 | '우클릭' = 메뉴 | 'A' = 탐색기 열기 | 'S' = 참조 모드 토글 | 'D' = 선택 모드만 보기"
+        <TextBlock Grid.Row="3" Text="조작법: '좌클릭' = 추출 모드 선택 | '우클릭' = 메뉴 | 'A' = 탐색기 열기 | 'D' = 선택 모드만 보기"
                    Foreground="Gray" FontSize="11" Margin="0,0,0,8" HorizontalAlignment="Center"/>
 
         <!-- 5행: 완료 버튼 -->

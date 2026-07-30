@@ -60,9 +60,6 @@ public partial class SelectModWindow : Window
             case Key.A:
                 _viewModel.OpenExplorerCommand.Execute(null);
                 break;
-            case Key.S:
-                _viewModel.ToggleRefModCommand.Execute(null);
-                break;
             case Key.D:
                 _viewModel.IsFilterSelectedOnly = !_viewModel.IsFilterSelectedOnly;
                 break;

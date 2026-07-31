@@ -259,6 +259,7 @@ namespace RimExtractorCore
             });
         }
 
+        //TODO Extractor로 보내야할 것 같아
         public static void DoFullListTranslation(this XDocument defInjectedDoc)
         {
             var patterns = FullListTranslationTags.Select(x => $".+?\\.{x}\\.\\d+").ToList();

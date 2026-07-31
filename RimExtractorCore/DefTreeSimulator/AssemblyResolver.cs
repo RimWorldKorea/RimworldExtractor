@@ -8,7 +8,7 @@ namespace RimExtractorCore.DefTreeSimulator;
 
 public static class AssemblyResolver
 {
-    public static string GenerateBaseDefTree(string assemblyPath, string outputDirPath)
+    public static string GenerateBaseDefTree(string assemblyPath, string outputFilePath)
     {
         if (!File.Exists(assemblyPath))
             throw new FileNotFoundException($"어셈블리를 찾을 수 없습니다: {assemblyPath}");
@@ -85,11 +85,10 @@ public static class AssemblyResolver
             rootNode.Add(defNode);
         }
         
-        doc.Save(outputDirPath);
+        doc.Save(outputFilePath);
         
-        Log.Msg($"사전 모델 트리 생성 완료: {outputDirPath}");
-        return outputDirPath;
-        //TODO outputDirPath -> outputFilePath 고치기
+        Log.Msg($"사전 모델 트리 생성 완료: {outputFilePath}");
+        return outputFilePath;
     }
 
     /// <summary>

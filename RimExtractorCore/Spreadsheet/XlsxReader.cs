@@ -17,6 +17,7 @@ public class XlsxReader : ISpreadsheetReader
     public Grid ReadGrid(string filePath, int sheetIndex = 0)
     {
         using var stream = File.OpenRead(filePath);
+        // ExcelDataReader는 ClosedXML과 달리 LibreOffice로 편집된 xlsx 파일의 읽기 오류가 없습니다.
         using var reader = ExcelReaderFactory.CreateReader(stream);
 
         // 타깃 시트 위치로 이동
@@ -31,7 +32,7 @@ public class XlsxReader : ISpreadsheetReader
             Name = reader.Name ?? $"Sheet{sheetIndex + 1}" 
         };
 
-        // 행 단위 스트리밍 읽기 (LibreOffice 주석/스타일 버그 완전 무시)
+        // 행 단위 스트리밍 읽기
         while (reader.Read())
         {
             var rowData = new List<string>();

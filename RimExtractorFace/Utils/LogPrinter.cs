@@ -4,6 +4,9 @@ using Avalonia.Threading;
 
 namespace RimExtractorFace.Utils;
 
+/// <summary>
+/// 로그창 출력기 클래스입니다. Core의 Log 클래스에 등록해서 사용합니다.
+/// </summary>
 public class LogPrinter : TextWriter
 {
     private readonly TextBox _textBox;

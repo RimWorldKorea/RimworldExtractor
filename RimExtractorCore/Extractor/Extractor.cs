@@ -15,11 +15,11 @@ namespace RimExtractorCore.Extractor
             if (simResult.Snapshots.Count == 0)
                 return new ExtractionResult(simResult.TargetMod, finalEntries);
 
-            // 1. Base 우주(인덱스 0) 추출
+            // Base 우주(인덱스 0) 추출
             var baseSnapshot = simResult.Snapshots[0];
             var baseEntries = ExtractionProcedureInjector.Instance.Execute(baseSnapshot, simResult.TargetMod)?.ToList() ?? new List<TranslationEntry>();
             
-            // 👇 [추가됨] 어셈블리에서 Keyed 데이터를 직접 뽑아와서 베이스 리스트에 합침
+            // 어셈블리에서 Keyed 데이터를 직접 뽑아와서 베이스 리스트에 합침
             baseEntries.AddRange(KeyExtractor.Extract(baseSnapshot, simResult.TargetMod));
             
             // Base 항목들은 기본 리스트에 추가
@@ -32,13 +32,13 @@ namespace RimExtractorCore.Extractor
                 baseDictionary[entry.ClassNode] = entry.Original;
             }
 
-            // 2. 평행 우주(분기) 차분(Diff) 추출
+            // 평행 우주 차분(Diff) 추출
             for (int i = 1; i < simResult.Snapshots.Count; i++)
             {
                 var branchSnapshot = simResult.Snapshots[i];
                 var branchEntries = ExtractionProcedureInjector.Instance.Execute(branchSnapshot, simResult.TargetMod)?.ToList() ?? new List<TranslationEntry>();
 
-                // 👇 [추가됨] 분기 우주의 어셈블리 Keyed 데이터도 뽑아옵니다.
+                // 분기 우주의 어셈블리 Keyed 데이터도 뽑아옵니다.
                 branchEntries.AddRange(KeyExtractor.Extract(branchSnapshot, simResult.TargetMod));
                 
                 var branchCondition = new RequiredMods();
@@ -61,14 +61,13 @@ namespace RimExtractorCore.Extractor
 
                     if (isUniqueToBranch)
                     {
-                        // 이 분기에만 존재하는 고유한 번역이므로, 조건 꼬리표를 달아서 추가
-                        // (Patches. 클래스 네임 스탬프도 원하신다면 여기서 찍어줄 수 있습니다)
+                        // 이 분기에만 존재하는 고유한 번역이므로 조건 꼬리표를 달아서 추가
                         finalEntries.Add(branchEntry with { RequiredMods = branchCondition });
                     }
                 }
             }
 
-            // 3. 중복 필터링 및 후처리 파이프라인
+            // 중복 필터링 및 후처리 파이프라인
             var distinctEntries = FilterDuplicates(finalEntries);
             var processedEntries = TranslationEntryProcedureInjector.Instance.Execute(distinctEntries).ToList();
 

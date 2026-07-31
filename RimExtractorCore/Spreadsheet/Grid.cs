@@ -1,7 +1,7 @@
 ﻿namespace RimExtractorCore.Spreadsheet;
 
 /// <summary>
-/// 림추출기에서 행열 데이터를 다루는 기본 타입입니다.
+/// 림추출기에서 행열 개념을 다루는 기본 타입입니다.
 /// </summary>
 public class Grid
 {

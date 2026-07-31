@@ -7,8 +7,7 @@ using RimExtractorCore.DataTypes;
 namespace RimExtractorCore.DefTreeSimulator
 {
     /// <summary>
-    /// 다중 우주(Multiverse) 분기 생성을 전담하는 마법사 클래스입니다.
-    /// LoadFolders 조합 및 조건부 PatchOperation에 의한 평행 우주 스냅샷 분열을 담당합니다.
+    /// LoadFolders 및 조건부 PatchOperation이 유발하는 다형적 로드 상황의 시뮬레이션 분기 생성을 전담하는 클래스입니다.
     /// </summary>
     public static class DoctorStrange
     {
@@ -46,7 +45,7 @@ namespace RimExtractorCore.DefTreeSimulator
         }
 
         /// <summary>
-        /// RMK의 LoadFoldersBuilder 로직을 참고하여, 폴더들의 로드 조건으로부터 파생되는 
+        /// RMK의 LoadFoldersBuilder 로직으로부터, 폴더들의 로드 조건으로부터 파생되는 
         /// 모든 유니버스(활성화된 모드 조합)의 경우의 수를 계산합니다.
         /// </summary>
         private static List<string[]> CalculateAllModCombinations(List<ExtractableFolder> folders)

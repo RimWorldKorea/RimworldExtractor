@@ -20,10 +20,10 @@ public static class ExtractorCore
     {
         Log.Msg("초기화 시작");
         
-        // [추가됨] 1. 사전 트리(PrePiledTree) 버전 체크 및 갱신
+        // 캐시된 PrePiledTree 버전 체크 및 갱신
         PreparePrePiledTree();
         
-        // 프로시저 등록
+        // 인젝터에 프로시저 등록
         foreach (var injector in Injectors)
         {
             injector.RegisterProcedures();
@@ -32,6 +32,10 @@ public static class ExtractorCore
         Log.Msg("초기화 완료");
     }
     
+    /// <summary>
+    /// 미리 해석된 림월드 DefTree 파일을 로드합니다.
+    /// 파일이 없거나 이전 버전이라면 새로 생성합니다.
+    /// </summary>
     private static void PreparePrePiledTree()
     {
         var formattedVersion = SettingManager.GetFormattedFullVersion();
@@ -41,7 +45,7 @@ public static class ExtractorCore
         // 현재 버전에 맞는 XML 파일이 없다면 (버전업이 되었거나 처음 실행인 경우)
         if (!File.Exists(PrePiledTreePath))
         {
-            Log.Msg($"새로운 림월드 버전 감지됨({formattedVersion}). 사전 트리 생성을 시작합니다.");
+            Log.Msg($"새로운 림월드 버전 감지 ({formattedVersion}). 사전 해석 모델 생성 시작.");
             
             if (Directory.Exists(outDir))
             {
@@ -63,7 +67,7 @@ public static class ExtractorCore
         }
         else
         {
-            Log.Msg($"현재 버전({formattedVersion})과 일치하는 캐시된 사전 트리를 발견했습니다.");
+            Log.Msg($"현재 림월드 버전({formattedVersion})과 일치하는 사전 해석 모델 파일을 찾았습니다.");
         }
     }
 }

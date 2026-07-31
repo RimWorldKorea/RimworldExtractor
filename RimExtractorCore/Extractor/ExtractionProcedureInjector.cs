@@ -4,9 +4,14 @@ using System.IO;
 using System.Linq;
 using RimExtractorCore.DataTypes;
 using RimExtractorCore.Procedures;
+using RimExtractorCore.DefTreeSimulator;
 
 namespace RimExtractorCore.Extractor
 {
+    /// <summary>
+    /// Extractor에서 동작하는 프로시저 인젝터의 구현체입니다.
+    /// Extractor 프로시저는 단 하나만 허용됩니다.
+    /// </summary>
     public class ExtractionProcedureInjector : IProcedureInjector
     {
         public static ExtractionProcedureInjector Instance { get; } = new();

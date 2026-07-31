@@ -3,6 +3,9 @@ using RimExtractorCore.Procedures;
 
 namespace RimExtractorCore.DefTreeSimulator;
 
+/// <summary>
+/// DefTreeSimulator에서 동작하는 프로시저 인젝터의 구현체입니다.
+/// </summary>
 public class XDocumentProcedureInjector : IProcedureInjector
 {
     public static XDocumentProcedureInjector Instance { get; } = new();

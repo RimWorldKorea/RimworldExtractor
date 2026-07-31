@@ -28,14 +28,12 @@ namespace RimExtractorCore.DefTreeSimulator
             XDocument prePiledTree = LoadOrGeneratePrePiledTree();
 
             // -------------------------------------------------------------------------
-            // 2. LoadFolders.xml 조건(Any/All)에 따른 초기 스냅샷 멀티버스 생성 (DoctorStrange)
-            // -------------------------------------------------------------------------
+            // 2. LoadFolders.xml 조건(Any/All)에 따른 초기 스냅샷 멀티버스 생성
             Log.Msg("2. LoadFolders 조건(Any/All)에 따른 초기 스냅샷 분기 생성...");
             List<DefSnapshot> multiverse = DoctorStrange.GenerateInitialSnapshots(prePiledTree, selectedFolders);
 
             // -------------------------------------------------------------------------
             // 3. 각 스냅샷별로 자신에게 할당된 Defs 병합
-            // -------------------------------------------------------------------------
             Log.Msg("3. 분기된 스냅샷별 Defs XML 로드 및 병합...");
             foreach (var snapshot in multiverse)
             {
@@ -43,8 +41,7 @@ namespace RimExtractorCore.DefTreeSimulator
             }
 
             // -------------------------------------------------------------------------
-            // 4. 각 스냅샷별 PatchOperation 분기 검사 및 추가 분열 (DoctorStrange)
-            // -------------------------------------------------------------------------
+            // 4. 각 스냅샷별 PatchOperation 분기 검사 및 추가 분열
             Log.Msg("4. PatchOperationFindMod 등 조건부 패치를 통한 스냅샷 2차 분열...");
             List<DefSnapshot> finalMultiverse = new List<DefSnapshot>();
             
@@ -56,7 +53,6 @@ namespace RimExtractorCore.DefTreeSimulator
 
             // -------------------------------------------------------------------------
             // 5. 상속(Inheritance) 처리 (모든 최종 평행 우주에 대해 각각 수행)
-            // -------------------------------------------------------------------------
             Log.Msg("5. 최종 생성된 모든 스냅샷에 대해 XML 상속(ParentName) 처리...");
             foreach (var snapshot in finalMultiverse)
             {
@@ -66,7 +62,6 @@ namespace RimExtractorCore.DefTreeSimulator
 
             // -------------------------------------------------------------------------
             // 6. PostProcessor (Stage A 등)
-            // -------------------------------------------------------------------------
             foreach (var snapshot in finalMultiverse)
             {
                 snapshot.Tree = XDocumentProcedureInjector.Instance.ExecuteStage(InjectionStage.StageA, snapshot.Tree);

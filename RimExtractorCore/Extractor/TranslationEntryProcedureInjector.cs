@@ -3,6 +3,9 @@ using RimExtractorCore.Procedures;
 
 namespace RimExtractorCore.Extractor;
 
+/// <summary>
+/// Extractor 동작 끝 부분에서 작동하는 프로시저의 인젝터 구현체입니다.
+/// </summary>
 public class TranslationEntryProcedureInjector : IProcedureInjector
 {
     public static TranslationEntryProcedureInjector Instance { get; } = new();

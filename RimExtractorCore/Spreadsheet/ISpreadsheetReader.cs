@@ -2,7 +2,7 @@
 
 public interface ISpreadsheetReader
 {
-    // 🟢 공통 헤더 매칭 후보 목록 (우선순위 순서)
+    // 공통 헤더 매칭 후보 목록 (우선순위 순서)
     public static string[] HeaderClass => new[] { "Class", "Class [Not chosen]" };
     public static string[] HeaderNode => new[] { "Node", "Node [Not chosen]" };
     public static string[] HeaderRequiredMods => new[] { "Required Mods", "Required Mods [Not chosen]" };

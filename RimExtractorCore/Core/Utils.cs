@@ -209,6 +209,7 @@ namespace RimExtractorCore
         [GeneratedRegex("\\s+")]
         private static partial Regex StripSpace();
 
+        //TODO 현재 바인딩 모드 하나만 적용 가능함
         /// <summary>
         /// RimWorld Mod Korean용 빌드 파일 텍스트를 생성합니다.
         /// </summary>

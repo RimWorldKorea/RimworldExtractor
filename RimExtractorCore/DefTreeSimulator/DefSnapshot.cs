@@ -1,6 +1,10 @@
 ﻿using System.Xml.Linq;
 using RimExtractorCore.DataTypes;
 
+namespace RimExtractorCore.DefTreeSimulator;
+/// <summary>
+/// 다중 로드 분기 환경에서 개별 로드셋의 DefTree 구성을 위한 패키지입니다.
+/// </summary>
 public class DefSnapshot
 {
     public List<string> RequiredModIds { get; set; } = new();

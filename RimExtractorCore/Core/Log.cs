@@ -26,8 +26,7 @@ namespace RimExtractorCore
 
         public static void ErrOnce(string message, int hash)
         {
-            if (_hashes.Contains(hash))
-                return;
+            if (_hashes.Contains(hash)) return;
             _hashes.Add(hash);
             Err(message);
         }
@@ -41,8 +40,7 @@ namespace RimExtractorCore
 
         public static void WrnOnce(string message, int hash)
         {
-            if (_hashes.Contains(hash))
-                return;
+            if (_hashes.Contains(hash)) return;
             _hashes.Add(hash);
             Wrn(message);
         }

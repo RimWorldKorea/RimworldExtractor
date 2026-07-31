@@ -3,6 +3,8 @@
 namespace RimExtractorCore.DiffAnalyzer
 
 {
+    //TODO 분석기는 내가 안쓰기도 해서 잘 모르겠다.
+    
     public static class AnalyzerEngine
     {
         public static string[] GetXlsxPaths(string rootPath) =>

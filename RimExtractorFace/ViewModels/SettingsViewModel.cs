@@ -26,7 +26,7 @@ public partial class SettingsViewModel : ViewModelBase
     public static string[] DuplicationPolicies { get; } = new[] { "중단", "덮어쓰기", "기존유지" };
 
     // --- 1. 모델 직접 바인딩 (XAML에서 {Binding Config.XXX} 사용) ---
-    public Settings Config => ConfigManager.Current;
+    public Settings Config => SettingManager.Current;
     
     // [추가됨] 2차 언어 값이 비어있을 때 "None"으로 매핑해주는 Wrapper
     public string SelectedSecondaryLanguage
@@ -65,7 +65,7 @@ public partial class SettingsViewModel : ViewModelBase
 
     public SettingsViewModel()
     {
-        ConfigManager.Load();
+        SettingManager.Load();
         RefreshAdapters();
     }
 
@@ -133,21 +133,21 @@ public partial class SettingsViewModel : ViewModelBase
     [RelayCommand]
     private void AutoDetectVersion()
     {
-        Config.CurrentVersion = ConfigManager.AutoDetectRimworldVersion();
+        Config.CurrentVersion = SettingManager.AutoDetectRimworldVersion();
         OnPropertyChanged(nameof(Config));
     }
 
     [RelayCommand]
     private void SaveAndClose()
     {
-        ConfigManager.Save();
+        SettingManager.Save();
         RequestClose?.Invoke();
     }
 
     [RelayCommand]
     private void Cancel()
     {
-        ConfigManager.Load(); // 변경 사항 롤백
+        SettingManager.Load(); // 변경 사항 롤백
         RefreshAdapters();
         RequestClose?.Invoke();
     }
@@ -155,7 +155,7 @@ public partial class SettingsViewModel : ViewModelBase
     [RelayCommand]
     private void Reset()
     {
-        ConfigManager.InitDefault(); // 기본값으로 덮어쓰기
+        SettingManager.InitDefault(); // 기본값으로 덮어쓰기
         RefreshAdapters();
     }
 }

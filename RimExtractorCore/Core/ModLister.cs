@@ -10,7 +10,7 @@ namespace RimExtractorCore
         {
             get
             {
-                var dirOfficial = Path.Combine(ConfigManager.Current.PathRimworld, "Data");
+                var dirOfficial = Path.Combine(SettingManager.Current.PathRimworld, "Data");
                 if (Directory.Exists(dirOfficial))
                     foreach (var dir in Directory.EnumerateDirectories(dirOfficial))
                         yield return dir;
@@ -21,7 +21,7 @@ namespace RimExtractorCore
         {
             get
             {
-                var dirLocalMods = Path.Combine(ConfigManager.Current.PathRimworld, "Mods");
+                var dirLocalMods = Path.Combine(SettingManager.Current.PathRimworld, "Mods");
                 if (Directory.Exists(dirLocalMods))
                     foreach (var dir in Directory.EnumerateDirectories(dirLocalMods))
                         yield return dir;
@@ -32,7 +32,7 @@ namespace RimExtractorCore
         {
             get
             {
-                var dirWorkshopMods = ConfigManager.Current.PathWorkshop;
+                var dirWorkshopMods = SettingManager.Current.PathWorkshop;
                 if (Directory.Exists(dirWorkshopMods))
                     foreach (var dir in Directory.EnumerateDirectories(dirWorkshopMods))
                         yield return dir;
@@ -113,7 +113,7 @@ namespace RimExtractorCore
                     var modDependenciesByVersionNode = doc.Root?.Element("modDependenciesByVersion");
                     if (modDependenciesByVersionNode != null)
                     {
-                        var nodes = modDependenciesByVersionNode.Element("v" + ConfigManager.Current.CurrentVersion)?.Elements();
+                        var nodes = modDependenciesByVersionNode.Element("v" + SettingManager.Current.CurrentVersion)?.Elements();
                         nodes ??= modDependenciesByVersionNode.Elements().LastOrDefault()?.Elements();
                         if (nodes != null)
                         {
@@ -159,7 +159,7 @@ namespace RimExtractorCore
             var targetFolders = new List<string> { "Defs", "Patches", "Keyed" };
             
             // 1차, 2차, 그리고 기본(English) 언어 폴더를 모두 탐색 대상에 추가합니다.
-            foreach (var lang in ConfigManager.Current.GetLanguagePriorityList())
+            foreach (var lang in SettingManager.Current.GetLanguagePriorityList())
             {
                 var shortLang = lang.Split(' ').First(); // 예: "Korean (한국어)" -> "Korean"
                 
@@ -211,7 +211,7 @@ namespace RimExtractorCore
                 foreach (var directory in Directory.EnumerateDirectories(root))
                 {
                     var lastDir = Path.GetFileName(directory);
-                    if (Regex.IsMatch(lastDir, ConfigManager.Current.PatternVersion))
+                    if (Regex.IsMatch(lastDir, SettingManager.Current.PatternVersion))
                     {
                         foreach (var extractableFolder in GetExtractableFoldersInternal(directory)
                                      .Select(x => new ExtractableFolder(modMetadata, x, null, lastDir)))
@@ -297,7 +297,7 @@ namespace RimExtractorCore
         public static bool IsAutoSelectable(this ExtractableFolder extractableFolder)
         {
             return extractableFolder.VersionInfo is "default" or "Common" ||
-                   extractableFolder.VersionInfo == ConfigManager.Current.CurrentVersion;
+                   extractableFolder.VersionInfo == SettingManager.Current.CurrentVersion;
         }
 
         internal static bool TryGetModMetadataByPackageId(string? packageId, out ModMetadata? modMetadata)

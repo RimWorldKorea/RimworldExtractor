@@ -25,7 +25,7 @@ namespace RimExtractorCore
             var xmlFiles = new Dictionary<string, XDocument>();
             var txtFiles = new Dictionary<string, List<string>>();
 
-            var translationLang = ConfigManager.Current.TranslationLanguage;
+            var translationLang = SettingManager.Current.TranslationLanguage;
             var translationDir = Path.Combine(rootDirPath, "Languages", translationLang);
 
             // 1. 분류 버킷
@@ -202,7 +202,7 @@ namespace RimExtractorCore
                         localXmls[key] = doc;
                     }
                     if (commentOriginal)
-                        doc.Root!.AppendComment($"{ConfigManager.Current.OriginalLanguage}={SecurityElement.Escape(translation.Original).Replace('-', ' ')}");
+                        doc.Root!.AppendComment($"{SettingManager.Current.OriginalLanguage}={SecurityElement.Escape(translation.Original).Replace('-', ' ')}");
 
                     doc.Root!.AppendElement(translation.Node, translation.Translated ?? translation.Original);
                 }

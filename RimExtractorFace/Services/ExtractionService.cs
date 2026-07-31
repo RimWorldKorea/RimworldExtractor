@@ -77,7 +77,7 @@ public class ExtractionService : IExtractionService
 
         await Task.Run(() =>
         {
-            switch (ConfigManager.Current.Method)
+            switch (SettingManager.Current.Method)
             {
                 // Prefabs.ExtractionMethod에서 ExtractionMethod로 직접 참조하도록 수정
                 case ExtractionMethod.Excel:
@@ -127,7 +127,7 @@ public class ExtractionService : IExtractionService
         {
             var translations = FileInterface.FromExcel(xlsxFilePath);
             // Prefabs.CommentOriginal을 ConfigManager.Current.CommentOriginal로 교체
-            FileInterface.ToLanguageXml(translations, true, ConfigManager.Current.CommentOriginal, Path.GetFileName(xlsxFilePath), Path.GetDirectoryName(xlsxFilePath) ?? "");
+            FileInterface.ToLanguageXml(translations, true, SettingManager.Current.CommentOriginal, Path.GetFileName(xlsxFilePath), Path.GetDirectoryName(xlsxFilePath) ?? "");
         });
     }
 

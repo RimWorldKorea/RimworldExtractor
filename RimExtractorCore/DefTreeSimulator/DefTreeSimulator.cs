@@ -81,26 +81,52 @@ namespace RimExtractorCore.DefTreeSimulator
         /// </summary>
         private static XDocument LoadOrGeneratePrePiledTree()
         {
-            string testAssemblyPath = @"C:\Program Files (x86)\Steam\steamapps\common\RimWorld\RimWorldWin64_Data\Managed\Assembly-CSharp.dll";
-            string testOutDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PrePiledModels");
-            string expectedPath = Path.Combine(testOutDir, "PrePiledTree-1_6_Test.xml");
-
-            if (!File.Exists(expectedPath))
+            var path = ExtractorCore.PrePiledTreePath;
+            if (string.IsNullOrEmpty(path) || !File.Exists(path))
             {
-                AssemblyResolver.GenerateBaseDefTree(testAssemblyPath, testOutDir);
+                throw new FileNotFoundException($"사전 트리 XML 파일을 찾을 수 없습니다: {path}");
             }
-
-            return XDocument.Load(expectedPath);
+            return XDocument.Load(path);
         }
 
         /// <summary>
-        /// 선택된 Defs 폴더 안의 XML 파일들을 읽어 Base 트리에 단순 병합합니다. (상속 적용 전)
+        /// 추출된 Defs 폴더들의 XML을 읽어 Base 트리에 병합합니다.
         /// </summary>
         private static void LoadAndMergeModDefs(XDocument baseTree, List<ExtractableFolder> defFolders)
         {
             var baseRoot = baseTree.Root;
             if (baseRoot == null) return;
-            // TODO: defFolders 순회하며 baseRoot에 Add
+
+            foreach (var folder in defFolders)
+            {
+                var folderPath = folder.FullPath;
+                if (!Directory.Exists(folderPath)) continue;
+
+                // 해당 Defs 폴더 안의 모든 .xml 파일을 탐색합니다.
+                var xmlFiles = FileInterface.DescendantFiles(folderPath)
+                    .Where(x => x.EndsWith(".xml", StringComparison.OrdinalIgnoreCase));
+
+                foreach (var xmlFile in xmlFiles)
+                {
+                    try
+                    {
+                        // FileInterface.ReadXml을 사용하여 주석/공백을 무시하고 안전하게 로드합니다.
+                        var modDefDoc = FileInterface.ReadXml(xmlFile);
+                        var modRoot = modDefDoc.Root;
+
+                        // 루트가 <Defs>인 경우에만 그 안의 자식 노드들을 베이스 트리에 병합합니다.
+                        if (modRoot != null && modRoot.Name.LocalName == "Defs")
+                        {
+                            // 요소들을 베이스 트리의 Root에 추가 (LINQ to XML이 자동으로 복제/이동 처리)
+                            baseRoot.Add(modRoot.Elements());
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Wrn($"Def XML 파일 병합 중 오류 발생 ({xmlFile}): {e.Message}");
+                    }
+                }
+            }
         }
 
         /// <summary>

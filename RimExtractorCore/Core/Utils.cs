@@ -215,7 +215,7 @@ namespace RimExtractorCore
         public static string WriteBuildYamlText(ModMetadata ModInfo)
         {
             return
-                $"BuildRule:\n  Binding:\n    PackageID: [\"{ModInfo.PackageId}\"]\n    Mode: \"None\"\n    Dependency: \"Independent\"\n  Order:\n    After: \n    Before: \n  Version:\n    Default: \"{ConfigManager.Current.CurrentVersion}\"\n    LeftBoundary: \n    RightBoundary: \n    Designate: \n    Ban: \nMetadata:\n  WorkshopID: \"{ModInfo.Id}\"\n  ModName: \"{ModInfo.ModName}\"\n";
+                $"BuildRule:\n  Binding:\n    PackageID: [\"{ModInfo.PackageId}\"]\n    Mode: \"None\"\n    Dependency: \"Independent\"\n  Order:\n    After: \n    Before: \n  Version:\n    Default: \"{SettingManager.Current.CurrentVersion}\"\n    LeftBoundary: \n    RightBoundary: \n    Designate: \n    Ban: \nMetadata:\n  WorkshopID: \"{ModInfo.Id}\"\n  ModName: \"{ModInfo.ModName}\"\n";
         }
     }
 }

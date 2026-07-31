@@ -19,9 +19,9 @@ public partial class InitialPathSelectViewModel : ViewModelBase
 
     public InitialPathSelectViewModel()
     {
-        ConfigManager.InitDefault();
-        PathRimworld = ConfigManager.Current.PathRimworld;
-        PathWorkshop = ConfigManager.Current.PathWorkshop;
+        SettingManager.InitDefault();
+        PathRimworld = SettingManager.Current.PathRimworld;
+        PathWorkshop = SettingManager.Current.PathWorkshop;
     }
 
     // 림월드 실행 파일 선택 명령
@@ -67,9 +67,9 @@ public partial class InitialPathSelectViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanComplete))]
     private void Complete()
     {
-        ConfigManager.Current.PathRimworld = PathRimworld;
-        ConfigManager.Current.PathWorkshop = PathWorkshop;
-        ConfigManager.Save();
+        SettingManager.Current.PathRimworld = PathRimworld;
+        SettingManager.Current.PathWorkshop = PathWorkshop;
+        SettingManager.Save();
 
         RequestClose?.Invoke();
     }

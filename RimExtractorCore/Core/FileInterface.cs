@@ -12,8 +12,8 @@ namespace RimExtractorCore
         private static readonly string HeaderClass = "Class [Not chosen]";
         private static readonly string HeaderNode = "Node [Not chosen]";
         private static readonly string HeaderRequiredMods = "Required Mods [Not chosen]";
-        private static string HeaderOriginal => $"{ConfigManager.Current.OriginalLanguage} [Source string]";
-        private static string HeaderTranslated => $"{ConfigManager.Current.TranslationLanguage} [Translation]";
+        private static string HeaderOriginal => $"{SettingManager.Current.OriginalLanguage} [Source string]";
+        private static string HeaderTranslated => $"{SettingManager.Current.TranslationLanguage} [Translation]";
 
         public static List<TranslationEntry> FromExcel(string inputPath)
         {
@@ -22,9 +22,9 @@ namespace RimExtractorCore
         
         public static List<TranslationEntry> FromLanguageXml(string rootPath, bool isOfficialContent = false)
         {
-            var translationsDir = Path.Combine(rootPath, "Languages", ConfigManager.Current.TranslationLanguage);
+            var translationsDir = Path.Combine(rootPath, "Languages", SettingManager.Current.TranslationLanguage);
             if (!Directory.Exists(translationsDir))
-                translationsDir = Path.Combine(rootPath, "Languages", ConfigManager.Current.TranslationLanguage.Split(' ').First());
+                translationsDir = Path.Combine(rootPath, "Languages", SettingManager.Current.TranslationLanguage.Split(' ').First());
 
             var defInjectedDir = Path.Combine(translationsDir, "DefInjected");
             var keyedDir = Path.Combine(translationsDir, "Keyed");
@@ -117,7 +117,7 @@ namespace RimExtractorCore
                 return;
             }
 
-            switch (ConfigManager.Current.Policy)
+            switch (SettingManager.Current.Policy)
             {
                 case DuplicatesPolicy.Stop:
                     var stopCallback = Constants.StopCallbackXml;
@@ -144,7 +144,7 @@ namespace RimExtractorCore
                 return;
             }
 
-            switch (ConfigManager.Current.Policy)
+            switch (SettingManager.Current.Policy)
             {
                 case DuplicatesPolicy.Stop:
                     var stopCallback = Constants.StopCallbackTxt;

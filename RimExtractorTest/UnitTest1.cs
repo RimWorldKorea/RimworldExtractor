@@ -9,9 +9,9 @@ namespace RimExtractorTest
         [TestMethod]
         public void TestMethod1()
         { 
-            ConfigManager.InitDefault();
-            ConfigManager.Current.PathRimworld = "C:\\Games\\Steam\\steamapps\\common\\RimWorld";
-            ConfigManager.Current.PathWorkshop = "C:\\Games\\Steam\\steamapps\\workshop\\content\\294100";
+            SettingManager.InitDefault();
+            SettingManager.Current.PathRimworld = "C:\\Games\\Steam\\steamapps\\common\\RimWorld";
+            SettingManager.Current.PathWorkshop = "C:\\Games\\Steam\\steamapps\\workshop\\content\\294100";
             foreach (var path in new[]
                      {
                          "Data\\2997308585\\a.xlsx", 

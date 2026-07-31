@@ -6,9 +6,9 @@ namespace RimExtractorCore
     /// <summary>
     /// 모든 유저 설정은 나에게로
     /// </summary>
-    public static class ConfigManager
+    public static class SettingManager
     {
-        public const string ConfigFileName = "config.json";
+        public const string ConfigFileName = "Settings.json";
         
         public static Settings Current { get; private set; } = new();
 
@@ -33,7 +33,7 @@ namespace RimExtractorCore
             }
             catch (Exception ex)
             {
-                Log.Err($"설정 파일 로드 실패. 기본값으로 덮어씁니다: {ex.Message}");
+                Log.Wrn($"설정 파일 로드에 실패하여 기본 설정으로 실행합니다. {ex.Message}");
                 InitDefault();
                 Save();
             }
@@ -55,6 +55,30 @@ namespace RimExtractorCore
         public static void InitDefault()
         {
             Current = new Settings();
+        }
+        
+        /// <summary>
+        /// 림월드 폴더에서 게임 버전 기록을 읽어 특정 형태로 가공합니다.
+        /// </summary>
+        /// <returns></returns>
+        public static string GetFormattedFullVersion()
+        {
+            //TODO AutoDetectRimworldVersion과 역할이 겹치는 것 같은데
+            try
+            {
+                var pathVersion = Path.Combine(Current.PathRimworld, "Version.txt");
+                if (File.Exists(pathVersion))
+                {
+                    var rawContext = File.ReadAllText(pathVersion).Trim();
+                    // 점(.)과 공백( )을 언더바(_)로 치환
+                    return rawContext.Replace(".", "_").Replace(" ", "_");
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Err($"버전 파일 읽기 실패: {e.Message}");
+            }
+            return "UnknownVersion";
         }
 
         public static string AutoDetectRimworldVersion()

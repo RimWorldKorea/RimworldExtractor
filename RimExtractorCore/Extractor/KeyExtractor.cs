@@ -39,7 +39,7 @@ namespace RimExtractorCore.Extractor
             }
 
             // 3. 설정된 1차/2차 언어를 기반으로 원문(Original) 텍스트 매핑
-            var priorityLanguages = ConfigManager.Current.GetLanguagePriorityList().ToList();
+            var priorityLanguages = SettingManager.Current.GetLanguagePriorityList().ToList();
             
             foreach (var folder in snapshot.AssignedFolders)
             {

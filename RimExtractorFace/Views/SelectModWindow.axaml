@@ -3,7 +3,7 @@
         xmlns:vm="clr-namespace:RimExtractorFace.ViewModels"
         x:Class="RimExtractorFace.Views.SelectModWindow"
         x:DataType="vm:SelectModViewModel"
-        Title="추출할 모드를 선택하세요"
+        Title=""
         Width="820" Height="520"
         WindowStartupLocation="CenterOwner"
         KeyDown="Window_KeyDown">
@@ -35,31 +35,97 @@
         </DockPanel>
 
         <!-- 3행: 모드 리스트 및 폴더 리스트 -->
+        <!-- 3. 본문 목록 -->
+        <!-- 3. 본문 목록 -->
         <Grid Grid.Row="2" ColumnDefinitions="*, 300" Margin="0,0,0,8">
-            <!-- 모드 목록 -->
-            <ListBox Grid.Column="0" ItemsSource="{Binding FilteredMods}"
-                     SelectedItem="{Binding SelectedModListItem}" Margin="0,0,8,0">
-                <ListBox.ItemTemplate>
-                    <DataTemplate DataType="vm:ModListItem">
-                        <Grid ColumnDefinitions="*, Auto">
-                            <TextBlock Grid.Column="0" Text="{Binding DisplayText}" VerticalAlignment="Center"/>
-                            <CheckBox Grid.Column="1" 
-                                      IsChecked="{Binding IsReference, Mode=TwoWay}"
-                                      IsVisible="{Binding !IsHeader}"
-                                      Margin="8,0,0,0"/>
-                        </Grid>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-                <ListBox.ContextMenu>
-                    <ContextMenu>
-                        <MenuItem Header="파일 탐색기에서 열기" Command="{Binding OpenExplorerCommand}"/>
-                        <Separator/>
-                        <MenuItem Header="이 모드와 관련된 모든 모드를 참조 모드로 선택" Command="{Binding SelectAllRefModsCommand}"/>
-                    </ContextMenu>
-                </ListBox.ContextMenu>
-            </ListBox>
+            
+            <!-- 좌측: 모드 목록 -->
+            <Border Grid.Column="0" Background="#252525" CornerRadius="4" Margin="0,0,8,0" Grid.IsSharedSizeScope="True">
+                
+                <ListBox ItemsSource="{Binding FilteredMods}" 
+                         SelectedItem="{Binding SelectedModListItem}"
+                         Background="Transparent"
+                         ScrollViewer.AllowAutoHide="False"
+                         Padding="4,4,0,4"> <!-- 내부 전체 여백도 살짝 줄임 -->
+                         
+                    <ListBox.Styles>
+                        <!-- 1. [헤더 비활성화 & 행 높이 압축] -->
+                        <Style Selector="ListBoxItem" x:DataType="vm:ModListItem">
+                            <!-- 헤더 아이템일 경우 IsEnabled를 False로 만들어 마우스 호버와 선택을 원천 차단 -->
+                            <Setter Property="IsEnabled" Value="{Binding !IsHeader}"/>
+                            <Setter Property="MinHeight" Value="22"/>
+                            <Setter Property="Padding" Value="4,1"/>
+                        </Style>
+                        <!-- 비활성화(Disabled) 상태일 때 흐려지지 않도록 불투명도 원상복구 -->
+                        <Style Selector="ListBoxItem:disabled">
+                            <Setter Property="Opacity" Value="1.0" />
+                        </Style>
+                    </ListBox.Styles>
+                    
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="vm:ModListItem">
+                            <Panel>
+                                
+                                <!-- 헤더 UI -->
+                                <Border IsVisible="{Binding IsHeader}" 
+                                        Background="#333333" 
+                                        CornerRadius="4" 
+                                        Padding="6,4" 
+                                        Margin="0,4,0,4">
+                                    <TextBlock Text="{Binding HeaderText}" 
+                                               FontWeight="Bold" 
+                                               Foreground="White" 
+                                               HorizontalAlignment="Center"/>
+                                </Border>
 
-            <!-- 추출 폴더 목록 -->
+                                <!-- 아이템 UI (진짜 모드) -->
+                                <!-- 위아래 여백을 최소화하여 컴팩트하게 만듦 -->
+                                <Grid IsVisible="{Binding !IsHeader}" Margin="0,1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" 
+                                                          SharedSizeGroup="IdColumnGroup" 
+                                                          MinWidth="{Binding MinIdWidth}" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <!-- 2. [ID 중앙 정렬] -->
+                                    <TextBlock Grid.Column="0" 
+                                               Text="{Binding DisplayId}" 
+                                               Foreground="Gray" 
+                                               HorizontalAlignment="Center" 
+                                               TextAlignment="Center" 
+                                               VerticalAlignment="Center" 
+                                               Margin="4,0,12,0"/>
+                                               
+                                    <!-- 이름 -->
+                                    <TextBlock Grid.Column="1" 
+                                               Text="{Binding DisplayName}" 
+                                               VerticalAlignment="Center" 
+                                               TextTrimming="CharacterEllipsis"/>
+                                               
+                                    <!-- 체크박스 -->
+                                    <CheckBox Grid.Column="2" 
+                                              IsChecked="{Binding IsReference, Mode=TwoWay}" 
+                                              MinHeight="16" 
+                                              Margin="8,0,6,0"/>
+                                </Grid>
+                                
+                            </Panel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                    
+                    <ListBox.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="탐색기 열기" Command="{Binding OpenExplorerCommand}"/>
+                            <Separator/>
+                            <MenuItem Header="선택 모드의 기준(참조) 모드 모두 가져오기" Command="{Binding SelectAllRefModsCommand}"/>
+                        </ContextMenu>
+                    </ListBox.ContextMenu>
+                </ListBox>
+            </Border>
+
+            <!-- 우측: 폴더 목록 (기존 유지) -->
             <ListBox Grid.Column="1" Name="ListBoxFolders" ItemsSource="{Binding ExtractableFolders}" SelectionMode="Multiple,Toggle">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
@@ -71,7 +137,7 @@
 
         <!-- 4행: 조작법 안내 -->
         <TextBlock Grid.Row="3" Text="조작법: '좌클릭' = 추출 모드 선택 | '우클릭' = 메뉴 | 'A' = 탐색기 열기 | 'D' = 선택 모드만 보기"
-                   Foreground="Gray" FontSize="11" Margin="0,0,0,8" HorizontalAlignment="Center"/>
+                   Foreground="White" FontSize="11" Margin="0,0,0,8" HorizontalAlignment="Center"/>
 
         <!-- 5행: 완료 버튼 -->
         <Button Grid.Row="4" Content="선택 완료" Height="40" 

@@ -18,8 +18,8 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             // Settings.json 환경설정 로드
-            ConfigManager.Load();
-            var config = ConfigManager.Current;
+            SettingManager.Load();
+            var config = SettingManager.Current;
 
             // 경로 문자열이 비어있지 않고, 실제 디스크 상에 존재하는 폴더인지 검증
             bool isPathValid = !string.IsNullOrWhiteSpace(config.PathRimworld) &&

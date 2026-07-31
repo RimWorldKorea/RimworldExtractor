@@ -3,7 +3,7 @@
         xmlns:vm="clr-namespace:RimExtractorFace.ViewModels"
         x:Class="RimExtractorFace.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        Title="Rimworld Extractor GUI (림추출기)"
+        Title="RimExtractor"
         Width="820" Height="520"
         WindowStartupLocation="CenterScreen">
 
@@ -39,9 +39,6 @@
 
             <!-- 오른쪽 설명 및 선택된 모드 텍스트 -->
             <StackPanel Grid.Column="1" Margin="15,0,0,0" Spacing="8">
-                <TextBlock Text="림월드의 공식 콘텐츠나 모드의 번역 데이터를 추출하는 프로그램입니다." 
-                           HorizontalAlignment="Center" FontWeight="Bold"/>
-                
                 <ScrollViewer Height="180" Background="Black" Padding="8">
                     <TextBlock Text="{Binding SelectedModsText}" TextWrapping="Wrap" TextAlignment="Center"/>
                 </ScrollViewer>
@@ -53,9 +50,9 @@
             <Button Grid.Column="0" Content="{Binding VersionText}" Background="Transparent" Foreground="Blue"
                     Command="{Binding OpenVersionUrlCommand}"/>
             
-            <TextBlock Grid.Column="1" Text="Log" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
+            <TextBlock Grid.Column="1" Text="로그" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
             
-            <Button Grid.Column="2" Content="경고나 에러 발생 시"
+            <Button Grid.Column="2" Content="고객센터"
                     Command="{Binding OpenDiscordUrlCommand}"/>
         </Grid>
 

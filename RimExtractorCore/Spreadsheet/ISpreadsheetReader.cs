@@ -9,14 +9,14 @@ public interface ISpreadsheetReader
     
     public static string[] HeaderOriginal => new[] 
     { 
-        $"{ConfigManager.Current.OriginalLanguage} [Source string]", 
+        $"{SettingManager.Current.OriginalLanguage} [Source string]", 
         "EN [Source string]", 
         "Original" 
     };
     
     public static string[] HeaderTranslated => new[] 
     { 
-        $"{ConfigManager.Current.TranslationLanguage} [Translation]", 
+        $"{SettingManager.Current.TranslationLanguage} [Translation]", 
         "KO [Translation]", 
         "Translated" 
     };

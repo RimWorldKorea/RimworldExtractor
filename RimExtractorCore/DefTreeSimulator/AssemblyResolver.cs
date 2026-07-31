@@ -84,16 +84,12 @@ public static class AssemblyResolver
 
             rootNode.Add(defNode);
         }
-
-        var versionStr = "1_6_Test"; 
-        var fileName = $"PrePiledTree-{versionStr}.xml";
-        var outputPath = Path.Combine(outputDirPath, fileName);
         
-        if (!Directory.Exists(outputDirPath)) Directory.CreateDirectory(outputDirPath);
-        doc.Save(outputPath);
+        doc.Save(outputDirPath);
         
-        Log.Msg($"사전 모델 트리 생성 완료: {outputPath}");
-        return outputPath;
+        Log.Msg($"사전 모델 트리 생성 완료: {outputDirPath}");
+        return outputDirPath;
+        //TODO outputDirPath -> outputFilePath 고치기
     }
 
     /// <summary>

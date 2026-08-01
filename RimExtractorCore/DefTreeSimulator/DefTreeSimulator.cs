@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Xml.Linq;
@@ -24,25 +25,51 @@ namespace RimExtractorCore.DefTreeSimulator
         {
             var result = new SimulationResult { TargetMod = modMetadata };
 
-            Log.Msg("1. 사전 어셈블리 모델(PrePiledTree) 로드...");
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            Log.Msg("Phase1/ 사전 어셈블리 모델(PrePiledTree) 로드...");
             XDocument prePiledTree = LoadOrGeneratePrePiledTree();
+            
+            Log.Msg($"{stopwatch.ElapsedMilliseconds} ms 경과");
+            
+#if DEBUG
+            ExportDebugFile(prePiledTree, "1_PrePiled.xml");
+#endif
+            stopwatch.Restart();
+            // [추가됨] 스냅샷을 구성하기 전에 Core 및 선행 모드의 Defs를 미리 트리에 병합하여 
+            // 뼈대(Schema)와 모드 Def 사이의 상속 체인을 이어줍니다.
+            if (referenceDefsRoots != null && referenceDefsRoots.Count > 0)
+            {
+                Log.Msg("Phase2/ 참조 모드(Core 등) Defs 병합 중...");
+                LoadAndMergeModDefs(prePiledTree, referenceDefsRoots, false);
+            }
+            Log.Msg($"{stopwatch.ElapsedMilliseconds} ms 경과");
+#if DEBUG
+            ExportDebugFile(prePiledTree, "2_MergedWithReference.xml");
+#endif
 
             // -------------------------------------------------------------------------
             // 2. LoadFolders.xml 조건(Any/All)에 따른 초기 스냅샷 멀티버스 생성
-            Log.Msg("2. LoadFolders 조건(Any/All)에 따른 초기 스냅샷 분기 생성...");
+            stopwatch.Restart();
+            Log.Msg("Phase3/ LoadFolders 조건(Any/All)에 따른 초기 스냅샷 분기 생성...");
             List<DefSnapshot> multiverse = DoctorStrange.GenerateInitialSnapshots(prePiledTree, selectedFolders);
-
+            Log.Msg($"{stopwatch.ElapsedMilliseconds} ms 경과");
             // -------------------------------------------------------------------------
             // 3. 각 스냅샷별로 자신에게 할당된 Defs 병합
-            Log.Msg("3. 분기된 스냅샷별 Defs XML 로드 및 병합...");
+            stopwatch.Restart();
+            Log.Msg("Phase4/ 분기된 스냅샷별 Defs XML 로드 및 병합...");
             foreach (var snapshot in multiverse)
             {
-                LoadAndMergeModDefs(snapshot.Tree, snapshot.AssignedFolders);
+                LoadAndMergeModDefs(snapshot.Tree, snapshot.AssignedFolders, true);
             }
+            Log.Msg($"{stopwatch.ElapsedMilliseconds} ms 경과");
+#if DEBUG
+            ExportDebugFile(multiverse.First().Tree, "4_Merged.xml");
+#endif
 
             // -------------------------------------------------------------------------
             // 4. 각 스냅샷별 PatchOperation 분기 검사 및 추가 분열
-            Log.Msg("4. PatchOperationFindMod 등 조건부 패치를 통한 스냅샷 2차 분열...");
+            stopwatch.Restart();
+            Log.Msg("Phase5/ PatchOperationFindMod 등 조건부 패치를 통한 스냅샷 2차 분열...");
             List<DefSnapshot> finalMultiverse = new List<DefSnapshot>();
             
             foreach (var snapshot in multiverse)
@@ -50,15 +77,25 @@ namespace RimExtractorCore.DefTreeSimulator
                 var branchedSnapshots = DoctorStrange.ProcessPatchOperations(snapshot, snapshot.AssignedPatches);
                 finalMultiverse.AddRange(branchedSnapshots);
             }
+            Log.Msg($"{stopwatch.ElapsedMilliseconds} ms 경과");
+#if DEBUG
+            ExportDebugFile(multiverse.First().Tree, "5_Patched.xml");
+#endif
 
             // -------------------------------------------------------------------------
             // 5. 상속(Inheritance) 처리 (모든 최종 평행 우주에 대해 각각 수행)
-            Log.Msg("5. 최종 생성된 모든 스냅샷에 대해 XML 상속(ParentName) 처리...");
+            // 이 단계에서 트리는 XML 생성 명세서에서 실제 트리 구조로 전환됩니다.
+            stopwatch.Restart();
+            Log.Msg("Phase6/ 최종 생성된 모든 스냅샷에 대해 XML 상속(ParentName) 처리...");
             foreach (var snapshot in finalMultiverse)
             {
                 DoXmlInheritance(snapshot.Tree.Root);
                 CleanUpAbstractNodes(snapshot.Tree.Root);
             }
+            Log.Msg($"{stopwatch.ElapsedMilliseconds} ms 경과");
+#if DEBUG
+            ExportDebugFile(multiverse.First().Tree, "6_Inherited.xml");
+#endif
 
             // -------------------------------------------------------------------------
             // 6. PostProcessor (Stage A 등)
@@ -87,41 +124,51 @@ namespace RimExtractorCore.DefTreeSimulator
         /// <summary>
         /// 추출된 Defs 폴더들의 XML을 읽어 Base 트리에 병합합니다.
         /// </summary>
-        private static void LoadAndMergeModDefs(XDocument baseTree, List<ExtractableFolder> defFolders)
+        private static void LoadAndMergeModDefs(XDocument baseTree, IEnumerable<string> folderPaths, bool markAsTarget = false)
         {
             var baseRoot = baseTree.Root;
             if (baseRoot == null) return;
 
-            foreach (var folder in defFolders)
+            foreach (var folderPath in folderPaths)
             {
-                var folderPath = folder.FullPath;
                 if (!Directory.Exists(folderPath)) continue;
 
-                // 해당 Defs 폴더 안의 모든 .xml 파일을 탐색합니다.
                 var xmlFiles = FileInterface.DescendantFiles(folderPath)
                     .Where(x => x.EndsWith(".xml", StringComparison.OrdinalIgnoreCase));
-
+                
                 foreach (var xmlFile in xmlFiles)
                 {
                     try
                     {
-                        // FileInterface.ReadXml을 사용하여 주석/공백을 무시하고 안전하게 로드합니다.
                         var modDefDoc = FileInterface.ReadXml(xmlFile);
                         var modRoot = modDefDoc.Root;
-
-                        // 루트가 <Defs>인 경우에만 그 안의 자식 노드들을 베이스 트리에 병합합니다.
                         if (modRoot != null && modRoot.Name.LocalName == "Defs")
                         {
-                            // 요소들을 베이스 트리의 Root에 추가 (LINQ to XML이 자동으로 복제/이동 처리)
+                            var elements = modRoot.Elements().ToList();
+                            
+                            // [추가됨] 타겟 모드의 Def일 경우 추출 대상 마킹
+                            if (markAsTarget)
+                            {
+                                foreach (var element in elements)
+                                {
+                                    element.SetAttributeValue("ExtractionTarget", "True");
+                                }
+                            }
+                            
                             baseRoot.Add(modRoot.Elements());
                         }
                     }
                     catch (Exception e)
                     {
-                        Log.Wrn($"Def XML 파일 병합 중 오류 발생 ({xmlFile}): {e.Message}");
+                        Log.Wrn($"Def XML 병합 오류 ({xmlFile}): {e.Message}");
                     }
                 }
             }
+        }
+
+        private static void LoadAndMergeModDefs(XDocument baseTree, List<ExtractableFolder> defFolders, bool markAsTarget = false)
+        {
+            LoadAndMergeModDefs(baseTree, defFolders.Select(f => f.FullPath));
         }
 
         /// <summary>
@@ -148,6 +195,16 @@ namespace RimExtractorCore.DefTreeSimulator
         {
             if (resolvedSet.Contains(def)) return;
 
+            // 1. 자기 자신이 뼈대 스키마(예: <JobDef Name="JobDef">)인지 검사하여 무한 루프 방지
+            bool isBaseSchemaNode = def.Attribute("Name")?.Value == def.Name.LocalName;
+
+            // 2. 부모가 없고 자기 자신이 뼈대가 아니라면, 자기 태그명으로 된 부모를 명시적으로 주입
+            if (def.Attribute("ParentName") == null && !isBaseSchemaNode)
+            {
+                def.SetAttributeValue("ParentName", def.Name.LocalName);
+            }
+
+            // 3. 이제 모든 노드가 명시적인 ParentName을 가지게 되었으므로, 단일 로직으로 상속 처리
             var parentNameAttr = def.Attribute("ParentName");
             if (parentNameAttr != null)
             {
@@ -201,6 +258,23 @@ namespace RimExtractorCore.DefTreeSimulator
             foreach (var node in abstractNodes)
             {
                 node.Remove();
+            }
+        }
+
+        private static void ExportDebugFile(XDocument singleTree, string fileNameWithoutExtension)
+        {
+            try
+            {
+                if (singleTree != null)
+                {
+                    string debugPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileNameWithoutExtension);
+                    singleTree.Save(debugPath);
+                    Log.Msg($"[디버그] 0번 스냅샷 트리를 출력했습니다: {debugPath}");
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Wrn($"[디버그] 스냅샷 트리 출력 중 오류 발생: {e.Message}");
             }
         }
     }

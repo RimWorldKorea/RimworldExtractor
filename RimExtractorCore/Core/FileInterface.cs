@@ -50,12 +50,12 @@ namespace RimExtractorCore
 
             // 2. Keyed 읽기 (ExtractorEngine 활용)
             var keyed = new ExtractableFolder(ModMetadata.Emptry, keyedDir, null);
-            translations.AddRange(ExtractorEngine.ExtractKeyed(keyed, isOfficialContent)
+            translations.AddRange(LanguageXmlProcessor.ParseKeyed(keyedDir, null, isOfficialContent)
                 .Select(x => x with { Translated = x.Original, Original = "" }));
 
             // 3. Strings 읽기 (ExtractorEngine 활용)
             var strings = new ExtractableFolder(ModMetadata.Emptry, stringsDir, null);
-            translations.AddRange(ExtractorEngine.ExtractStrings(strings)
+            translations.AddRange(LanguageXmlProcessor.ParseStrings(stringsDir, null)
                 .Select(x => x with { Translated = x.Original, Original = "" }));
 
             return translations;

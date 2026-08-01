@@ -14,7 +14,7 @@ namespace RimExtractorCore
         public static string GenerateFileName(string ModName, string TypeName)
         {
 #if DEBUG
-            Log.Msg("[입력 번수] ModName: \"" + ModName + "\" TypeName: \"" + TypeName + "\"");
+            //Log.Msg("[입력 번수] ModName: \"" + ModName + "\" TypeName: \"" + TypeName + "\"");
 #endif
             return ToBase36(GetDeterministicHash(ModName, TypeName));
         }
@@ -25,7 +25,7 @@ namespace RimExtractorCore
         public static string GenerateFileName(string ModName, string TypeName, string DefName)
         {
 #if DEBUG
-            Log.Msg("[입력 번수] ModName: \"" + ModName + "\" TypeName: \"" + TypeName + "\" DefName: \"" + DefName +"\"");
+            //Log.Msg("[입력 번수] ModName: \"" + ModName + "\" TypeName: \"" + TypeName + "\" DefName: \"" + DefName +"\"");
 #endif
             return ToBase36(GetDeterministicHash(ModName, TypeName, DefName));
         }
@@ -218,5 +218,8 @@ namespace RimExtractorCore
             return
                 $"BuildRule:\n  Binding:\n    PackageID: [\"{ModInfo.PackageId}\"]\n    Mode: \"None\"\n    Dependency: \"Independent\"\n  Order:\n    After: \n    Before: \n  Version:\n    Default: \"{SettingManager.Current.CurrentVersion}\"\n    LeftBoundary: \n    RightBoundary: \n    Designate: \n    Ban: \nMetadata:\n  WorkshopID: \"{ModInfo.Id}\"\n  ModName: \"{ModInfo.ModName}\"\n";
         }
+        
+        // 객체 생성 및 초기화 체이닝을 위한 확장 메서드
+        public static T Tap<T>(this T obj, Action<T> action) { action(obj); return obj; }
     }
 }

@@ -1,62 +1,112 @@
-﻿using System.IO;
-using System.Linq;
+﻿// Procedures/Extractor/DefaultExtractionProcedure.cs 교체
+
 using System.Collections.Generic;
+using System.Linq;
+using System.Xml.Linq;
 using RimExtractorCore.DataTypes;
 using RimExtractorCore.DefTreeSimulator;
-using RimExtractorCore.Extractor;
 
-namespace RimExtractorCore.Procedures
+namespace RimExtractorCore.Procedures;
+
+public class DefaultExtractionProcedure : IExtractionProcedure
 {
-    public class DefaultExtractionProcedure : IExtractionProcedure
+    public string Name => "DefaultExtractionProcedure";
+
+    public IEnumerable<TranslationEntry> Extract(DefSnapshot snapshot, ModMetadata targetMod)
     {
-        public string Name => "DefaultExtractionProcedure";
+        if (snapshot.Tree.Root == null) yield break;
 
-        public IEnumerable<TranslationEntry> Extract(DefSnapshot snapshot, ModMetadata targetMod)
+        bool isOfficialContent = targetMod.IsOfficialContent;
+
+        // Reference 노드는 제외하고, ExtractionTarget 마커가 있는 모드 고유 노드만 추출 대상에 포함
+        var rootElements = snapshot.Tree.Root.Elements()
+            .Where(x => x.Attribute("Reference")?.Value.ToLower() != "true" &&
+                        x.Attribute("ExtractionTarget")?.Value == "True");
+
+        foreach (var defNode in rootElements)
         {
-            var extraction = new List<TranslationEntry>();
-            bool isOfficialContent = targetMod.IsOfficialContent;
+            var defName = defNode.Element("defName")?.Value;
+            if (string.IsNullOrEmpty(defName)) continue;
 
-            // 1. Defs 추출 (이미 패치와 상속이 모두 끝난 순수한 트리)
-            extraction.AddRange(ExtractDefs(snapshot, isOfficialContent));
+            var className = defNode.Attribute("Class")?.Value ?? defNode.Name.LocalName;
+            className = className[..1].ToUpper() + className[1..];
 
-            // 2. Keyed, Strings 추출 (이 우주에 할당된 폴더만 순회)
-            foreach (var extractableFolder in snapshot.AssignedFolders)
+            // 트리를 순회하며 Type="string" 인 텍스트 노드 추출
+            foreach (var entry in TraverseAndExtract(defName, className, defNode, defNode.Name.LocalName,
+                         isOfficialContent))
             {
-                string folderName = Path.GetFileName(extractableFolder.FolderName);
-                if (folderName == "Keyed")
-                {
-                    extraction.AddRange(ExtractorEngine.ExtractKeyed(extractableFolder, isOfficialContent));
-                }
-                else if (folderName == "Strings")
-                {
-                    extraction.AddRange(ExtractorEngine.ExtractStrings(extractableFolder));
-                }
+                yield return entry;
+            }
+        }
+    }
+
+    private IEnumerable<TranslationEntry> TraverseAndExtract(
+        string defName, string className, XElement curNode, string currentPath, bool isOfficialContent)
+    {
+        foreach (var child in curNode.Elements())
+        {
+            string path;
+
+            // 리스트 노드(li) 처리
+            if (child.Name.LocalName == "li")
+            {
+                int index = child.ElementsBeforeSelf("li").Count();
+                path = $"{currentPath}.{index}";
+            }
+            else
+            {
+                path = $"{currentPath}.{child.Name.LocalName}";
             }
 
-            return extraction;
-        }
-
-        internal IEnumerable<TranslationEntry> ExtractDefs(DefSnapshot snapshot, bool isOfficialContent)
-        {
-            if (snapshot.Tree.Root == null) yield break;
-
-            foreach (var node in snapshot.Tree.Root.Elements().Where(x => x.Attribute("Reference")?.Value.ToLower() != "true"))
+            // 자식이 또 있는 컨테이너 노드라면 재귀 탐색
+            if (child.HasElements)
             {
-                var defName = node.Element("defName")?.Value;
-                if (defName == null)
+                foreach (var entry in TraverseAndExtract(defName, className, child, path, isOfficialContent))
                 {
-                    if (node.Name.LocalName != "SongDef")
-                        Log.Wrn($"SongDef가 아닌 Abstract가 아닌 XML 노드에 'defName'이 없습니다. InnerXml: {node}");
-                    continue;
+                    yield return entry;
+                }
+            }
+            // 자식이 없는 리프 노드인 경우 (값이 비어있더라도 뼈대 생성을 위해 무조건 진입)
+            else
+            {
+                bool isNoTranslate = child.Attribute("NoTranslate")?.Value == "True" ||
+                                     child.Attribute("NoTranslate")?.Value == "true";
+                bool isDefName = child.Name.LocalName == "defName"; // defName은 번역 대상이 아니므로 고정 제외
+
+                // 1. Type 어트리뷰트가 아예 없거나
+                // 2. string인 것만 추출
+                string? typeAttr = child.Attribute("Type")?.Value;
+
+                // 리스트 노드(li)인 경우, 부모 노드의 Type 어트리뷰트를 훔쳐옴
+                if (child.Name.LocalName == "li" && child.Parent != null)
+                {
+                    typeAttr = child.Parent.Attribute("Type")?.Value;
                 }
 
-                var className = node.Attribute("Class")?.Value ?? node.Name.LocalName;
-                className = className[..1].ToUpper() + className[1..];
+                bool isStringOrUntyped = string.IsNullOrEmpty(typeAttr) || typeAttr == "string";
 
-                // ExtractorEngine (label, description 등 텍스트 추출)
-                foreach (var translationEntry in ExtractorEngine.FindExtractableNodes(defName, className, node, isOfficialContent))
+                // NoTranslate가 아니고, defName이 아닌 문자열(또는 타입 불명) 노드 추출
+                if (isStringOrUntyped && !isNoTranslate && !isDefName)
                 {
-                    yield return translationEntry;
+                    var rootDefNode = curNode.AncestorsAndSelf().LastOrDefault();
+                    var requiredModsInnerText = rootDefNode?.Element("REQUIREDMODS")?.Value;
+                    var requiredMods = requiredModsInnerText != null
+                        ? RequiredMods.FromStringByModNames(requiredModsInnerText)
+                        : null;
+                    var fileName = isOfficialContent ? rootDefNode?.Attribute("SourceFile")?.Value : null;
+
+                    // currentPath가 "ThingDef.label" 형태이므로 첫 번째 요소를 제외하고 defName을 붙임
+                    string nodePath = $"{defName}.{path.Substring(path.IndexOf('.') + 1)}";
+
+                    // 값이 비어있어도(child.Value == "") 뼈대 생성을 위해 그대로 반환
+                    yield return new TranslationEntry(
+                        className,
+                        nodePath,
+                        child.Value,
+                        null,
+                        requiredMods,
+                        fileName
+                    );
                 }
             }
         }

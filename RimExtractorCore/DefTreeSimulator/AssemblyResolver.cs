@@ -20,9 +20,7 @@ public static class AssemblyResolver
         var typeSystem = decompiler.TypeSystem;
 
         var defTypes = typeSystem.MainModule.TopLevelTypeDefinitions
-            .Where(t => t.Kind == TypeKind.Class 
-                     && !t.IsAbstract 
-                     && InheritsFrom(t, "Verse.Def"))
+            .Where(t => t.Kind == TypeKind.Class && InheritsFrom(t, "Verse.Def"))
             .ToList();
 
         Log.Msg($"총 {defTypes.Count}개의 Def 클래스 구조를 XML로 미러링합니다...");

@@ -5,6 +5,9 @@ using RimExtractorCore.DataTypes;
 
 namespace RimExtractorCore
 {
+    /// <summary>
+    /// 림월드 고유의 XML 구조와 관련된 처리를 위한 도구입니다.
+    /// </summary>
     public static class LanguageXmlProcessor
     {
         //TODO 리팩토링중 임시
@@ -335,6 +338,49 @@ namespace RimExtractorCore
                         node.Value, 
                         null, 
                         null);
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Keyed 폴더의 XML을 읽어 TranslationEntry 리스트로 반환합니다.
+        /// </summary>
+        public static IEnumerable<TranslationEntry> ParseKeyed(string keyedDir, RequiredMods? requiredMods, bool isOfficialContent)
+        {
+            if (!Directory.Exists(keyedDir)) yield break;
+
+            foreach (var xmlPath in FileInterface.DescendantFiles(keyedDir).Where(x => x.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)))
+            {
+                var fileName = isOfficialContent ? Path.GetFileNameWithoutExtension(xmlPath) : null;
+                XDocument doc;
+                try { doc = FileInterface.ReadXml(xmlPath); } catch { continue; }
+
+                if (doc.Root == null) continue;
+
+                foreach (var node in doc.Root.Elements())
+                {
+                    yield return new TranslationEntry("Keyed", node.Name.LocalName, node.Value, null, requiredMods, fileName);
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Strings 폴더의 TXT를 읽어 TranslationEntry 리스트로 반환합니다.
+        /// </summary>
+        public static IEnumerable<TranslationEntry> ParseStrings(string stringsDir, RequiredMods? requiredMods)
+        {
+            if (!Directory.Exists(stringsDir)) yield break;
+
+            foreach (var txtPath in FileInterface.DescendantFiles(stringsDir).Where(x => x.EndsWith(".txt", StringComparison.OrdinalIgnoreCase)))
+            {
+                var nodeName = Path.GetRelativePath(stringsDir, txtPath);
+                nodeName = Path.GetFileNameWithoutExtension(nodeName.Replace('\\', '.'));
+                string[] lines;
+                try { lines = File.ReadAllLines(txtPath); } catch { continue; }
+
+                for (var i = 0; i < lines.Length; i++)
+                {
+                    yield return new TranslationEntry("Strings", $"{nodeName}.{i}", lines[i], null, requiredMods, null);
                 }
             }
         }

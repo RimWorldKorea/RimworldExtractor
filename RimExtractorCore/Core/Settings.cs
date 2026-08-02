@@ -24,6 +24,9 @@ namespace RimExtractorCore
 
         [JsonConverter(typeof(JsonStringEnumConverter))]
         public ExtractionMethod Method { get; set; } = ExtractionMethod.Languages;
+        
+        // 비필수 번역 요소(TranslationMayNotNecessary) 추출 여부 스위치
+        public bool ExtractMayNotNecessary { get; set; } = true;
 
         // 4. 내부 로직 (직렬화 무시)
 

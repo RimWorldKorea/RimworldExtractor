@@ -8,12 +8,13 @@ namespace RimExtractorCore
 {
     public static class FileInterface
     {
-        private static readonly string HeaderClassNode = "Class+Node [(Identifier (Key)]";
-        private static readonly string HeaderClass = "Class [Not chosen]";
-        private static readonly string HeaderNode = "Node [Not chosen]";
-        private static readonly string HeaderRequiredMods = "Required Mods [Not chosen]";
-        private static string HeaderOriginal => $"{SettingManager.Current.OriginalLanguage} [Source string]";
-        private static string HeaderTranslated => $"{SettingManager.Current.TranslationLanguage} [Translation]";
+        public static readonly string HeaderIdentifier = "Identifier";
+        public static readonly string HeaderClass = "Class";
+        public static readonly string HeaderNode = "Node";
+        public static readonly string HeaderRequiredMods = "Required Mod";
+        public static readonly string HeaderMayNotNecessary = "Notice Tag";
+        public static string HeaderOriginal => "Original Text";
+        public static string HeaderTranslation => "Translation Text";
 
         public static List<TranslationEntry> FromExcel(string inputPath)
         {
@@ -96,7 +97,7 @@ namespace RimExtractorCore
             // 1. 헤더 추가
             grid.AppendRow(new[]
             {
-                HeaderClassNode, HeaderClass, HeaderNode, HeaderRequiredMods, HeaderOriginal, HeaderTranslated
+                HeaderIdentifier, HeaderClass, HeaderNode, HeaderRequiredMods, HeaderMayNotNecessary, HeaderOriginal, HeaderTranslation
             });
 
             // 2. 데이터 추가

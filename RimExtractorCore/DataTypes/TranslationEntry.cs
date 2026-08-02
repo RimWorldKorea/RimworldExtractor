@@ -12,12 +12,16 @@
     public record TranslationEntry(string ClassName, string Node, string Original, string? Translated,
         RequiredMods? RequiredMods, string? SourceFile)
     {
+        public bool MayNotNecessary { get; init; } = false;
+        
         public TranslationEntry(TranslationEntry other)
         {
             ClassName = other.ClassName;
             Node = other.Node;
             Original = other.Original;
             Translated = other.Translated;
+            MayNotNecessary = other.MayNotNecessary;
+            
             if (other.RequiredMods != null)
             {
                 this.RequiredMods = new RequiredMods(other.RequiredMods);
@@ -69,6 +73,7 @@
                 ClassName,
                 Node,
                 RequiredMods?.ToString() ?? string.Empty,
+                MayNotNecessary ? "TranslationMayNotNecessary" : string.Empty,
                 Original,
                 Translated ?? string.Empty
             };

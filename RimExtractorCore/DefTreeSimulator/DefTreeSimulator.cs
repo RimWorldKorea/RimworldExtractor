@@ -25,38 +25,37 @@ namespace RimExtractorCore.DefTreeSimulator
         {
             var result = new SimulationResult { TargetMod = modMetadata };
 
-            Stopwatch stopwatch = Stopwatch.StartNew();
+
             Log.Msg("Phase1/ 사전 어셈블리 모델(PrePiledTree) 로드...");
             XDocument prePiledTree = LoadOrGeneratePrePiledTree();
-            
-            Log.Msg($"{stopwatch.ElapsedMilliseconds} ms 경과");
             
 #if DEBUG
             ExportDebugFile(prePiledTree, "1_PrePiled.xml");
 #endif
-            stopwatch.Restart();
-            // [추가됨] 스냅샷을 구성하기 전에 Core 및 선행 모드의 Defs를 미리 트리에 병합하여 
+            // [Phase2] 스냅샷을 구성하기 전에 Core 및 선행 모드의 Defs를 미리 트리에 병합하여 
             // 뼈대(Schema)와 모드 Def 사이의 상속 체인을 이어줍니다.
             if (referenceDefsRoots != null && referenceDefsRoots.Count > 0)
             {
-                Log.Msg("Phase2/ 참조 모드(Core 등) Defs 병합 중...");
+                Log.Msg("[Phase2] 참조 모드(Core 등) Defs 병합 중...");
                 LoadAndMergeModDefs(prePiledTree, referenceDefsRoots, false);
             }
-            Log.Msg($"{stopwatch.ElapsedMilliseconds} ms 경과");
 #if DEBUG
             ExportDebugFile(prePiledTree, "2_MergedWithReference.xml");
 #endif
+            // -------------------------------------------------------------------------
+            // [Phase3] PostProcessor (Stage A 등)
+            prePiledTree = XDocumentProcedureInjector.Instance.ExecuteStage(InjectionStage.StageA, prePiledTree);
 
             // -------------------------------------------------------------------------
-            // 2. LoadFolders.xml 조건(Any/All)에 따른 초기 스냅샷 멀티버스 생성
-            stopwatch.Restart();
-            Log.Msg("Phase3/ LoadFolders 조건(Any/All)에 따른 초기 스냅샷 분기 생성...");
+            // [Phase4] LoadFolders.xml 조건(Any/All)에 따른 초기 스냅샷 멀티버스 생성
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            Log.Msg("[Phase4] LoadFolders 조건(Any/All)에 따른 초기 스냅샷 분기 생성...");
             List<DefSnapshot> multiverse = DoctorStrange.GenerateInitialSnapshots(prePiledTree, selectedFolders);
             Log.Msg($"{stopwatch.ElapsedMilliseconds} ms 경과");
             // -------------------------------------------------------------------------
-            // 3. 각 스냅샷별로 자신에게 할당된 Defs 병합
+            // [Phase5] 각 스냅샷별로 자신에게 할당된 Defs 병합
             stopwatch.Restart();
-            Log.Msg("Phase4/ 분기된 스냅샷별 Defs XML 로드 및 병합...");
+            Log.Msg("[Phase5] 분기된 스냅샷별 Defs XML 로드 및 병합...");
             foreach (var snapshot in multiverse)
             {
                 LoadAndMergeModDefs(snapshot.Tree, snapshot.AssignedFolders, true);
@@ -67,9 +66,9 @@ namespace RimExtractorCore.DefTreeSimulator
 #endif
 
             // -------------------------------------------------------------------------
-            // 4. 각 스냅샷별 PatchOperation 분기 검사 및 추가 분열
+            // [Phase6] 각 스냅샷별 PatchOperation 분기 검사 및 추가 분열
             stopwatch.Restart();
-            Log.Msg("Phase5/ PatchOperationFindMod 등 조건부 패치를 통한 스냅샷 2차 분열...");
+            Log.Msg("[Phase6] PatchOperationFindMod 등 조건부 패치를 통한 스냅샷 2차 분열...");
             List<DefSnapshot> finalMultiverse = new List<DefSnapshot>();
             
             foreach (var snapshot in multiverse)
@@ -83,10 +82,10 @@ namespace RimExtractorCore.DefTreeSimulator
 #endif
 
             // -------------------------------------------------------------------------
-            // 5. 상속(Inheritance) 처리 (모든 최종 평행 우주에 대해 각각 수행)
+            // [Phase7] 상속(Inheritance) 처리 (모든 최종 평행 우주에 대해 각각 수행)
             // 이 단계에서 트리는 XML 생성 명세서에서 실제 트리 구조로 전환됩니다.
             stopwatch.Restart();
-            Log.Msg("Phase6/ 최종 생성된 모든 스냅샷에 대해 XML 상속(ParentName) 처리...");
+            Log.Msg("[Phase7] 최종 생성된 모든 스냅샷에 대해 XML 상속(ParentName) 처리...");
             foreach (var snapshot in finalMultiverse)
             {
                 DoXmlInheritance(snapshot.Tree.Root);
@@ -97,12 +96,7 @@ namespace RimExtractorCore.DefTreeSimulator
             ExportDebugFile(multiverse.First().Tree, "6_Inherited.xml");
 #endif
 
-            // -------------------------------------------------------------------------
-            // 6. PostProcessor (Stage A 등)
-            foreach (var snapshot in finalMultiverse)
-            {
-                snapshot.Tree = XDocumentProcedureInjector.Instance.ExecuteStage(InjectionStage.StageA, snapshot.Tree);
-            }
+
 
             result.Snapshots = finalMultiverse;
             return result;
@@ -146,7 +140,7 @@ namespace RimExtractorCore.DefTreeSimulator
                         {
                             var elements = modRoot.Elements().ToList();
                             
-                            // [추가됨] 타겟 모드의 Def일 경우 추출 대상 마킹
+                            // 타겟 모드의 Def일 경우 추출 대상 마킹
                             if (markAsTarget)
                             {
                                 foreach (var element in elements)
@@ -155,7 +149,7 @@ namespace RimExtractorCore.DefTreeSimulator
                                 }
                             }
                             
-                            baseRoot.Add(modRoot.Elements());
+                            baseRoot.Add(elements);
                         }
                     }
                     catch (Exception e)
@@ -168,7 +162,7 @@ namespace RimExtractorCore.DefTreeSimulator
 
         private static void LoadAndMergeModDefs(XDocument baseTree, List<ExtractableFolder> defFolders, bool markAsTarget = false)
         {
-            LoadAndMergeModDefs(baseTree, defFolders.Select(f => f.FullPath));
+            LoadAndMergeModDefs(baseTree, defFolders.Select(f => f.FullPath), markAsTarget);
         }
 
         /// <summary>

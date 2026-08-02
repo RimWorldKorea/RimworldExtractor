@@ -45,6 +45,10 @@ public class DefaultExtractionProcedure : IExtractionProcedure
     {
         foreach (var child in curNode.Elements())
         {
+            bool isNoTranslate = child.Attribute("NoTranslate")?.Value == "True" || 
+                                 child.Attribute("NoTranslate")?.Value == "true";
+            if (isNoTranslate) continue;
+            
             string path;
 
             // 리스트 노드(li) 처리
@@ -69,16 +73,27 @@ public class DefaultExtractionProcedure : IExtractionProcedure
             // 자식이 없는 리프 노드인 경우 (값이 비어있더라도 뼈대 생성을 위해 무조건 진입)
             else
             {
-                bool isNoTranslate = child.Attribute("NoTranslate")?.Value == "True" ||
-                                     child.Attribute("NoTranslate")?.Value == "true";
                 bool isDefName = child.Name.LocalName == "defName"; // defName은 번역 대상이 아니므로 고정 제외
 
+                // TranslationMayNotNecessary 확인 (리스트 부모 상속 포함)
+                bool mayNotNecessary = child.Attribute("TranslationMayNotNecessary")?.Value.ToLower() == "true";
+                if (child.Parent != null && child.Parent.Attribute("List")?.Value == "True")
+                {
+                    mayNotNecessary = mayNotNecessary || child.Parent.Attribute("TranslationMayNotNecessary")?.Value.ToLower() == "true";
+                }
+
+                // 설정에 따라 비필수 노드 추출 스킵 (입구 컷)
+                if (mayNotNecessary && !SettingManager.Current.ExtractMayNotNecessary)
+                {
+                    continue; 
+                }
+                
                 // 1. Type 어트리뷰트가 아예 없거나
                 // 2. string인 것만 추출
                 string? typeAttr = child.Attribute("Type")?.Value;
 
-                // 리스트 노드(li)인 경우, 부모 노드의 Type 어트리뷰트를 훔쳐옴
-                if (child.Name.LocalName == "li" && child.Parent != null)
+                // List="True"인지 검사합니다
+                if (child.Parent != null && child.Parent.Attribute("List")?.Value == "True")
                 {
                     typeAttr = child.Parent.Attribute("Type")?.Value;
                 }
@@ -106,7 +121,7 @@ public class DefaultExtractionProcedure : IExtractionProcedure
                         null,
                         requiredMods,
                         fileName
-                    );
+                    ){ MayNotNecessary = mayNotNecessary };
                 }
             }
         }

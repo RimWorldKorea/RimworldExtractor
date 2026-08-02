@@ -51,6 +51,8 @@ public static class SpreadsheetReader
         if (colNode == -1) throw new XlsxHeaderReadingException("Node");
 
         int colRequiredMods = FindColumnIndex(headerRow, ISpreadsheetReader.HeaderRequiredMods);
+        
+        int colMayNotNecessary = FindColumnIndex(headerRow, ISpreadsheetReader.HeaderMayNotNecessary);
 
         int colOriginal = FindColumnIndex(headerRow, ISpreadsheetReader.HeaderOriginal);
         if (colOriginal == -1) throw new XlsxHeaderReadingException("Original");
@@ -84,12 +86,21 @@ public static class SpreadsheetReader
                     requiredMods = RequiredMods.FromStringByModNames(textRequiredMods);
                 }
             }
+            
+            bool mayNotNecessary = false;
+            //TODO 뭔가 이상한데
+            if (colMayNotNecessary != -1)
+            {
+                // 해당 어트리뷰트 이름이 포함되어 있는지 검사
+                mayNotNecessary = GetValSafely(row, colMayNotNecessary).Contains("TranslationMayNotNecessary", StringComparison.OrdinalIgnoreCase);
+            }
 
             string original = GetValSafely(row, colOriginal);
             string rawTranslated = GetValSafely(row, colTranslated);
             string? translated = string.IsNullOrEmpty(rawTranslated) ? null : rawTranslated;
 
-            translations.Add(new TranslationEntry(className, node, original, translated, requiredMods, null));
+            //TODO 뭔가 이상한데
+            translations.Add(new TranslationEntry(className, node, original, translated, requiredMods, null) { MayNotNecessary = mayNotNecessary });
         }
 
         return translations;

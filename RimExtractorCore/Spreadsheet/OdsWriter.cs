@@ -13,6 +13,12 @@ public static class OdsWriter
 
     public static void SaveGrid(string filePath, Grid grid)
     {
+        var dir = Path.GetDirectoryName(filePath);
+        if (!string.IsNullOrWhiteSpace(dir) && !Directory.Exists(dir))
+        {
+            Directory.CreateDirectory(dir);
+        }
+        
         if (File.Exists(filePath)) File.Delete(filePath);
 
         using var zip = ZipFile.Open(filePath, ZipArchiveMode.Create);

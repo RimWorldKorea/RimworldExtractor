@@ -15,6 +15,8 @@ namespace RimExtractorCore.DefTreeSimulator
     /// </summary>
     public static class DefTreeSimulator
     {
+        public static Dictionary<string, XElement> DeepSchemaTypes { get; private set; } = new();
+        
         public static SimulationResult Execute(
             ModMetadata modMetadata,
             List<ExtractableFolder> selectedFolders, 
@@ -92,6 +94,17 @@ namespace RimExtractorCore.DefTreeSimulator
                 CleanUpAbstractNodes(snapshot.Tree.Root);
             }
             Log.Msg($"{stopwatch.ElapsedMilliseconds} ms 경과");
+            
+            // -------------------------------------------------------------------------
+            // [Phase8] 딥 스키마(Deep Schema) 전파
+            stopwatch.Restart();
+            Log.Msg("[Phase8] 복합 타입 딥 스키마(Deep Schema) 전파 중...");
+            foreach (var snapshot in finalMultiverse)
+            {
+                InjectDeepSchemaRecursive(snapshot.Tree.Root);
+            }
+            Log.Msg($"{stopwatch.ElapsedMilliseconds} ms  ");
+            
 #if DEBUG
             ExportDebugFile(multiverse.First().Tree, "6_Inherited.xml");
 #endif
@@ -112,7 +125,34 @@ namespace RimExtractorCore.DefTreeSimulator
             {
                 throw new FileNotFoundException($"사전 트리 XML 파일을 찾을 수 없습니다: {path}");
             }
-            return XDocument.Load(path);
+            
+            var doc = XDocument.Load(path);
+
+            // 루트가 <PrePiled>라면, <Types>를 메모리로 빼내고 <Defs>를 새로운 루트로 격상시킵니다!
+            if (doc.Root != null && doc.Root.Name.LocalName == "PrePiled")
+            {
+                var typesNode = doc.Root.Element("Types");
+                if (typesNode != null)
+                {
+                    // [NEW] 딕셔너리로 굽기 전에, 딥 스키마 타입들 간의 XML 상속(ParentName)을 먼저 완벽하게 해결합니다!
+                    DoXmlInheritance(typesNode);
+                    // 주의: CleanUpAbstractNodes는 호출하지 않습니다! Types 안의 모든 노드는 Abstract="True"이므로 다 지워져 버리기 때문입니다.
+                    
+                    DeepSchemaTypes.Clear();
+                    foreach (var typeElem in typesNode.Elements())
+                    {
+                        DeepSchemaTypes[typeElem.Name.LocalName] = typeElem;
+                    }
+                }
+
+                var defsNode = doc.Root.Element("Defs");
+                if (defsNode != null)
+                {
+                    return new XDocument(defsNode); // 순수한 <Defs> 루트 반환
+                }
+            }
+
+            return doc;
         }
 
         /// <summary>
@@ -174,15 +214,23 @@ namespace RimExtractorCore.DefTreeSimulator
 
             var allDefs = root.Elements().ToList();
             var resolvedSet = new HashSet<XElement>();
-            
-            var defsByName = allDefs
-                .Where(e => e.Attribute("Name") != null)
-                .ToDictionary(e => e.Attribute("Name")!.Value, e => e);
 
-            foreach (var def in allDefs)
+            try
             {
-                ResolveInheritanceRecursive(def, defsByName, resolvedSet);
+                var defsByName = allDefs
+                    .Where(e => e.Attribute("Name") != null)
+                    .ToDictionary(e => e.Attribute("Name")!.Value, e => e);
+
+                foreach (var def in allDefs)
+                {
+                    ResolveInheritanceRecursive(def, defsByName, resolvedSet);
+                }
             }
+            catch (Exception e)
+            {
+                Log.Err(e.ToString());
+            }
+
         }
 
         private static void ResolveInheritanceRecursive(XElement def, Dictionary<string, XElement> defsByName, HashSet<XElement> resolvedSet)
@@ -269,6 +317,62 @@ namespace RimExtractorCore.DefTreeSimulator
             catch (Exception e)
             {
                 Log.Wrn($"[디버그] 스냅샷 트리 출력 중 오류 발생: {e.Message}");
+            }
+        }
+        
+        private static void InjectDeepSchemaRecursive(XElement? node)
+        {
+            if (node == null) return;
+
+            // 1. 현재 노드의 '진짜 타입(Actual Type)'을 알아냅니다.
+            string? actualType = node.Attribute("Class")?.Value; // 다형성(Class) 최우선 확인
+            
+            // 모드의 커스텀 타입처럼 네임스페이스가 섞여있다면 뒤의 클래스명만 추출 
+            // (예: Universal_Lift_Structure.CompProperties_LiftConsole -> CompProperties_LiftConsole)
+            if (!string.IsNullOrEmpty(actualType) && actualType.Contains('.'))
+            {
+                actualType = actualType.Split('.').Last();
+            }
+
+            // Class가 없다면 Type 어트리뷰트 확인
+            if (string.IsNullOrEmpty(actualType))
+            {
+                actualType = node.Attribute("Type")?.Value;
+            }
+
+            // li 노드인데 Class나 Type이 없다면 부모의 Type을 상속 
+            // (예: <comps List="True" Type="CompProperties"> 의 자식 <li>)
+            if (string.IsNullOrEmpty(actualType) && node.Name.LocalName == "li" && 
+                node.Parent != null && node.Parent.Attribute("List")?.Value == "True")
+            {
+                actualType = node.Parent.Attribute("Type")?.Value;
+            }
+
+            // 2. 알아낸 타입에 해당하는 스키마가 캐시에 존재한다면 속성 전파
+            if (!string.IsNullOrEmpty(actualType) && DeepSchemaTypes.TryGetValue(actualType, out var schemaNode))
+            {
+                // 자식 노드들에게 스키마의 속성을 물려줍니다.
+                foreach (var targetChild in node.Elements())
+                {
+                    var childSchema = schemaNode.Element(targetChild.Name.LocalName);
+                    if (childSchema != null)
+                    {
+                        // 스키마에 정의된 어트리뷰트(Type, NoTranslate, List 등) 복사
+                        foreach (var attr in childSchema.Attributes())
+                        {
+                            if (targetChild.Attribute(attr.Name) == null)
+                            {
+                                targetChild.SetAttributeValue(attr.Name, attr.Value);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 3. 자식들로 계속 타고 들어갑니다 (재귀)
+            foreach (var child in node.Elements())
+            {
+                InjectDeepSchemaRecursive(child);
             }
         }
     }

@@ -1,5 +1,4 @@
 ﻿using RimExtractorCore.Exceptions;
-using RimExtractorCore.DefTreeSimulator;
 using RimExtractorCore.DiffAnalyzer;
 using RimExtractorCore.Extractor;
 

@@ -1,7 +1,6 @@
 ﻿using System.Reflection;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using ICSharpCode.Decompiler.CSharp;
 
 namespace RimExtractorCore;
 

@@ -1,6 +1,4 @@
-﻿// DefTreeSimulator/AssemblyResolver.cs 전체 코드
-
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Xml.Linq;
 using ICSharpCode.Decompiler;

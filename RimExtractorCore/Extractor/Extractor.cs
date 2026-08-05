@@ -1,12 +1,5 @@
-﻿// Extractor/Extractor.cs 
-
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using RimExtractorCore.DataTypes;
+﻿using RimExtractorCore.DataTypes;
 using RimExtractorCore.DefTreeSimulator;
-using RimExtractorCore.Procedures;
 
 namespace RimExtractorCore.Extractor
 {

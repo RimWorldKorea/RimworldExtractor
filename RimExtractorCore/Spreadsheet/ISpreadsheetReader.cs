@@ -1,6 +1,4 @@
-﻿using RimExtractorCore;
-
-namespace RimExtractorCore.Spreadsheet;
+﻿namespace RimExtractorCore.Spreadsheet;
 
 public interface ISpreadsheetReader
 {

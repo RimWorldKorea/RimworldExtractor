@@ -1,9 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Xml.Linq;
-using RimExtractorCore.DataTypes;
-using RimExtractorCore.Extractor;
 
 namespace RimExtractorCore.DefTreeSimulator
 {

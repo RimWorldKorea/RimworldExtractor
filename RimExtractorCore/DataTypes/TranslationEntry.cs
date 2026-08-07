@@ -73,7 +73,7 @@
                 ClassName,
                 Node,
                 RequiredMods?.ToString() ?? string.Empty,
-                MayNotNecessary ? "TranslationMayNotNecessary" : string.Empty,
+                MayNotNecessary ? Constants.AttrMayNotTranslate : string.Empty,
                 Original,
                 Translated ?? string.Empty
             };

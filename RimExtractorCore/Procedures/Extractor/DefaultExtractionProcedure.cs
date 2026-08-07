@@ -45,8 +45,8 @@ public class DefaultExtractionProcedure : IExtractionProcedure
     {
         foreach (var child in curNode.Elements())
         {
-            bool isNoTranslate = child.Attribute("NoTranslate")?.Value == "True" || 
-                                 child.Attribute("NoTranslate")?.Value == "true";
+            bool isNoTranslate = child.Attribute(Constants.AttrNoTranslate)?.Value.ToLower() == "true";
+            
             if (isNoTranslate) continue;
             
             string path;
@@ -76,10 +76,10 @@ public class DefaultExtractionProcedure : IExtractionProcedure
                 bool isDefName = child.Name.LocalName == "defName"; // defName은 번역 대상이 아니므로 고정 제외
 
                 // TranslationMayNotNecessary 확인 (리스트 부모 상속 포함)
-                bool mayNotNecessary = child.Attribute("TranslationMayNotNecessary")?.Value.ToLower() == "true";
+                bool mayNotNecessary = child.Attribute(Constants.AttrMayNotTranslate)?.Value.ToLower() == "true";
                 if (child.Parent != null && child.Parent.Attribute("List")?.Value == "True")
                 {
-                    mayNotNecessary = mayNotNecessary || child.Parent.Attribute("TranslationMayNotNecessary")?.Value.ToLower() == "true";
+                    mayNotNecessary = mayNotNecessary || child.Parent.Attribute(Constants.AttrMayNotTranslate)?.Value.ToLower() == "true";
                 }
 
                 // 설정에 따라 비필수 노드 추출 스킵 (입구 컷)

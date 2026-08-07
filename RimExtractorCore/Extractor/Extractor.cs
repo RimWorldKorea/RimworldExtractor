@@ -92,15 +92,9 @@ namespace RimExtractorCore.Extractor
                 entryMap[entry.ClassNode] = entry;
             }
 
-            // snapshot에 포함된 실제 동작 버전의 루트 디렉토리들 추출 (예: C:\Mod\1.5)
+            // [수정됨] 꼬리 자르기 역산 없이 객체의 프로퍼티를 즉시 사용!
             var versionDirs = snapshot.AssignedFolders
-                .Select(f => 
-                {
-                    var path = f.FullPath;
-                    var langIdx = path.IndexOf($"{Path.DirectorySeparatorChar}Languages{Path.DirectorySeparatorChar}");
-                    if (langIdx >= 0) return path.Substring(0, langIdx);
-                    return Path.GetDirectoryName(path);
-                })
+                .SelectMany(f => new[] { f.ActualLoadFolderRoot, f.Root.RootDir })
                 .Where(d => !string.IsNullOrEmpty(d))
                 .Distinct()
                 .ToList();
@@ -117,37 +111,6 @@ namespace RimExtractorCore.Extractor
                     {
                         var langDir = Path.Combine(versionDir!, "Languages", langName);
                         if (!Directory.Exists(langDir)) continue;
-
-                        // 1. DefInjected 읽기 (비어있는 Def 원문 채우기)
-                        var defInjectedDir = Path.Combine(langDir, "DefInjected");
-                        if (Directory.Exists(defInjectedDir))
-                        {
-                            foreach (var xmlPath in FileInterface.DescendantFiles(defInjectedDir).Where(x => x.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)))
-                            {
-                                try
-                                {
-                                    var className = Path.GetRelativePath(defInjectedDir, xmlPath).Split(Path.DirectorySeparatorChar).First();
-                                    var doc = FileInterface.ReadXml(xmlPath);
-                                    var parsed = LanguageXmlProcessor.ParseDefInjected(doc, className);
-                                    
-                                    foreach (var p in parsed)
-                                    {
-                                        if (entryMap.TryGetValue(p.ClassNode, out var existingEntry))
-                                        {
-                                            if (string.IsNullOrWhiteSpace(existingEntry.Original))
-                                            {
-                                                var text = p.Translated ?? p.Original;
-                                                if (!string.IsNullOrEmpty(text))
-                                                {
-                                                    entryMap[p.ClassNode] = existingEntry with { Original = text };
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                catch (Exception e) { Log.Wrn($"DefInjected 분석 오류 ({xmlPath}): {e.Message}"); }
-                            }
-                        }
 
                         // 2. Keyed 읽기 (비어있는 IL Keyed 원문 채우기 + XML에만 있는 Keyed 추가)
                         var keyedDir = Path.Combine(langDir, "Keyed");

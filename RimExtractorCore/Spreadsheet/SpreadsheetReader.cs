@@ -88,11 +88,10 @@ public static class SpreadsheetReader
             }
             
             bool mayNotNecessary = false;
-            //TODO 뭔가 이상한데
             if (colMayNotNecessary != -1)
             {
-                // 해당 어트리뷰트 이름이 포함되어 있는지 검사
-                mayNotNecessary = GetValSafely(row, colMayNotNecessary).Contains("TranslationMayNotNecessary", StringComparison.OrdinalIgnoreCase);
+                // [수정됨] 엑셀에서 읽어 들일 때도 하드코딩 대신 상수로 비교
+                mayNotNecessary = GetValSafely(row, colMayNotNecessary).Contains(Constants.AttrMayNotTranslate, StringComparison.OrdinalIgnoreCase);
             }
 
             string original = GetValSafely(row, colOriginal);

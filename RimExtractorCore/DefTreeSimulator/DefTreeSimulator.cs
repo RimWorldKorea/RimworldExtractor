@@ -25,10 +25,13 @@ namespace RimExtractorCore.DefTreeSimulator
 
 
             Log.Msg("Phase1/ 사전 어셈블리 모델(PrePiledTree) 로드...");
-            XDocument prePiledTree = LoadOrGeneratePrePiledTree();
+            XDocument prePiledTree = LoadOrGeneratePrePiledTree(modMetadata, referenceMods, selectedFolders);
             
 #if DEBUG
             ExportDebugFile(prePiledTree, "1_PrePiled.xml");
+            
+            var typesDebugTree = new XDocument(new XElement("Types", DeepSchemaTypes.Values));
+            ExportDebugFile(typesDebugTree, "1_PrePiled_Types.xml");
 #endif
             // [Phase2] 스냅샷을 구성하기 전에 Core 및 선행 모드의 Defs를 미리 트리에 병합하여 
             // 뼈대(Schema)와 모드 Def 사이의 상속 체인을 이어줍니다.
@@ -104,7 +107,15 @@ namespace RimExtractorCore.DefTreeSimulator
 #if DEBUG
             ExportDebugFile(multiverse.First().Tree, "6_Inherited.xml");
 #endif
-
+// -------------------------------------------------------------------------
+            // [NEW] [Phase9] DefInjected LanguageData 병합
+            stopwatch.Restart();
+            Log.Msg("[Phase9] DefInjected 언어 데이터(LanguageData) 병합...");
+            foreach (var snapshot in finalMultiverse)
+            {
+                ApplyDefInjectedLanguageData(snapshot);
+            }
+            Log.Msg($"{stopwatch.ElapsedMilliseconds} ms 소요됨.");
 
 
             result.Snapshots = finalMultiverse;
@@ -114,29 +125,77 @@ namespace RimExtractorCore.DefTreeSimulator
         /// <summary>
         /// 어셈블리로부터 C# 클래스 구조를 미러링한 뼈대 트리를 가져옵니다.
         /// </summary>
-        private static XDocument LoadOrGeneratePrePiledTree()
+        private static XDocument LoadOrGeneratePrePiledTree(ModMetadata targetMod, List<ModMetadata>? referenceMods, List<ExtractableFolder> selectedFolders)
         {
             var path = ExtractorCore.PrePiledTreePath;
             if (string.IsNullOrEmpty(path) || !File.Exists(path))
             {
-                throw new FileNotFoundException($"사전 트리 XML 파일을 찾을 수 없습니다: {path}");
+                throw new FileNotFoundException($"통합 뼈대 XML 파일을 찾을 수 없습니다: {path}");
             }
-            
+
             var doc = XDocument.Load(path);
 
-            // 루트가 <PrePiled>라면, <Types>를 메모리로 빼내고 <Defs>를 새로운 루트로 격상시킵니다!
             if (doc.Root != null && doc.Root.Name.LocalName == "PrePiled")
             {
                 var typesNode = doc.Root.Element("Types");
                 if (typesNode != null)
                 {
-                    // [NEW] 딕셔너리로 굽기 전에, 딥 스키마 타입들 간의 XML 상속(ParentName)을 먼저 완벽하게 해결합니다!
-                    DoXmlInheritance(typesNode);
-                    // 주의: CleanUpAbstractNodes는 호출하지 않습니다! Types 안의 모든 노드는 Abstract="True"이므로 다 지워져 버리기 때문입니다.
+                    // [수정됨] 탐색할 모든 "진짜 로드 폴더 루트"를 담을 집합 (중복 방지)
+                    var searchDirectories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                    // 1. [타겟 모드] 루트 폴더와 선택된 폴더들의 진짜 뿌리 추가
+                    searchDirectories.Add(targetMod.RootDir);
+                    foreach (var folder in selectedFolders)
+                    {
+                        searchDirectories.Add(folder.ActualLoadFolderRoot);
+                    }
+
+                    // 2. [참조 모드] 루트 폴더와 ModLister가 찾아낸 진짜 뿌리들 추가
+                    if (referenceMods != null)
+                    {
+                        foreach (var refMod in referenceMods)
+                        {
+                            searchDirectories.Add(refMod.RootDir);
+                            
+                            foreach (var rf in ModLister.GetExtractableFolders(refMod))
+                            {
+                                searchDirectories.Add(rf.ActualLoadFolderRoot);
+                            }
+                        }
+                    }
+
+                    // 3. 수집된 모든 진짜 루트 경로에서 Assemblies 폴더를 견고하게 탐색
+                    var assemblyPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                     
+                    Log.Msg($"{searchDirectories.Count}개 잠재적 어셈블리 보유 폴더(루트 및 버전 폴더) 탐색 중...");
+                    foreach (var baseDir in searchDirectories)
+                    {
+                        var asmDir = Path.Combine(baseDir, "Assemblies");
+                        // Log.Msg($"{asmDir} 보는 중"); // 필요 시 주석 해제
+                        if (Directory.Exists(asmDir))
+                        {
+                            Log.Msg($"[DLL 탐색] 어셈블리 폴더 발견: {asmDir}");
+                            foreach (var dll in Directory.GetFiles(asmDir, "*.dll", SearchOption.AllDirectories))
+                            {
+                                assemblyPaths.Add(dll);
+                            }
+                        }
+                    }
+
+                    // [NEW] 수집된 모드 DLL들을 메모리의 typesNode에 병합합니다!
+                    if (assemblyPaths.Count > 0)
+                    {
+                        Log.Msg($"총 {assemblyPaths.Count}개의 어셈블리를 딥 스키마 딕셔너리에 병합합니다...");
+                        AssemblyResolver.AppendModAssembliesSchema(assemblyPaths, typesNode);
+                    }
+
+                    // 코어 + 모드 C# 클래스 전체를 대상으로 상속(ParentName) 처리 시작!
+                    DoXmlInheritance(typesNode);
+
                     DeepSchemaTypes.Clear();
                     foreach (var typeElem in typesNode.Elements())
                     {
+                        // GroupBy-Last 로직과 동일하게 딕셔너리 덮어쓰기 할당
                         DeepSchemaTypes[typeElem.Name.LocalName] = typeElem;
                     }
                 }
@@ -144,7 +203,7 @@ namespace RimExtractorCore.DefTreeSimulator
                 var defsNode = doc.Root.Element("Defs");
                 if (defsNode != null)
                 {
-                    return new XDocument(defsNode); // 순수한 <Defs> 루트 반환
+                    return new XDocument(defsNode); 
                 }
             }
 
@@ -250,14 +309,19 @@ namespace RimExtractorCore.DefTreeSimulator
                 if (defsByName.TryGetValue(parentName, out var parentDef))
                 {
                     ResolveInheritanceRecursive(parentDef, defsByName, resolvedSet);
-                    CopyMissingElements(parentDef, def);
+                    
+                    // [NEW] 핵심 로직: 부모는 타겟(추출 대상)이 아닌데 자식은 타겟인 경우 true가 됩니다.
+                    bool markMayNotTranslate = parentDef.Attribute("ExtractionTarget")?.Value != "True" && 
+                                               def.Attribute("ExtractionTarget")?.Value == "True";
+                    
+                    CopyMissingElements(parentDef, def, markMayNotTranslate);
                 }
             }
             
             resolvedSet.Add(def);
         }
 
-        private static void CopyMissingElements(XElement parent, XElement child)
+        private static void CopyMissingElements(XElement parent, XElement child, bool markMayNotTranslate = false)
         {
             foreach (var attr in parent.Attributes())
             {
@@ -273,11 +337,27 @@ namespace RimExtractorCore.DefTreeSimulator
                 var childElem = child.Element(parentElem.Name);
                 if (childElem == null)
                 {
-                    child.Add(new XElement(parentElem));
+                    var newElem = new XElement(parentElem);
+                    
+                    // [NEW] 외부(비대상)에서 복사되어 들어오는 요소에 Notice Tag 부여
+                    if (markMayNotTranslate)
+                    {
+                        // 자기 자신에게 부여
+                        newElem.SetAttributeValue(Constants.AttrMayNotTranslate, "True");
+                        
+                        // 하위에 중첩된 모든 자손 노드(<graphicData> 안의 <texPath> 등)에게도 꼼꼼히 부여
+                        foreach (var desc in newElem.Descendants())
+                        {
+                            desc.SetAttributeValue(Constants.AttrMayNotTranslate, "True");
+                        }
+                    }
+                    
+                    child.Add(newElem);
                 }
                 else
                 {
-                    CopyMissingElements(parentElem, childElem);
+                    // 재귀 호출 시에도 상태를 유지하여, 깊은 곳에 복사되는 요소도 태그를 부여받게 합니다.
+                    CopyMissingElements(parentElem, childElem, markMayNotTranslate);
                 }
             }
         }
@@ -369,6 +449,68 @@ namespace RimExtractorCore.DefTreeSimulator
             foreach (var child in node.Elements())
             {
                 InjectDeepSchemaRecursive(child);
+            }
+        }
+        
+        // [NEW] DefInjected 번역 데이터를 찾아 실제 XML Tree에 주입하고 Notice Tag를 제거하는 메서드
+        private static void ApplyDefInjectedLanguageData(DefSnapshot snapshot)
+        {
+            // 주의: 우선순위가 높은 언어가 나중에 덮어써야 하므로 Reverse()를 적용합니다. (RimWorld의 동작 방식과 동일)
+            var priorityLanguages = SettingManager.Current.GetLanguagePriorityList().Reverse().ToList();
+            
+            // [수정됨] 꼬리 자르기 역산 없이 객체의 프로퍼티를 즉시 사용!
+            var versionDirs = snapshot.AssignedFolders
+                .SelectMany(f => new[] { f.ActualLoadFolderRoot, f.Root.RootDir })
+                .Where(d => !string.IsNullOrEmpty(d))
+                .Distinct()
+                .ToList();
+
+            foreach (var lang in priorityLanguages)
+            {
+                var shortLang = lang.Split(' ').First();
+                var langNames = new HashSet<string> { lang, shortLang };
+
+                foreach (var versionDir in versionDirs)
+                {
+                    foreach (var langName in langNames)
+                    {
+                        var defInjectedDir = Path.Combine(versionDir, "Languages", langName, "DefInjected");
+                        if (!Directory.Exists(defInjectedDir)) continue;
+
+                        foreach (var xmlPath in FileInterface.DescendantFiles(defInjectedDir).Where(x => x.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            try
+                            {
+                                var className = Path.GetRelativePath(defInjectedDir, xmlPath).Split(Path.DirectorySeparatorChar).First();
+                                var doc = FileInterface.ReadXml(xmlPath);
+                                var parsed = LanguageXmlProcessor.ParseDefInjected(doc, className);
+                                
+                                foreach (var p in parsed)
+                                {
+                                    // Utils.GetXpath를 이용해 XML 내부의 실제 타겟 노드 경로를 가져옵니다.
+                                    var xpath = Utils.GetXpath(p.ClassName, p.Node);
+                                    var targetNodes = snapshot.Tree.SelectNodesSafe(xpath);
+                                    
+                                    if (targetNodes != null)
+                                    {
+                                        foreach (var targetNode in targetNodes)
+                                        {
+                                            var text = p.Translated ?? p.Original;
+                                            if (!string.IsNullOrEmpty(text))
+                                            {
+                                                targetNode.Value = text; // 모드 언어 파일의 텍스트로 오버라이드
+                                            }
+                                            
+                                            // 핵심: LanguageData에서 명시적으로 정의된 텍스트이므로, 상속 과정에서 붙었던 태그를 제거합니다!
+                                            targetNode.Attribute(Constants.AttrMayNotTranslate)?.Remove();
+                                        }
+                                    }
+                                }
+                            }
+                            catch (Exception e) { Log.Wrn($"DefInjected 병합 실패 ({xmlPath}): {e.Message}"); }
+                        }
+                    }
+                }
             }
         }
     }

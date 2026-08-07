@@ -155,9 +155,8 @@ namespace RimExtractorCore
             var sets = new HashSet<ExtractableFolder>(new ExtractableFolderComparer());
             var pathLoadFolders = Path.Combine(root, "LoadFolders.xml");
 
-            // [수정됨] 하드코딩된 배열 대신 List로 동적 생성
-            var targetFolders = new List<string> { "Defs", "Patches", "Keyed" };
-            
+            // 하드코딩된 배열 대신 List로 동적 생성
+            var targetFolders = new List<string> { "Defs", "Patches", "Keyed", "Assemblies" };
             // 1차, 2차, 그리고 기본(English) 언어 폴더를 모두 탐색 대상에 추가합니다.
             foreach (var lang in SettingManager.Current.GetLanguagePriorityList())
             {
@@ -198,8 +197,21 @@ namespace RimExtractorCore
                     foreach (var li in node.Elements())
                     {
                         var requiredPackageIds = li.Attribute("IfModActive")?.Value;
-                        foreach (var extractableFolder in GetExtractableFoldersInternal(Path.Combine(root, li.Value))
-                                     .Select(x => new ExtractableFolder(modMetadata, x, requiredPackageIds, name[1..])))
+                            
+                        // [NEW] 림월드 원본처럼 "/" 나 "\" 입력 시 모드 최상위 루트로 인식
+                        string targetLoadFolder;
+                        if (li.Value == "/" || li.Value == "\\")
+                        {
+                            targetLoadFolder = root;
+                        }
+                        else
+                        {
+                            targetLoadFolder = Path.Combine(root, li.Value);
+                        }
+                        
+                        // 2. LoadFolders.xml 명시 경로 기준 탐색 (LoadFolderRoot 각인)
+                        foreach (var extractableFolder in GetExtractableFoldersInternal(targetLoadFolder)
+                                     .Select(x => new ExtractableFolder(modMetadata, x, requiredPackageIds, name[1..]) { LoadFolderRoot = targetLoadFolder }))
                         {
                             sets.Add(extractableFolder);
                         }
@@ -214,7 +226,7 @@ namespace RimExtractorCore
                     if (Regex.IsMatch(lastDir, SettingManager.Current.PatternVersion))
                     {
                         foreach (var extractableFolder in GetExtractableFoldersInternal(directory)
-                                     .Select(x => new ExtractableFolder(modMetadata, x, null, lastDir)))
+                                     .Select(x => new ExtractableFolder(modMetadata, x, null, lastDir) { LoadFolderRoot = directory }))
                         {
                             sets.Add(extractableFolder);
                         }
@@ -224,7 +236,8 @@ namespace RimExtractorCore
                 var commonDir = Path.Combine(root, "Common");
                 if (Directory.Exists(commonDir))
                 {
-                    foreach (var extractableFolder in GetExtractableFoldersInternal(commonDir).Select(x => new ExtractableFolder(modMetadata, x, null, "Common")))
+                    foreach (var extractableFolder in GetExtractableFoldersInternal(commonDir)
+                                 .Select(x => new ExtractableFolder(modMetadata, x, null, "Common") { LoadFolderRoot = commonDir }))
                     {
                         sets.Add(extractableFolder);
                     }

@@ -44,91 +44,35 @@ public static class AssemblyResolver
         // [NEW] 스레드 안전한(Thread-Safe) 결과 수집용 컬렉션
         var concurrentDefs = new ConcurrentBag<XElement>();
         var concurrentTypes = new ConcurrentBag<XElement>();
+        
+        var parallelOptions = new ParallelOptions 
+        { 
+            /*
+             * 5600X 테스트 결과
+             * 2 -> 44s
+             * 3 -> 37-45s
+             * 4 -> 36-41s
+             * 5 -> 31-37s
+             * 6 -> 31-36s
+             * 8 -> 32-34s
+             */
+            MaxDegreeOfParallelism = Math.Min(8, Environment.ProcessorCount)
+        };
 
-        Log.Msg($"어셈블리 내의 모든 유효 타입({allValidTypes.Count}개) 딥 스키마 추출 시작 (병렬 처리 중)...");
+        Log.Msg($"어셈블리 내의 모든 유효 타입({allValidTypes.Count}개) 딥 스키마 추출 시작.\n{parallelOptions.MaxDegreeOfParallelism}개 스레드 투입.");
 
         // [NEW] 스레드별로 독립적인 디컴파일러 인스턴스를 생성하여 할당합니다.
         using (var threadLocalDecompiler = new ThreadLocal<CSharpDecompiler>(() => 
             new CSharpDecompiler(assemblyPath, decompilerSettings)))
         {
             // [NEW] 병렬 루프 (Parallel.ForEach) 적용
-            Parallel.ForEach(allValidTypes, typeDef =>
+            Parallel.ForEach(allValidTypes, parallelOptions, typeDef =>
             {
-                var localDecompiler = threadLocalDecompiler.Value!;
-
-                bool isDef = InheritsFrom(typeDef, "Verse.Def");
-                var typeNode = new XElement(typeDef.Name);
+                // 공통 메서드 호출!
+                var typeNode = ExtractTypeSchemaNode(typeDef, threadLocalDecompiler.Value!);
                 
-                // [NEW] Def 여부와 상관없이 모든 타입에 Name, Abstract, ParentName을 부여합니다!
-                typeNode.SetAttributeValue("Name", typeDef.Name);
-                typeNode.SetAttributeValue("Abstract", "True");
-
-                // System.Object나 System.ValueType이 아닌 의미 있는 부모 클래스가 있다면 ParentName 기록
-                var baseType = typeDef.DirectBaseTypes.FirstOrDefault(b => 
-                    b.Kind == TypeKind.Class && 
-                    b.ReflectionName != "System.Object" &&
-                    b.ReflectionName != "System.ValueType");
-
-                if (baseType != null)
-                {
-                    typeNode.SetAttributeValue("ParentName", baseType.Name);
-                }
-
-                var fieldNodes = new Dictionary<string, XElement>();
-
-                foreach (var field in typeDef.GetFields(f => f.DeclaringTypeDefinition == typeDef && !f.IsConst && !f.IsStatic))
-                {
-                    if (field.Name.Contains('<') || field.Name.Contains('>')) continue;
-                    if (field.Type.Kind == TypeKind.Unknown || field.Type.ReflectionName.Contains("Steamworks")) continue;
-                    if (field.GetAttributes().Any(a => a.AttributeType.Name == "UnsavedAttribute")) continue;
-
-                    var fieldNode = new XElement(field.Name);
-                    fieldNodes[field.Name] = fieldNode;
-
-                    SetTypeInformation(fieldNode, field.Type);
-
-                    var transAttrs = field.GetAttributes()
-                        .Where(a => a.AttributeType.Name.Contains("Translate"))
-                        .ToList();
-                    foreach (var attr in transAttrs)
-                    {
-                        var attrName = attr.AttributeType.Name.Replace("Attribute", "");
-                        fieldNode.SetAttributeValue(attrName, "True");
-                    }
-                    
-                    typeNode.Add(fieldNode);
-                }
-
-                try
-                {
-                    // [NEW] 스레드에 할당된 독립적인 디컴파일러를 사용합니다.
-                    var syntaxTree = localDecompiler.DecompileType(typeDef.FullTypeName);
-                    foreach (var fieldDecl in syntaxTree.Descendants.OfType<FieldDeclaration>())
-                    {
-                        foreach (var variable in fieldDecl.Variables)
-                        {
-                            if (variable.Initializer != null && !variable.Initializer.IsNull)
-                            {
-                                string? valueStr = ParseExpression(variable.Initializer);
-                                if (valueStr != null && fieldNodes.TryGetValue(variable.Name, out var fieldNode))
-                                {
-                                    fieldNode.Value = valueStr;
-                                }
-                            }
-                        }
-                    }
-                }
-                catch (Exception e)
-                {
-                    if (!e.Message.Contains("was not found in the module being decompiled") &&
-                        !e.Message.Contains("Unity") &&
-                        !e.Message.Contains("Steamworks"))
-                    {
-                        Log.Err($"[{typeDef.Name}] 디컴파일 중 예외: {e.Message}");
-                    }
-                }
-
-                // [NEW] 안전한 바구니에 담아둡니다.
+                // 분기 처리만 남음
+                bool isDef = InheritsFrom(typeDef, "Verse.Def");
                 if (isDef) concurrentDefs.Add(typeNode);
                 else concurrentTypes.Add(typeNode);
             });
@@ -149,6 +93,131 @@ public static class AssemblyResolver
         Log.Msg($"{stopwatch.ElapsedMilliseconds/1000}s 소요");
         
         return outputFilePath;
+    }
+    
+    // [NEW] 여러 모드 어셈블리를 읽어 메모리 상의 typesNode에 병합하는 메서드
+    public static void AppendModAssembliesSchema(IEnumerable<string> assemblyPaths, XElement typesNode)
+    {
+        var decompilerSettings = new DecompilerSettings(LanguageVersion.Latest);
+        
+        // 현재 시스템의 모든 논리 코어(가용 스레드)를 100% 할당
+        var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount };
+
+        foreach (var assemblyPath in assemblyPaths)
+        {
+            if (!File.Exists(assemblyPath)) continue;
+
+            Log.Msg($"모드 어셈블리 딥 스키마 병합 중... : {Path.GetFileName(assemblyPath)}");
+
+            try
+            {
+                var mainDecompiler = new CSharpDecompiler(assemblyPath, decompilerSettings);
+                var typeSystem = mainDecompiler.TypeSystem;
+
+                var allValidTypes = typeSystem.MainModule.TopLevelTypeDefinitions
+                    .Where(t => (t.Kind == TypeKind.Class || t.Kind == TypeKind.Struct) &&
+                                t.TypeParameterCount == 0 && 
+                                !t.ReflectionName.StartsWith("System.") &&
+                                !t.ReflectionName.StartsWith("UnityEngine.") &&
+                                !t.ReflectionName.StartsWith("Unity.") &&
+                                !t.ReflectionName.Contains("Steamworks") &&
+                                !t.ReflectionName.Contains('<') && 
+                                !t.ReflectionName.Contains('>') &&
+                                !t.ReflectionName.Contains('$'))   
+                    .ToList();
+
+                var concurrentTypes = new ConcurrentBag<XElement>();
+
+                using (var threadLocalDecompiler = new ThreadLocal<CSharpDecompiler>(() => 
+                    new CSharpDecompiler(assemblyPath, decompilerSettings)))
+                {
+                    Parallel.ForEach(allValidTypes, parallelOptions, typeDef =>
+                    {
+                        // 공통 메서드 호출 후 전부 Types에 담기!
+                        var typeNode = ExtractTypeSchemaNode(typeDef, threadLocalDecompiler.Value!);
+                        concurrentTypes.Add(typeNode);
+                    });
+                }
+
+                // 메모리의 typesNode에 곧바로 병합
+                typesNode.Add(concurrentTypes.OrderBy(x => x.Name.LocalName).ToList());
+            }
+            catch (Exception e)
+            {
+                Log.Wrn($"어셈블리({assemblyPath}) 분석 중 오류 발생: {e.Message}");
+            }
+        }
+    }
+    
+    // [NEW] 중복을 제거하기 위해 분리한 "단일 타입 스키마 추출" 핵심 공통 메서드
+    private static XElement ExtractTypeSchemaNode(ITypeDefinition typeDef, CSharpDecompiler localDecompiler)
+    {
+        var typeNode = new XElement(typeDef.Name);
+
+        typeNode.SetAttributeValue("Name", typeDef.Name);
+        typeNode.SetAttributeValue("Abstract", "True");
+
+        var baseType = typeDef.DirectBaseTypes.FirstOrDefault(b => 
+            b.Kind == TypeKind.Class && 
+            b.ReflectionName != "System.Object" &&
+            b.ReflectionName != "System.ValueType");
+
+        if (baseType != null)
+        {
+            typeNode.SetAttributeValue("ParentName", baseType.Name);
+        }
+
+        var fieldNodes = new Dictionary<string, XElement>();
+
+        foreach (var field in typeDef.GetFields(f => f.DeclaringTypeDefinition == typeDef && !f.IsConst && !f.IsStatic))
+        {
+            if (field.Name.Contains('<') || field.Name.Contains('>')) continue;
+            if (field.Type.Kind == TypeKind.Unknown || field.Type.ReflectionName.Contains("Steamworks")) continue;
+            if (field.GetAttributes().Any(a => a.AttributeType.Name == "UnsavedAttribute")) continue;
+
+            var fieldNode = new XElement(field.Name);
+            fieldNodes[field.Name] = fieldNode;
+
+            SetTypeInformation(fieldNode, field.Type);
+
+            foreach (var attr in field.GetAttributes())
+            {
+                if (Constants.TranslationAttributes.TryGetValue(attr.AttributeType.Name, out var mappedName))
+                {
+                    fieldNode.SetAttributeValue(mappedName, "True");
+                }
+            }
+            
+            typeNode.Add(fieldNode);
+        }
+
+        try
+        {
+            var syntaxTree = localDecompiler.DecompileType(typeDef.FullTypeName);
+            foreach (var fieldDecl in syntaxTree.Descendants.OfType<FieldDeclaration>())
+            {
+                foreach (var variable in fieldDecl.Variables)
+                {
+                    if (variable.Initializer != null && !variable.Initializer.IsNull)
+                    {
+                        string? valueStr = ParseExpression(variable.Initializer);
+                        if (valueStr != null && fieldNodes.TryGetValue(variable.Name, out var fieldNode))
+                        {
+                            fieldNode.Value = valueStr;
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            if (!e.Message.Contains("was not found") && !e.Message.Contains("Unity"))
+            {
+                Log.Err($"[{typeDef.Name}] 디컴파일 중 예외: {e.Message}");
+            }
+        }
+
+        return typeNode;
     }
 
     private static void SetTypeInformation(XElement fieldNode, IType type)

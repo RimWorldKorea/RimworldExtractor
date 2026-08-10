@@ -4,6 +4,7 @@ using System.Xml.Linq;
 using ICSharpCode.Decompiler;
 using ICSharpCode.Decompiler.CSharp;
 using ICSharpCode.Decompiler.CSharp.Syntax;
+using ICSharpCode.Decompiler.Metadata;
 using ICSharpCode.Decompiler.TypeSystem;
 
 namespace RimExtractorCore.DefTreeSimulator;
@@ -22,7 +23,7 @@ public static class AssemblyResolver
         var decompilerSettings = new DecompilerSettings(LanguageVersion.Latest);
         
         // 메인 스레드용 디컴파일러 (타입 시스템 로드용)
-        var mainDecompiler = new CSharpDecompiler(assemblyPath, decompilerSettings);
+        var mainDecompiler = CreateDecompilerWithResolver(assemblyPath, decompilerSettings);
         var typeSystem = mainDecompiler.TypeSystem;
 
         var allValidTypes = typeSystem.MainModule.TopLevelTypeDefinitions
@@ -63,7 +64,7 @@ public static class AssemblyResolver
 
         // [NEW] 스레드별로 독립적인 디컴파일러 인스턴스를 생성하여 할당합니다.
         using (var threadLocalDecompiler = new ThreadLocal<CSharpDecompiler>(() => 
-            new CSharpDecompiler(assemblyPath, decompilerSettings)))
+                   CreateDecompilerWithResolver(assemblyPath, decompilerSettings)))
         {
             // [NEW] 병렬 루프 (Parallel.ForEach) 적용
             Parallel.ForEach(allValidTypes, parallelOptions, typeDef =>
@@ -98,6 +99,7 @@ public static class AssemblyResolver
     // [NEW] 여러 모드 어셈블리를 읽어 메모리 상의 typesNode에 병합하는 메서드
     public static void AppendModAssembliesSchema(IEnumerable<string> assemblyPaths, XElement typesNode)
     {
+        //TODO 디컴파일러 설정 공부하기
         var decompilerSettings = new DecompilerSettings(LanguageVersion.Latest);
         
         // 현재 시스템의 모든 논리 코어(가용 스레드)를 100% 할당
@@ -111,9 +113,13 @@ public static class AssemblyResolver
 
             try
             {
-                var mainDecompiler = new CSharpDecompiler(assemblyPath, decompilerSettings);
+                Log.Common("묑1");
+                var mainDecompiler = CreateDecompilerWithResolver(assemblyPath, decompilerSettings);
+                Log.Common("묑2");
                 var typeSystem = mainDecompiler.TypeSystem;
 
+                
+                Log.Common("묑3");
                 var allValidTypes = typeSystem.MainModule.TopLevelTypeDefinitions
                     .Where(t => (t.Kind == TypeKind.Class || t.Kind == TypeKind.Struct) &&
                                 t.TypeParameterCount == 0 && 
@@ -128,14 +134,19 @@ public static class AssemblyResolver
 
                 var concurrentTypes = new ConcurrentBag<XElement>();
 
+                
+                Log.Msg("밍");
                 using (var threadLocalDecompiler = new ThreadLocal<CSharpDecompiler>(() => 
-                    new CSharpDecompiler(assemblyPath, decompilerSettings)))
+                           CreateDecompilerWithResolver(assemblyPath, decompilerSettings)))
                 {
                     Parallel.ForEach(allValidTypes, parallelOptions, typeDef =>
                     {
+                        Log.Common("핑");
                         // 공통 메서드 호출 후 전부 Types에 담기!
                         var typeNode = ExtractTypeSchemaNode(typeDef, threadLocalDecompiler.Value!);
+                        Log.Common("푕");
                         concurrentTypes.Add(typeNode);
+                        Log.Common("퐁");
                     });
                 }
 
@@ -174,7 +185,7 @@ public static class AssemblyResolver
             if (field.Name.Contains('<') || field.Name.Contains('>')) continue;
             if (field.Type.Kind == TypeKind.Unknown || field.Type.ReflectionName.Contains("Steamworks")) continue;
             if (field.GetAttributes().Any(a => a.AttributeType.Name == "UnsavedAttribute")) continue;
-
+            
             var fieldNode = new XElement(field.Name);
             fieldNodes[field.Name] = fieldNode;
 
@@ -217,6 +228,14 @@ public static class AssemblyResolver
             }
         }
 
+#if DEBUG
+        // 모드 클래스만 필터링해서 확인 (Verse, RimWorld 등 코어 제외)
+        if (!typeDef.ReflectionName.StartsWith("Verse.") && !typeDef.ReflectionName.StartsWith("RimWorld."))
+        {
+            Log.Msg($"[DeepSchema] {typeDef.Name} 딥 스키마 추출 완료 - 부모: {baseType?.Name ?? "없음(Unknown)"}, 추출된 필드: {fieldNodes.Count}개");
+        }
+#endif
+        
         return typeNode;
     }
 
@@ -272,5 +291,20 @@ public static class AssemblyResolver
         if (typeDef == null) return false;
         if (typeDef.ReflectionName == baseTypeName) return true;
         return typeDef.GetAllBaseTypes().Any(b => b.ReflectionName == baseTypeName);
+    }
+    
+    private static CSharpDecompiler CreateDecompilerWithResolver(string assemblyPath, DecompilerSettings settings)
+    {
+        var module = new PEFile(assemblyPath);
+        var resolver = new UniversalAssemblyResolver(assemblyPath, throwOnError: false, module.DetectTargetFrameworkId());
+    
+        // 림월드 본편 폴더 강제 주입
+        var managedDir = Path.Combine(SettingManager.Current.PathRimworld, "RimWorldWin64_Data", "Managed");
+        if (Directory.Exists(managedDir))
+        {
+            resolver.AddSearchDirectory(managedDir);
+        }
+    
+        return new CSharpDecompiler(module, resolver, settings);
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Collections.Concurrent;
 
 namespace RimExtractorCore
 {
@@ -13,9 +14,9 @@ namespace RimExtractorCore
         public const string PrefixWarning = "경고";
         public const string PrefixMessage = "메시지";
 
-        private static readonly Queue<string> _logQueue = new();
+        private static readonly ConcurrentQueue<string> _logQueue = new();
         private static readonly HashSet<int> _hashes = new();
-        private const int MAX_COUNT = 999;
+        private const int MAX_COUNT = 10000;
 
         public static void Err(string message)
         {
@@ -52,6 +53,14 @@ namespace RimExtractorCore
             StoreMessage(str);
         }
 
+        public static void Common(string message,
+            [System.Runtime.CompilerServices.CallerMemberName] string caller = "")
+        {
+            var str = $"{PrefixMessage}{Separator}{caller}{Separator}{message}";
+            Out.WriteLine(str);
+            StoreMessage(str);
+        }
+
         private static string GetCallStack()
         {
             var curMethod = new StackTrace().GetFrame(2)?.GetMethod();
@@ -66,7 +75,7 @@ namespace RimExtractorCore
         {
             if (_logQueue.Count > MAX_COUNT)
             {
-                _logQueue.Dequeue();
+                _logQueue.TryDequeue(out _);
             }
             _logQueue.Enqueue(message);
         }

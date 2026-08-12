@@ -1,5 +1,4 @@
-﻿using System.Text.RegularExpressions;
-using System.Xml.Linq;
+﻿using System.Xml.Linq;
 using RimExtractorCore.DataTypes;
 
 namespace RimExtractorCore;
@@ -248,7 +247,7 @@ public static class ModLister
             foreach (var directory in Directory.EnumerateDirectories(root))
             {
                 var lastDir = Path.GetFileName(directory);
-                if (Regex.IsMatch(lastDir, SettingManager.Current.PatternVersion))
+                if (Version.TryParse(lastDir, out _))
                 {
                     foreach (var extractableFolder in GetExtractableFoldersInternal(directory)
                                  .Select(x => new ExtractableFolder(modMetadata, x, null, lastDir)

@@ -29,12 +29,8 @@
                                     Command="{Binding SelectPathWorkshopCommand}"
                                     CommandParameter="{Binding $parent[Window].StorageProvider}"/>
                         </Grid>
-                        <Grid ColumnDefinitions="*, *" Margin="0,4,0,0">
-                            <StackPanel Grid.Column="0" Margin="0,0,4,0">
-                                <TextBlock Text="버전 인식 정규식:"/>
-                                <TextBox Text="{Binding Config.PatternVersion, Mode=TwoWay}"/>
-                            </StackPanel>
-                            <StackPanel Grid.Column="1" Margin="4,0,0,0">
+                        <Grid ColumnDefinitions="*" Margin="0,4,0,0">
+                            <StackPanel Grid.Column="0" Margin="4,0,0,0">
                                 <TextBlock Text="현재 버전:"/>
                                 <Grid ColumnDefinitions="*, Auto">
                                     <TextBox Grid.Column="0" Text="{Binding Config.CurrentVersion, Mode=TwoWay}" Margin="0,0,4,0"/>

@@ -9,8 +9,6 @@ public class Settings
     public string PathWorkshop { get; set; } = "C:\\Program Files (x86)\\Steam\\steamapps\\workshop\\content\\294100";
     public string PathBaseRefList { get; set; } = "";
     public string CurrentVersion { get; set; } = "1.6";
-    public string PatternVersion { get; set; } = @"^[1]\.\d+";
-    public string PatternVersionWithV { get; set; } = @"^v[1]\.\d+";
 
     // 2. 언어 및 출력 설정
     public string OriginalLanguage { get; set; } = "English";
@@ -38,6 +36,8 @@ public class Settings
         return list.Distinct();
     }
 }
+
+//TODO enum들은 왜 따로 빠져있지?
 
 /// 저장하려는 곳에 중복 파일이 있는 경우 행동 지정
 public enum DuplicatesPolicy { Stop = 0, Overwrite, KeepOriginal }

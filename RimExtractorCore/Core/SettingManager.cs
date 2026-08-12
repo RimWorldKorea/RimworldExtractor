@@ -1,5 +1,4 @@
 ﻿using System.Text.Json;
-using System.Text.RegularExpressions;
 
 namespace RimExtractorCore
 {
@@ -60,10 +59,8 @@ namespace RimExtractorCore
         /// <summary>
         /// 림월드 폴더에서 게임 버전 기록을 읽어 특정 형태로 가공합니다.
         /// </summary>
-        /// <returns></returns>
         public static string GetFormattedFullVersion()
         {
-            //TODO AutoDetectRimworldVersion과 역할이 겹치는 것 같은데
             try
             {
                 var pathVersion = Path.Combine(Current.PathRimworld, "Version.txt");
@@ -81,25 +78,34 @@ namespace RimExtractorCore
             return "UnknownVersion";
         }
 
+        /// <summary>
+        /// 설치된 림월드의 버전을 읽어들입니다.
+        /// </summary>
         public static string AutoDetectRimworldVersion()
         {
             try
             {
                 var pathVersion = Path.Combine(Current.PathRimworld, "Version.txt");
+                
                 if (File.Exists(pathVersion))
                 {
                     var context = File.ReadAllText(pathVersion).Trim();
-                    var match = Regex.Match(context, Current.PatternVersion);
-                    if (match.Success)
+                    
+                    // "1.5.4062 rev824" 같은 형태에서 "1.5.4062" 부분만 추출
+                    var versionString = context.Split(' ')[0];
+
+                    // System.Version을 이용해 안전하게 파싱 (성공 시 Major.Minor만 반환)
+                    if (Version.TryParse(versionString, out var version))
                     {
-                        return match.Groups[0].Value;
+                        return $"{version.Major}.{version.Minor}";
                     }
                 }
             }
             catch (Exception e)
             {
-                Log.Err($"버전 자동 감지 실패: {e.Message}");
+                Log.Err($"버전 감지 실패: {e.Message}");
             }
+            
             return Current.CurrentVersion;
         }
     }

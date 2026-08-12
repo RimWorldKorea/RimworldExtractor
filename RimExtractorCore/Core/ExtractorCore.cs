@@ -3,6 +3,10 @@ using RimExtractorCore.Extractor;
 
 namespace RimExtractorCore;
 
+/// <summary>
+/// Main 역할.
+/// 프로그램 범위에서 초기화 같은게 필요한 경우 여기에 둡시다.
+/// </summary>
 public static class ExtractorCore
 {
     // 앱 실행 동안 유지될 PrePiledTree XML의 절대 경로

@@ -30,7 +30,6 @@ public static class ProcedureLoader
                 if (instance != null)
                 {
                     result.Add(instance);
-                    //Log.Msg($"스크립트 로드 성공 ({Path.GetFileName(folderPath)}): {Path.GetFileName(scriptFile)}");
                 }
             }
             catch (Exception e)

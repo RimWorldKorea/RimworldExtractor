@@ -1,11 +1,9 @@
-﻿namespace RimExtractorCore.Exceptions
+﻿namespace RimExtractorCore.Exceptions;
 
+public class XlsxReadingException : Exception
 {
-    public class XlsxReadingException : Exception
+    public XlsxReadingException(string message) : base(message)
     {
-        public XlsxReadingException(string message) : base(message)
-        {
 
-        }
     }
 }

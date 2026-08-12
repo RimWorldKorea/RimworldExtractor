@@ -2,7 +2,7 @@
 
 public interface ISpreadsheetReader
 {
-    // 공통 헤더 매칭 후보 목록 (우선순위 순서)
+    // 공통 헤더 매칭 목록
     public static string[] HeaderClass => new[] { FileInterface.HeaderClass, "Class [Not chosen]"/*하위 호환용*/ };
     public static string[] HeaderNode => new[] { FileInterface.HeaderIdentifier, "Node [Not chosen]"/*하위 호환용*/ };
     public static string[] HeaderRequiredMods => new[] { FileInterface.HeaderRequiredMods, "Required Mods [Not chosen]"/*하위 호환용*/ };

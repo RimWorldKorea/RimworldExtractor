@@ -1,5 +1,14 @@
 ﻿namespace RimExtractorCore.DataTypes;
-    
+
+/// <summary>
+/// 모드의 메타데이터입니다.
+/// </summary>
+/// <param name="RootDir"></param>
+/// <param name="Id"></param>
+/// <param name="ModName"></param>
+/// <param name="PackageId"></param>
+/// <param name="IsOfficialContent"></param>
+/// <param name="ModDependencies"></param>
 public record ModMetadata(string RootDir, string Id, string ModName, string PackageId, bool IsOfficialContent, List<string>? ModDependencies = null)
 {
     public string Identifier

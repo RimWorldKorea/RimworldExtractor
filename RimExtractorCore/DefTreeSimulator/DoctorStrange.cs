@@ -17,12 +17,20 @@ namespace RimExtractorCore.DefTreeSimulator
 
             // 1. 모든 가능한 모드 로드 경우의 수(PID Combinations) 추출
             List<string[]> allPossibleUniverses = CalculateAllModCombinations(allSelectedFolders);
+            Log.Common($"ㅁ이맹몽머애쟝");
+            foreach (var d in allPossibleUniverses)
+            {
+                Log.Common($"{String.Join(",", d)}");
+            }
 
             // 2. 각 경우의 수(우주)마다 스냅샷을 생성하고, 조건에 맞는 폴더를 할당
             foreach (var modCombination in allPossibleUniverses)
             {
                 var snapshot = new DefSnapshot(new XDocument(prePiledTree), modCombination);
 
+                // [추가] 요구 모드 조건이 전혀 없는(Length == 0) 순정 조합을 베이스로 지정
+                if (modCombination.Length == 0) snapshot.IsBaseSnapshot = true;
+                
                 // 3. 이 우주(조합)에서 활성화될 수 있는 폴더만 필터링하여 할당
                 foreach (var folder in allSelectedFolders)
                 {
@@ -34,6 +42,8 @@ namespace RimExtractorCore.DefTreeSimulator
                             snapshot.AssignedFolders.Add(folder);
                     }
                 }
+                
+                Log.Common($"핏폿ㅍ팟 {String.Join(",", snapshot.RequiredModIds)}");
 
                 snapshots.Add(snapshot);
             }
@@ -75,7 +85,9 @@ namespace RimExtractorCore.DefTreeSimulator
                     combinations.Add(pids);
                 }
             }
-            return combinations.ToList();
+            
+            // 길이가 제일 짧은 것 부터 정렬하면 0번이 무조건 Base 조합이 됩니다.
+            return combinations.OrderBy(x => x.Length).ToList();
         }
 
         /// <summary>

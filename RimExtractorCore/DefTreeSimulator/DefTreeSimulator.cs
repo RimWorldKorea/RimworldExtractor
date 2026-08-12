@@ -60,6 +60,7 @@ namespace RimExtractorCore.DefTreeSimulator
             foreach (var snapshot in multiverse)
             {
                 LoadAndMergeModDefs(snapshot.Tree, snapshot.AssignedFolders, true);
+                Log.Common($"페이즈5 {String.Join(",",snapshot.RequiredModIds)}");
             }
             Log.Msg($"{stopwatch.ElapsedMilliseconds} ms 경과");
 #if DEBUG
@@ -76,6 +77,7 @@ namespace RimExtractorCore.DefTreeSimulator
             {
                 var branchedSnapshots = DoctorStrange.ProcessPatchOperations(snapshot, snapshot.AssignedPatches);
                 finalMultiverse.AddRange(branchedSnapshots);
+                Log.Common($"페이즈6 {String.Join(",",snapshot.RequiredModIds)}");
             }
             Log.Msg($"{stopwatch.ElapsedMilliseconds} ms 경과");
 #if DEBUG
@@ -89,8 +91,11 @@ namespace RimExtractorCore.DefTreeSimulator
             Log.Msg("[Phase7] 최종 생성된 모든 스냅샷에 대해 XML 상속(ParentName) 처리...");
             foreach (var snapshot in finalMultiverse)
             {
+                Log.Common($"페이즈7_1 {String.Join(",",snapshot.RequiredModIds)}");
                 DoXmlInheritance(snapshot.Tree.Root);
+                Log.Common($"페이즈7_2 {String.Join(",",snapshot.RequiredModIds)}");
                 CleanUpAbstractNodes(snapshot.Tree.Root);
+                Log.Common($"페이즈7_3 {String.Join(",",snapshot.RequiredModIds)}");
             }
             Log.Msg($"{stopwatch.ElapsedMilliseconds} ms 경과");
             
@@ -101,6 +106,7 @@ namespace RimExtractorCore.DefTreeSimulator
             foreach (var snapshot in finalMultiverse)
             {
                 InjectDeepSchemaRecursive(snapshot.Tree.Root);
+                Log.Common($"페이즈8 {String.Join(",",snapshot.RequiredModIds)}");
             }
             Log.Msg($"{stopwatch.ElapsedMilliseconds} ms  ");
             

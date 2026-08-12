@@ -12,8 +12,16 @@ namespace RimExtractorCore.Extractor
             if (simResult.Snapshots.Count == 0)
                 return new ExtractionResult(simResult.TargetMod, finalEntries);
 
-            // 1. Base snapshot (인덱스 0) 추출
-            var baseSnapshot = simResult.Snapshots[0];
+            // Base snapshot을 플래그로 명확하게 탐색 (인덱스 의존 탈피)
+            var baseSnapshot = simResult.Snapshots.FirstOrDefault(s => s.IsBaseSnapshot);
+            //TODO 베이스 스냅샷이 없을 때 이렇게 처리하는게 맞을까?
+            if (baseSnapshot == null)
+            {
+                Log.Err("베이스 스냅샷을 찾을 수 없습니다!");
+                return new ExtractionResult(simResult.TargetMod, finalEntries);
+            }
+            
+            Log.Common($" 빙빙빙");
             var baseEntries = ExtractFromSnapshot(baseSnapshot, simResult.TargetMod);
 
             finalEntries.AddRange(baseEntries);
@@ -25,11 +33,10 @@ namespace RimExtractorCore.Extractor
             }
 
             // 2. 다중 우주 분기(Diff) 처리 - 조건부 패치로 인해 변경/추가된 번역만 수집
-            for (int i = 1; i < simResult.Snapshots.Count; i++)
+            foreach (var branchSnapshot in simResult.Snapshots.Where(s => !s.IsBaseSnapshot))
             {
-                var branchSnapshot = simResult.Snapshots[i];
                 var branchEntries = ExtractFromSnapshot(branchSnapshot, simResult.TargetMod);
-
+                
                 var branchCondition = new RequiredMods();
                 branchCondition.AddAllowedByModNames(branchSnapshot.RequiredModIds);
 

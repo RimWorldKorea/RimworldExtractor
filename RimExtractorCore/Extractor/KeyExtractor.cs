@@ -17,6 +17,8 @@ namespace RimExtractorCore.Extractor
             var extractedKeys = new Dictionary<string, TranslationEntry>();
             var requiredMods = new RequiredMods();
             requiredMods.AddAllowedByModNames(snapshot.RequiredModIds);
+            
+            Log.Common($"KeyExtractor.Extract -> {requiredMods.ToString()}");
 
             // 1. 현재 우주(Snapshot)에 할당된 폴더들에서 Assemblies 탐색
             var assemblyPaths = new List<string>();

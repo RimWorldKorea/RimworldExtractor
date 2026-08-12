@@ -56,6 +56,7 @@ public static class AssemblyResolver
              * 5 -> 31-37s
              * 6 -> 31-36s
              * 8 -> 32-34s
+             * 그 이상은 유의미한 성능 향상 없었음
              */
             MaxDegreeOfParallelism = Math.Min(8, Environment.ProcessorCount)
         };
@@ -241,20 +242,26 @@ public static class AssemblyResolver
 
     private static void SetTypeInformation(XElement fieldNode, IType type)
     {
-            if (type.Name == "List" && type.TypeArguments.Count == 1)
-            {
-                fieldNode.SetAttributeValue("List", "True");
-                fieldNode.SetAttributeValue("Type", GetFriendlyTypeName(type.TypeArguments[0]));
-                return;
-            }
+        // 1. 단일 Enum 처리
+        if (type.Kind == TypeKind.Enum)
+        {
+            fieldNode.SetAttributeValue("Enum", "True");
+        }
+        
+        if (type.Name == "List" && type.TypeArguments.Count == 1)
+        {
+            fieldNode.SetAttributeValue("List", "True");
+            fieldNode.SetAttributeValue("Type", GetFriendlyTypeName(type.TypeArguments[0]));
+            return;
+        }
 
-            if (type.Name == "Nullable" && type.TypeArguments.Count == 1)
-            {
-                fieldNode.SetAttributeValue("Type", GetFriendlyTypeName(type.TypeArguments[0]));
-                return;
-            }
+        if (type.Name == "Nullable" && type.TypeArguments.Count == 1)
+        {
+            fieldNode.SetAttributeValue("Type", GetFriendlyTypeName(type.TypeArguments[0]));
+            return;
+        }
 
-            fieldNode.SetAttributeValue("Type", GetFriendlyTypeName(type));
+        fieldNode.SetAttributeValue("Type", GetFriendlyTypeName(type));
     }
 
     private static string GetFriendlyTypeName(IType type)

@@ -92,6 +92,12 @@ public class DefaultExtractionProcedure : IExtractionProcedure
                 // 2. string인 것만 추출
                 string? typeAttr = child.Attribute("Type")?.Value;
 
+                // Enum="True"인지 검사합니다
+                if (child.Parent != null && child.Parent.Attribute("Enum")?.Value == "True")
+                {
+                    typeAttr = child.Parent.Attribute("Type")?.Value;
+                }
+                
                 // List="True"인지 검사합니다
                 if (child.Parent != null && child.Parent.Attribute("List")?.Value == "True")
                 {

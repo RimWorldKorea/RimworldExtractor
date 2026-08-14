@@ -114,13 +114,9 @@ public static class AssemblyResolver
 
             try
             {
-                Log.Common("묑1");
                 var mainDecompiler = CreateDecompilerWithResolver(assemblyPath, decompilerSettings);
-                Log.Common("묑2");
                 var typeSystem = mainDecompiler.TypeSystem;
-
                 
-                Log.Common("묑3");
                 var allValidTypes = typeSystem.MainModule.TopLevelTypeDefinitions
                     .Where(t => (t.Kind == TypeKind.Class || t.Kind == TypeKind.Struct) &&
                                 t.TypeParameterCount == 0 && 
@@ -134,20 +130,15 @@ public static class AssemblyResolver
                     .ToList();
 
                 var concurrentTypes = new ConcurrentBag<XElement>();
-
                 
-                Log.Msg("밍");
                 using (var threadLocalDecompiler = new ThreadLocal<CSharpDecompiler>(() => 
                            CreateDecompilerWithResolver(assemblyPath, decompilerSettings)))
                 {
                     Parallel.ForEach(allValidTypes, parallelOptions, typeDef =>
                     {
-                        Log.Common("핑");
                         // 공통 메서드 호출 후 전부 Types에 담기!
                         var typeNode = ExtractTypeSchemaNode(typeDef, threadLocalDecompiler.Value!);
-                        Log.Common("푕");
                         concurrentTypes.Add(typeNode);
-                        Log.Common("퐁");
                     });
                 }
 
@@ -233,7 +224,7 @@ public static class AssemblyResolver
         // 모드 클래스만 필터링해서 확인 (Verse, RimWorld 등 코어 제외)
         if (!typeDef.ReflectionName.StartsWith("Verse.") && !typeDef.ReflectionName.StartsWith("RimWorld."))
         {
-            Log.Msg($"[DeepSchema] {typeDef.Name} 딥 스키마 추출 완료 - 부모: {baseType?.Name ?? "없음(Unknown)"}, 추출된 필드: {fieldNodes.Count}개");
+            Log.Common($"{typeDef.Name} 딥 스키마 추출 완료 - 부모: {baseType?.Name ?? "없음(Unknown)"}, 추출된 필드: {fieldNodes.Count}개");
         }
 #endif
         

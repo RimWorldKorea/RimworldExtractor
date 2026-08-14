@@ -16,7 +16,8 @@ public record TranslationEntry(
     RequiredMods? RequiredMods,
     string? SourceFile)
 {
-    public bool MayNotNecessary { get; init; } = false;
+    public bool MayNotTranslate { get; init; } = false;
+    public bool FullListTranslate { get; init; } = false;
 
     public TranslationEntry(TranslationEntry other)
     {
@@ -24,7 +25,8 @@ public record TranslationEntry(
         Node = other.Node;
         Original = other.Original;
         Translated = other.Translated;
-        MayNotNecessary = other.MayNotNecessary;
+        MayNotTranslate = other.MayNotTranslate;
+        FullListTranslate = other.FullListTranslate;
 
         if (other.RequiredMods != null)
         {
@@ -73,13 +75,17 @@ public record TranslationEntry(
     /// </summary>
     public List<string> ToGridRow()
     {
+        var noticeTags = new List<string>();
+        if (MayNotTranslate) noticeTags.Add(Constants.AttrMayNotTranslate);
+        if (FullListTranslate) noticeTags.Add(Constants.AttrTranslationCanChangeCount);
+        
         return new List<string>
         {
             $"{ClassName}+{Node}",
             ClassName,
             Node,
             RequiredMods?.ToString() ?? string.Empty,
-            MayNotNecessary ? Constants.AttrMayNotTranslate : string.Empty,
+            string.Join(", ", noticeTags),
             Original,
             Translated ?? string.Empty
         };

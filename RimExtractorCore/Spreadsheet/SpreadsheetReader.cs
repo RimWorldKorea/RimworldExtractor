@@ -88,10 +88,12 @@ public static class SpreadsheetReader
             }
             
             bool mayNotNecessary = false;
+            bool fullListTranslate = false;
             if (colMayNotNecessary != -1)
             {
-                // [수정됨] 엑셀에서 읽어 들일 때도 하드코딩 대신 상수로 비교
-                mayNotNecessary = GetValSafely(row, colMayNotNecessary).Contains(Constants.AttrMayNotTranslate, StringComparison.OrdinalIgnoreCase);
+                var noticeText = GetValSafely(row, colMayNotNecessary);
+                mayNotNecessary = noticeText.Contains(Constants.AttrMayNotTranslate, StringComparison.OrdinalIgnoreCase);
+                fullListTranslate = noticeText.Contains(Constants.AttrTranslationCanChangeCount, StringComparison.OrdinalIgnoreCase);
             }
 
             string original = GetValSafely(row, colOriginal);
@@ -99,7 +101,7 @@ public static class SpreadsheetReader
             string? translated = string.IsNullOrEmpty(rawTranslated) ? null : rawTranslated;
 
             //TODO 뭔가 이상한데
-            translations.Add(new TranslationEntry(className, node, original, translated, requiredMods, null) { MayNotNecessary = mayNotNecessary });
+            translations.Add(new TranslationEntry(className, node, original, translated, requiredMods, null) { MayNotTranslate = mayNotNecessary });
         }
 
         return translations;

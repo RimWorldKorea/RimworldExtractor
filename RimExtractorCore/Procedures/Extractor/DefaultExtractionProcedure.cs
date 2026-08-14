@@ -1,7 +1,4 @@
-﻿// Procedures/Extractor/DefaultExtractionProcedure.cs 교체
-
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections;
 using System.Xml.Linq;
 using RimExtractorCore.DataTypes;
 using RimExtractorCore.DefTreeSimulator;
@@ -45,12 +42,15 @@ public class DefaultExtractionProcedure : IExtractionProcedure
     {
         foreach (var child in curNode.Elements())
         {
+            // 명시적인 NoTranslate 어트리뷰트가 있는 경우 스킵합니다.
+            //TODO 굳이 변수로 단계를 나눌 필요가 있는진 모르겠음.
             bool isNoTranslate = child.Attribute(Constants.AttrNoTranslate)?.Value.ToLower() == "true";
+            bool isFullListTranslate = false;
             
             if (isNoTranslate) continue;
             
             string path;
-
+            
             // 리스트 노드(li) 처리
             if (child.Name.LocalName == "li")
             {
@@ -75,18 +75,20 @@ public class DefaultExtractionProcedure : IExtractionProcedure
             {
                 bool isDefName = child.Name.LocalName == "defName"; // defName은 번역 대상이 아니므로 고정 제외
 
-                // TranslationMayNotNecessary 확인 (리스트 부모 상속 포함)
-                bool mayNotNecessary = child.Attribute(Constants.AttrMayNotTranslate)?.Value.ToLower() == "true";
+                // MayNotTranslate 확인
+                bool mayNotTranslate = child.Attribute(Constants.AttrMayNotTranslate)?.Value.ToLower() == "true";
+                
+                // 부모가 List면 부모의 MayNotTranslate도 확인
                 if (child.Parent != null && child.Parent.Attribute("List")?.Value == "True")
                 {
-                    mayNotNecessary = mayNotNecessary || child.Parent.Attribute(Constants.AttrMayNotTranslate)?.Value.ToLower() == "true";
+                    mayNotTranslate =
+                        mayNotTranslate ||
+                        child.Parent.Attribute(Constants.AttrMayNotTranslate)?.Value.ToLower() == "true";
                 }
 
-                // 설정에 따라 비필수 노드 추출 스킵 (입구 컷)
-                if (mayNotNecessary && !SettingManager.Current.ExtractMayNotNecessary)
-                {
-                    continue; 
-                }
+                // 추출기 설정에 따라 비필수 노드 추출 스킵
+                if (mayNotTranslate && !SettingManager.Current.ExtractMayNotTranslate) continue; 
+                
                 
                 // 1. Type 어트리뷰트가 아예 없거나
                 // 2. string인 것만 추출
@@ -98,10 +100,14 @@ public class DefaultExtractionProcedure : IExtractionProcedure
                     typeAttr = child.Parent.Attribute("Type")?.Value;
                 }
                 
-                // List="True"인지 검사합니다
+                // 부모가 List면 부모의 타입을 가져옵니다.
                 if (child.Parent != null && child.Parent.Attribute("List")?.Value == "True")
                 {
                     typeAttr = child.Parent.Attribute("Type")?.Value;
+
+                    // 부모가 FullListTranslate면 속성을 가져옵니다.
+                    if (child.Parent.Attribute(Constants.AttrTranslationCanChangeCount)?.Value.ToLower() == "true")
+                        isFullListTranslate = true;
                 }
 
                 bool isStringOrUntyped = string.IsNullOrEmpty(typeAttr) || typeAttr == "string";
@@ -127,7 +133,11 @@ public class DefaultExtractionProcedure : IExtractionProcedure
                         null,
                         requiredMods,
                         fileName
-                    ){ MayNotNecessary = mayNotNecessary };
+                    )
+                    {
+                        MayNotTranslate = mayNotTranslate,
+                        FullListTranslate = isFullListTranslate
+                    };
                 }
             }
         }

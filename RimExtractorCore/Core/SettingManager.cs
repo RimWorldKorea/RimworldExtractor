@@ -9,6 +9,9 @@ namespace RimExtractorCore
     {
         public const string ConfigFileName = "Settings.json";
         
+        /// <summary>
+        /// 현재 적용된 설정은 전부 여기서 조회합니다.
+        /// </summary>
         public static Settings Current { get; private set; } = new();
 
         private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions 

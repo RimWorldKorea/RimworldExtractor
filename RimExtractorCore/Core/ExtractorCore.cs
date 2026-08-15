@@ -15,7 +15,7 @@ public static class ExtractorCore
     // 인터페이스를 기반으로 한 Injector 파이프라인 레지스트리
     private static readonly List<IProcedureInjector> Injectors = new()
     {
-        XDocumentProcedureInjector.Instance,
+        DefTreeProcedureInjector.Instance,
         TranslationEntryProcedureInjector.Instance,
         ExtractionProcedureInjector.Instance
     };

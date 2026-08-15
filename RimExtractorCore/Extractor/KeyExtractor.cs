@@ -88,7 +88,6 @@ namespace RimExtractorCore.Extractor
 
         private static void ExtractKeysFromAssembly(string dllPath, Dictionary<string, TranslationEntry> dict, RequiredMods requiredMods)
         {
-            Log.Msg($"[Keyed 추출] 어셈블리 분석 중: {Path.GetFileName(dllPath)}");
             try
             {
                 // 1. 대상 어셈블리를 PE 파일 모듈로 로드

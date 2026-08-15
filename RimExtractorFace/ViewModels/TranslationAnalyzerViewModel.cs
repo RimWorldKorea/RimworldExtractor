@@ -67,8 +67,8 @@ public partial class TranslationAnalyzerViewModel : ViewModelBase
             var entry = new TranslationAnalyzerEntry(path);
             if (entry.Metadata != null)
             {
-                var autoSelectedFolders = ModLister.GetExtractableFolders(entry.Metadata)
-                    .Where(x => x.IsAutoSelectable()).ToList();
+                var autoSelectedFolders =
+                    ModLister.GetExtractableFolders(entry.Metadata, SettingManager.Current.CurrentVersion).ToList();
 
                 var autoSelectedRefMods = ModLister.FindAllReferenceMods(entry.Metadata).Distinct().ToList();
                 entry.ReExtract(autoSelectedFolders, autoSelectedRefMods);

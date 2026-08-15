@@ -184,21 +184,20 @@ public static partial class ExtractorEngine
 
     private static List<TranslationEntry> FilterDuplicates(List<TranslationEntry> extraction)
     {
-        var set = new HashSet<(string, string)>();
         var distinctList = new List<TranslationEntry>();
+        
+        // 고유 식별 키: (노드 경로, 원본 텍스트, 요구 모드 문자열)
+        var handledSet = new HashSet<(string ClassNode, string Original, string ReqMods)>();
+
         foreach (var entry in extraction)
         {
-            var tuple = (entry.ClassNode, entry.Original);
-            var pair = set.FirstOrDefault(x => x.Item1 == tuple.Item1);
+            var reqModsStr = entry.RequiredMods?.ToString() ?? string.Empty;
+            var key = (entry.ClassNode, entry.Original, reqModsStr);
 
-            if (pair != default)
+            // 동일한 노드 경로에 대해 원문 텍스트나 요구 모드가 하나라도 다르면 새로운 엔트리로 인정합니다.
+            if (!handledSet.Contains(key))
             {
-                if (pair.Item2 != entry.Original)
-                    Log.Err($"중복 노드 감지: {entry.ClassNode} | 기존 원문: {pair.Item2} | 새 원문: {entry.Original}");
-            }
-            else
-            {
-                set.Add(tuple);
+                handledSet.Add(key);
                 distinctList.Add(entry);
             }
         }

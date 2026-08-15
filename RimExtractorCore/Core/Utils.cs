@@ -67,6 +67,22 @@ namespace RimExtractorCore
             work(parent);
             return parent;
         }
+        
+        /// <summary>
+        /// 지정한 이름의 자식 노드가 있으면 반환하고, 없으면 새로 생성하여 추가한 뒤 반환합니다.
+        /// </summary>
+        /// <param name="container">요소를 검사할 루트 객체입니다.</param>
+        /// <param name="name">찾을 요소의 이름입니다.</param>
+        public static XElement GetOrCreateElement(this XContainer container, string name)
+        {
+            var element = container.Element(name);
+            if (element == null)
+            {
+                element = new XElement(name);
+                container.Add(element);
+            }
+            return element;
+        }
 
         public static XElement AppendElement(this XContainer parent, string name, string? innerText = null)
         {
@@ -136,7 +152,7 @@ namespace RimExtractorCore
             value = node.Attribute(attritubeName)?.Value;
             return value != null;
         }
-
+        
         public static string GetXpath(string className, string nodeName)
         {
             var defName = nodeName.Split('.')[0];

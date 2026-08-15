@@ -171,26 +171,22 @@ public static class ModLister
         return new ModMetadata(modRoot, id, name, packageId, false, modDependencies);
     }
 
-    public static List<ExtractableFolder> GetExtractableFolders(ModMetadata modMetadata)
+    public static List<ExtractableFolder> GetExtractableFolders(ModMetadata modMetadata, string targetVersion)
     {
         var root = modMetadata.RootDir;
         var sets = new HashSet<ExtractableFolder>(new ExtractableFolderComparer());
         var pathLoadFolders = Path.Combine(root, "LoadFolders.xml");
 
-        // 하드코딩된 배열 대신 List로 동적 생성
+        // 타겟 하위 폴더 목록 (Defs, Patches, Keyed, Strings 등)
         var targetFolders = new List<string> { "Defs", "Patches", "Keyed", "Assemblies" };
-        // 1차, 2차, 그리고 기본(English) 언어 폴더를 모두 탐색 대상에 추가합니다.
         foreach (var lang in SettingManager.Current.GetLanguagePriorityList())
         {
-            var shortLang = lang.Split(' ').First(); // 예: "Korean (한국어)" -> "Korean"
-
+            var shortLang = lang.Split(' ').First();
             targetFolders.Add(Path.Combine("Languages", lang, "Keyed"));
             targetFolders.Add(Path.Combine("Languages", shortLang, "Keyed"));
             targetFolders.Add(Path.Combine("Languages", lang, "Strings"));
             targetFolders.Add(Path.Combine("Languages", shortLang, "Strings"));
         }
-
-        // 중복 경로 제거
         var distinctTargetFolders = targetFolders.Distinct().ToArray();
 
         IEnumerable<string> GetExtractableFoldersInternal(string path)
@@ -205,65 +201,73 @@ public static class ModLister
             }
         }
 
-        foreach (var extractableFolder in GetExtractableFoldersInternal(root)
-                     .Select(x => new ExtractableFolder(modMetadata, x, null)))
-        {
-            sets.Add(extractableFolder);
-        }
+        bool loadFoldersXmlParsed = false;
 
+        // 1. LoadFolders.xml 분석 (현재 버전 노드만 탐색)
         if (File.Exists(pathLoadFolders))
         {
-            var doc = XDocument.Parse(File.ReadAllText(pathLoadFolders));
-            foreach (var node in doc.Root!.Elements())
+            try
             {
-                var name = node.Name.LocalName;
-                foreach (var li in node.Elements())
+                var doc = XDocument.Parse(File.ReadAllText(pathLoadFolders));
+                // 예: <v1.5> 노드 탐색
+                var versionNode = doc.Root?.Element("v" + targetVersion);
+
+                if (versionNode != null)
                 {
-                    var requiredPackageIds = li.Attribute("IfModActive")?.Value;
+                    loadFoldersXmlParsed = true;
+                    foreach (var li in versionNode.Elements("li"))
+                    {
+                        var requiredPackageIds = li.Attribute("IfModActive")?.Value;
+                        // 루트("/") 매핑 처리
+                        string targetLoadFolder = (li.Value == "/" || li.Value == "\\") ? root : Path.Combine(root, li.Value);
 
-                    // [NEW] 림월드 원본처럼 "/" 나 "\" 입력 시 모드 최상위 루트로 인식
-                    string targetLoadFolder;
-                    if (li.Value == "/" || li.Value == "\\")
-                    {
-                        targetLoadFolder = root;
-                    }
-                    else
-                    {
-                        targetLoadFolder = Path.Combine(root, li.Value);
-                    }
-
-                    // 2. LoadFolders.xml 명시 경로 기준 탐색 (LoadFolderRoot 각인)
-                    foreach (var extractableFolder in GetExtractableFoldersInternal(targetLoadFolder)
-                                 .Select(x => new ExtractableFolder(modMetadata, x, requiredPackageIds, name[1..])
-                                     { LoadFolderRoot = targetLoadFolder }))
-                    {
-                        sets.Add(extractableFolder);
+                        foreach (var extractableFolder in GetExtractableFoldersInternal(targetLoadFolder)
+                                     .Select(x => new ExtractableFolder(modMetadata, x, requiredPackageIds, targetVersion)
+                                         { LoadFolderRoot = targetLoadFolder }))
+                        {
+                            sets.Add(extractableFolder);
+                        }
                     }
                 }
+            }
+            catch (Exception e)
+            {
+                Log.Wrn($"LoadFolders.xml 파싱 오류 ({pathLoadFolders}): {e.Message}");
             }
         }
-        else
+
+        // 2. LoadFolders.xml이 없거나 해당 버전 노드가 없는 경우 (Fallback 로직)
+        if (!loadFoldersXmlParsed)
         {
-            foreach (var directory in Directory.EnumerateDirectories(root))
+            var versionDir = Path.Combine(root, targetVersion);
+            
+            // 2-A. 폴더 구조형 모드 (예: /1.5, /Common 폴더가 존재하는 경우)
+            if (Directory.Exists(versionDir))
             {
-                var lastDir = Path.GetFileName(directory);
-                if (Version.TryParse(lastDir, out _))
+                foreach (var extractableFolder in GetExtractableFoldersInternal(versionDir)
+                             .Select(x => new ExtractableFolder(modMetadata, x, null, targetVersion)
+                                 { LoadFolderRoot = versionDir }))
                 {
-                    foreach (var extractableFolder in GetExtractableFoldersInternal(directory)
-                                 .Select(x => new ExtractableFolder(modMetadata, x, null, lastDir)
-                                     { LoadFolderRoot = directory }))
+                    sets.Add(extractableFolder);
+                }
+
+                var commonDir = Path.Combine(root, "Common");
+                if (Directory.Exists(commonDir))
+                {
+                    foreach (var extractableFolder in GetExtractableFoldersInternal(commonDir)
+                                 .Select(x => new ExtractableFolder(modMetadata, x, null, "Common")
+                                     { LoadFolderRoot = commonDir }))
                     {
                         sets.Add(extractableFolder);
                     }
                 }
             }
-
-            var commonDir = Path.Combine(root, "Common");
-            if (Directory.Exists(commonDir))
+            // 2-B. 단일 구조형 모드 (버전 폴더 없이 루트에 몽땅 들어있는 경우)
+            else
             {
-                foreach (var extractableFolder in GetExtractableFoldersInternal(commonDir)
-                             .Select(x => new ExtractableFolder(modMetadata, x, null, "Common")
-                                 { LoadFolderRoot = commonDir }))
+                foreach (var extractableFolder in GetExtractableFoldersInternal(root)
+                             .Select(x => new ExtractableFolder(modMetadata, x, null, "default")
+                                 { LoadFolderRoot = root }))
                 {
                     sets.Add(extractableFolder);
                 }
@@ -295,7 +299,7 @@ public static class ModLister
                 }
             }
 
-            foreach (var extractableFolder in GetExtractableFolders(modMetadata))
+            foreach (var extractableFolder in GetExtractableFolders(modMetadata, SettingManager.Current.CurrentVersion))
             {
                 if (extractableFolder.RequiredPackageId != null)
                 {
@@ -331,12 +335,6 @@ public static class ModLister
         }
 
         ModMetadataByPackageIdLookUp.Clear();
-    }
-
-    public static bool IsAutoSelectable(this ExtractableFolder extractableFolder)
-    {
-        return extractableFolder.VersionInfo is "default" or "Common" ||
-               extractableFolder.VersionInfo == SettingManager.Current.CurrentVersion;
     }
 
     internal static bool TryGetModMetadataByPackageId(string? packageId, out ModMetadata? modMetadata)

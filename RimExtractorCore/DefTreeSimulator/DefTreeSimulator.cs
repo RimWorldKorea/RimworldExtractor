@@ -21,10 +21,10 @@ public static class DefTreeSimulator
         bool isOfficialContent,
         List<ModMetadata>? referenceMods = null)
     {
+        Stopwatch stopwatch = Stopwatch.StartNew();
         var result = new SimulationResult { TargetMod = modMetadata };
 
-
-        Log.Msg("Phase1/ 사전 어셈블리 모델(PrePiledTree) 로드...");
+        Log.Msg("[Phase1] 사전 어셈블리 모델(PrePiledTree) 로드...");
         XDocument prePiledTree = LoadOrGeneratePrePiledTree(modMetadata, referenceMods, selectedFolders);
 
 #if DEBUG
@@ -33,8 +33,7 @@ public static class DefTreeSimulator
         var typesDebugTree = new XDocument(new XElement("Types", DeepSchemaTypes.Values));
         ExportDebugFile(typesDebugTree, "1_PrePiled_Types.xml");
 #endif
-        // [Phase2] 스냅샷을 구성하기 전에 Core 및 선행 모드의 Defs를 미리 트리에 병합하여 
-        // 뼈대(Schema)와 모드 Def 사이의 상속 체인을 이어줍니다.
+        // [Phase2] 스냅샷을 구성하기 전에 Core 및 선행 모드의 Defs를 미리 트리에 병합하여 뼈대(Schema)와 모드 Def 사이의 상속 체인을 이어줍니다.
         if (referenceDefsRoots != null && referenceDefsRoots.Count > 0)
         {
             Log.Msg("[Phase2] 참조 모드(Core 등) Defs 병합 중...");
@@ -43,92 +42,42 @@ public static class DefTreeSimulator
 #if DEBUG
         ExportDebugFile(prePiledTree, "2_MergedWithReference.xml");
 #endif
-        // -------------------------------------------------------------------------
+        
         // [Phase3] PostProcessor (Stage A 등)
-        prePiledTree = XDocumentProcedureInjector.Instance.ExecuteStage(InjectionStage.StageA, prePiledTree);
-
-        // -------------------------------------------------------------------------
+        prePiledTree = DefTreeProcedureInjector.Instance.ExecuteStage(InjectionStage.StageA, prePiledTree);
+        
         // [Phase4] LoadFolders.xml 조건(Any/All)에 따른 초기 스냅샷 멀티버스 생성
-        Stopwatch stopwatch = Stopwatch.StartNew();
         Log.Msg("[Phase4] LoadFolders 조건(Any/All)에 따른 초기 스냅샷 분기 생성...");
         List<DefSnapshot> multiverse = DoctorStrange.GenerateInitialSnapshots(prePiledTree, selectedFolders);
-        Log.Msg($"{stopwatch.ElapsedMilliseconds} ms 경과");
+        
         // -------------------------------------------------------------------------
-        // [Phase5] 각 스냅샷별로 자신에게 할당된 Defs 병합
-        stopwatch.Restart();
-        Log.Msg("[Phase5] 분기된 스냅샷별 Defs XML 로드 및 병합...");
-        foreach (var snapshot in multiverse)
+        // [Phase5 & Phase6] 모드 Defs 병합 및 패치(분기) 처리
+        List<DefSnapshot> finalMultiverse = multiverse.AsParallel().SelectMany(snapshot =>
         {
+            // 5. 모드 Defs 병합
             LoadAndMergeModDefs(snapshot.Tree, snapshot.AssignedFolders, true);
-            Log.Common($"페이즈5 {String.Join(",", snapshot.RequiredModIds)}");
-        }
-
-        Log.Msg($"{stopwatch.ElapsedMilliseconds} ms 경과");
-#if DEBUG
-        ExportDebugFile(multiverse.First().Tree, "4_Merged.xml");
-#endif
+            
+            // 6. 패치 적용 및 분기된 스냅샷 반환
+            return DoctorStrange.ProcessPatchOperations(snapshot, snapshot.AssignedPatches);
+        }).ToList();
 
         // -------------------------------------------------------------------------
-        // [Phase6] 각 스냅샷별 PatchOperation 분기 검사 및 추가 분열
-        stopwatch.Restart();
-        Log.Msg("[Phase6] PatchOperationFindMod 등 조건부 패치를 통한 스냅샷 2차 분열...");
-        List<DefSnapshot> finalMultiverse = new List<DefSnapshot>();
-
-        foreach (var snapshot in multiverse)
+        // [Phase7, Phase8 & Phase9] 상속, 스키마 주입 및 번역 데이터 적용
+        Parallel.ForEach(finalMultiverse, snapshot =>
         {
-            var branchedSnapshots = DoctorStrange.ProcessPatchOperations(snapshot, snapshot.AssignedPatches);
-            finalMultiverse.AddRange(branchedSnapshots);
-            Log.Common($"페이즈6 {String.Join(",", snapshot.RequiredModIds)}");
-        }
-
-        Log.Msg($"{stopwatch.ElapsedMilliseconds} ms 경과");
-#if DEBUG
-        ExportDebugFile(multiverse.First().Tree, "5_Patched.xml");
-#endif
-
-        // -------------------------------------------------------------------------
-        // [Phase7] 상속(Inheritance) 처리 (모든 최종 평행 우주에 대해 각각 수행)
-        // 이 단계에서 트리는 XML 생성 명세서에서 실제 트리 구조로 전환됩니다.
-        stopwatch.Restart();
-        Log.Msg("[Phase7] 최종 생성된 모든 스냅샷에 대해 XML 상속(ParentName) 처리...");
-        foreach (var snapshot in finalMultiverse)
-        {
-            Log.Common($"페이즈7_1 {String.Join(",", snapshot.RequiredModIds)}");
+            // 7. 상속(Inheritance) 처리 및 추상 노드 정리
             DoXmlInheritance(snapshot.Tree.Root);
-            Log.Common($"페이즈7_2 {String.Join(",", snapshot.RequiredModIds)}");
             CleanUpAbstractNodes(snapshot.Tree.Root);
-            Log.Common($"페이즈7_3 {String.Join(",", snapshot.RequiredModIds)}");
-        }
 
-        Log.Msg($"{stopwatch.ElapsedMilliseconds} ms 경과");
-
-        // -------------------------------------------------------------------------
-        // [Phase8] 딥 스키마(Deep Schema) 전파
-        stopwatch.Restart();
-        Log.Msg("[Phase8] 복합 타입 딥 스키마(Deep Schema) 전파 중...");
-        foreach (var snapshot in finalMultiverse)
-        {
+            // 8. 스키마(Deep Schema) 주입
             InjectDeepSchemaRecursive(snapshot.Tree.Root);
-            Log.Common($"페이즈8 {String.Join(",", snapshot.RequiredModIds)}");
-        }
 
-        Log.Msg($"{stopwatch.ElapsedMilliseconds} ms  ");
-
-#if DEBUG
-        ExportDebugFile(multiverse.First().Tree, "6_Inherited.xml");
-#endif
-// -------------------------------------------------------------------------
-        // [NEW] [Phase9] DefInjected LanguageData 병합
-        stopwatch.Restart();
-        Log.Msg("[Phase9] DefInjected 언어 데이터(LanguageData) 병합...");
-        foreach (var snapshot in finalMultiverse)
-        {
+            // 9. DefInjected 번역(LanguageData) 적용
             ApplyDefInjectedLanguageData(snapshot);
-        }
+        });
 
-        Log.Msg($"{stopwatch.ElapsedMilliseconds} ms 소요됨.");
-
-
+        Log.Msg($"{stopwatch.ElapsedMilliseconds/1000} s 소요됨.");
+        
         result.Snapshots = finalMultiverse;
         return result;
     }
@@ -169,7 +118,7 @@ public static class DefTreeSimulator
                     {
                         searchDirectories.Add(refMod.RootDir);
 
-                        foreach (var rf in ModLister.GetExtractableFolders(refMod))
+                        foreach (var rf in ModLister.GetExtractableFolders(refMod, SettingManager.Current.CurrentVersion))
                         {
                             searchDirectories.Add(rf.ActualLoadFolderRoot);
                         }
@@ -532,5 +481,45 @@ public static class DefTreeSimulator
                 }
             }
         }
+    }
+    
+    /// <summary>
+    /// Defs 노드 하위에서 타겟 타입을 찾아 어트리뷰트를 주입합니다. (프로시저용)
+    /// </summary>
+    public static void GetDefAndSetAttribute(this XDocument doc, string targetType, string memberName, string attributeName, string value)
+    {
+        var defsNode = doc.Root?.Element("Defs");
+        if (defsNode == null) return;
+        
+        // Utils에 추가한 GetOrCreateElement 활용
+        var typeNode = defsNode.GetOrCreateElement(targetType);
+        
+        // 스키마 상속 구조 등을 위해 Name 속성이 없다면 기본으로 달아줍니다.
+        if (typeNode.Attribute("Name") == null)
+        {
+            typeNode.SetAttributeValue("Name", targetType); 
+        }
+
+        var memberNode = typeNode.GetOrCreateElement(memberName);
+        memberNode.SetAttributeValue(attributeName, value);
+    }
+
+    /// <summary>
+    /// Types 노드 하위에서 타겟 타입을 찾아 어트리뷰트를 주입합니다. (프로시저용)
+    /// </summary>
+    public static void GetTypeAndSetAttribute(this XDocument doc, string targetType, string memberName, string attributeName, string value)
+    {
+        var typesNode = doc.Root?.Element("Types");
+        if (typesNode == null) return;
+        
+        var typeNode = typesNode.GetOrCreateElement(targetType);
+        
+        if (typeNode.Attribute("Name") == null)
+        {
+            typeNode.SetAttributeValue("Name", targetType); 
+        }
+
+        var memberNode = typeNode.GetOrCreateElement(memberName);
+        memberNode.SetAttributeValue(attributeName, value);
     }
 }

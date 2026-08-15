@@ -166,7 +166,7 @@ public partial class SelectModViewModel : ViewModelBase
         }
         SelectedModInfoText = info;
         ExtractableFolders.Clear();
-        var folders = ModLister.GetExtractableFolders(SelectedMod);
+        var folders = ModLister.GetExtractableFolders(SelectedMod, SettingManager.Current.CurrentVersion);
         foreach (var folder in folders)
         {
             ExtractableFolders.Add(folder);

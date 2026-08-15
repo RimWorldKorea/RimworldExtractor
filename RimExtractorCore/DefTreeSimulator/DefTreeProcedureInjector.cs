@@ -6,14 +6,14 @@ namespace RimExtractorCore.DefTreeSimulator;
 /// <summary>
 /// DefTreeSimulator에서 동작하는 프로시저 인젝터의 구현체입니다.
 /// </summary>
-public class XDocumentProcedureInjector : IProcedureInjector
+public class DefTreeProcedureInjector : IProcedureInjector
 {
-    public static XDocumentProcedureInjector Instance { get; } = new();
+    public static DefTreeProcedureInjector Instance { get; } = new();
 
     private readonly Dictionary<InjectionStage, List<IXDocumentProcedure>> _processorsByStage = new();
     public bool IsInitialized { get; private set; } = false;
 
-    private XDocumentProcedureInjector()
+    private DefTreeProcedureInjector()
     {
         foreach (InjectionStage stage in Enum.GetValues(typeof(InjectionStage)))
         {

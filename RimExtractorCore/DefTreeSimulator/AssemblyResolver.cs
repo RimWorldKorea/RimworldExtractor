@@ -219,14 +219,6 @@ public static class AssemblyResolver
                 Log.Err($"[{typeDef.Name}] 디컴파일 중 예외: {e.Message}");
             }
         }
-
-#if DEBUG
-        // 모드 클래스만 필터링해서 확인 (Verse, RimWorld 등 코어 제외)
-        if (!typeDef.ReflectionName.StartsWith("Verse.") && !typeDef.ReflectionName.StartsWith("RimWorld."))
-        {
-            Log.Common($"{typeDef.Name} 딥 스키마 추출 완료 - 부모: {baseType?.Name ?? "없음(Unknown)"}, 추출된 필드: {fieldNodes.Count}개");
-        }
-#endif
         
         return typeNode;
     }

@@ -47,15 +47,17 @@ public class ExtractionService : IExtractionService
             {
                 foreach (var referenceMod in referenceMods)
                 {
+                    // 버전 파라미터 추가 및 IsAutoSelectable() 조건 삭제
                     refDefs.AddRange(
-                        from extractableFolder in ModLister.GetExtractableFolders(referenceMod)
-                        where extractableFolder.IsAutoSelectable() && Path.GetFileName(extractableFolder.FolderName) == "Defs"
+                        from extractableFolder in ModLister.GetExtractableFolders(referenceMod, SettingManager.Current.CurrentVersion)
+                        where Path.GetFileName(extractableFolder.FolderName) == "Defs"
                         select Path.Combine(referenceMod.RootDir, extractableFolder.FolderName)
                     );
-
+                    
+                    // 버전 파라미터 추가 및 IsAutoSelectable() 조건 삭제
                     prePatches.AddRange(
-                        ModLister.GetExtractableFolders(referenceMod)
-                            .Where(x => x.IsAutoSelectable() && Path.GetFileName(x.FolderName) == "Patches")
+                        ModLister.GetExtractableFolders(referenceMod, SettingManager.Current.CurrentVersion)
+                            .Where(x => Path.GetFileName(x.FolderName) == "Patches")
                     );
                 }
             }

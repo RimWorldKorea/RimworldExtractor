@@ -88,7 +88,7 @@ public static class DefTreeSimulator
     private static XDocument LoadOrGeneratePrePiledTree(ModMetadata targetMod, List<ModMetadata>? referenceMods,
         List<ExtractableFolder> selectedFolders)
     {
-        var path = ExtractorCore.PrePiledTreePath;
+        var path = Engine.PrePiledTreePath;
         if (string.IsNullOrEmpty(path) || !File.Exists(path))
         {
             throw new FileNotFoundException($"통합 뼈대 XML 파일을 찾을 수 없습니다: {path}");
@@ -367,11 +367,23 @@ public static class DefTreeSimulator
         // 1. 현재 노드의 '진짜 타입(Actual Type)'을 알아냅니다.
         string? actualType = node.Attribute("Class")?.Value; // 다형성(Class) 최우선 확인
 
-        // 모드의 커스텀 타입처럼 네임스페이스가 섞여있다면 뒤의 클래스명만 추출 
-        // (예: Universal_Lift_Structure.CompProperties_LiftConsole -> CompProperties_LiftConsole)
-        if (!string.IsNullOrEmpty(actualType) && actualType.Contains('.'))
+        if (!string.IsNullOrEmpty(actualType))
         {
-            actualType = actualType.Split('.').Last();
+            // 2. 네임스페이스 분리 검사 (마지막 '.' 기준)
+            int lastDotIndex = actualType.LastIndexOf('.');
+            if (lastDotIndex > 0)
+            {
+                string namespacePart = actualType.Substring(0, lastDotIndex);
+                
+                // VIP 네임스페이스인 경우에만 앞부분을 날립니다. (모드 네임스페이스는 보존)
+                if (Constants.IgnoredNamespaceNames.Contains(namespacePart))
+                {
+                    actualType = actualType.Substring(lastDotIndex + 1);
+                }
+            }
+
+            // 3. XML 스키마 이름 규칙에 맞춰 중첩 클래스 기호(+) 치환 (예: ThingDef+Nested -> ThingDef.Nested)
+            actualType = actualType.Replace('+', '.');
         }
 
         // Class가 없다면 Type 어트리뷰트 확인
@@ -513,6 +525,7 @@ public static class DefTreeSimulator
         if (typesNode == null) return;
         
         var typeNode = typesNode.GetOrCreateElement(targetType);
+        //todo 여기에 Abstract도 추가해줘야 되는거 아닌가?
         
         if (typeNode.Attribute("Name") == null)
         {

@@ -7,7 +7,7 @@ namespace RimExtractorCore;
 /// Main 역할.
 /// 프로그램 범위에서 초기화 같은게 필요한 경우 여기에 둡시다.
 /// </summary>
-public static class ExtractorCore
+public static class Engine
 {
     // 앱 실행 동안 유지될 PrePiledTree XML의 절대 경로
     public static string PrePiledTreePath { get; private set; } = string.Empty;
@@ -20,6 +20,9 @@ public static class ExtractorCore
         ExtractionProcedureInjector.Instance
     };
 
+    /// <summary>
+    /// 프로그램 시작 시점에 실행되어야 합니다.
+    /// </summary>
     public static void Initialize()
     {
         Log.Msg("초기화 시작");

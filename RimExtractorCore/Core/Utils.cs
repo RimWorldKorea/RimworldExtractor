@@ -237,5 +237,39 @@ namespace RimExtractorCore
         
         // 객체 생성 및 초기화 체이닝을 위한 확장 메서드
         public static T Tap<T>(this T obj, Action<T> action) { action(obj); return obj; }
+        
+        /// <summary>
+        /// 두 문자열이 완전히 동일한 경로를 가리키는지 확인합니다.
+        /// </summary>
+        public static bool IsSamePathWith(this string path1, string path2)
+        {
+            if (string.IsNullOrWhiteSpace(path1) || string.IsNullOrWhiteSpace(path2))
+                return false;
+
+            // 상대 경로 해석, 슬래시 통일, 후행 슬래시 제거
+            string normalized1 =
+                Path.TrimEndingDirectorySeparator(Path.GetFullPath(path1));
+            string normalized2 =
+                Path.TrimEndingDirectorySeparator(Path.GetFullPath(path2));
+
+            return string.Equals(normalized1, normalized2, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// targetPath가 basePath의 하위 경로(또는 동일한 경로)인지 확인합니다.
+        /// </summary>
+        public static bool IsSubPathOf(this string targetPath, string basePath)
+        {
+            if (string.IsNullOrWhiteSpace(basePath) || string.IsNullOrWhiteSpace(targetPath))
+                return false;
+
+            // 상대 경로 해석 및 후행 슬래시 제거 후, 반드시 끝에 디렉토리 구분자를 붙여줍니다.
+            string normalizedBase =
+                Path.TrimEndingDirectorySeparator(Path.GetFullPath(basePath)) + Path.DirectorySeparatorChar;
+            string normalizedTarget =
+                Path.TrimEndingDirectorySeparator(Path.GetFullPath(targetPath)) + Path.DirectorySeparatorChar;
+
+            return normalizedTarget.StartsWith(normalizedBase, StringComparison.OrdinalIgnoreCase);
+        }
     }
 }

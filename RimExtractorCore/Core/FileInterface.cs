@@ -122,17 +122,17 @@ public static class FileInterface
 
         switch (SettingManager.Current.Policy)
         {
-            case DuplicatesPolicy.Stop:
+            case DuplicateFilePolicy.Stop:
                 var stopCallback = Constants.StopCallbackXml;
                 if (stopCallback != null)
                     stopCallback(doc, path);
                 else
                     throw new ArgumentNullException(nameof(stopCallback));
                 return;
-            case DuplicatesPolicy.Overwrite:
+            case DuplicateFilePolicy.Overwrite:
                 doc.Save(path);
                 return;
-            case DuplicatesPolicy.KeepOriginal:
+            case DuplicateFilePolicy.KeepOriginal:
                 return;
             default:
                 throw new ArgumentOutOfRangeException();
@@ -149,17 +149,17 @@ public static class FileInterface
 
         switch (SettingManager.Current.Policy)
         {
-            case DuplicatesPolicy.Stop:
+            case DuplicateFilePolicy.Stop:
                 var stopCallback = Constants.StopCallbackTxt;
                 if (stopCallback != null)
                     stopCallback(lines, path);
                 else
                     throw new ArgumentNullException(nameof(stopCallback));
                 return;
-            case DuplicatesPolicy.Overwrite:
+            case DuplicateFilePolicy.Overwrite:
                 File.WriteAllLines(path, lines);
                 return;
-            case DuplicatesPolicy.KeepOriginal:
+            case DuplicateFilePolicy.KeepOriginal:
                 return;
             default:
                 throw new ArgumentOutOfRangeException();

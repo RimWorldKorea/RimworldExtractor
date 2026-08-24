@@ -155,6 +155,7 @@ public static class AssemblyResolver
     // [NEW] 중복을 제거하기 위해 분리한 "단일 타입 스키마 추출" 핵심 공통 메서드
     private static XElement ExtractTypeSchemaNode(ITypeDefinition typeDef, CSharpDecompiler localDecompiler)
     {
+        var nodeName = GetSchemaNodeName(typeDef);
         var typeNode = new XElement(typeDef.Name);
 
         typeNode.SetAttributeValue("Name", typeDef.Name);
@@ -167,7 +168,17 @@ public static class AssemblyResolver
 
         if (baseType != null)
         {
-            typeNode.SetAttributeValue("ParentName", baseType.Name);
+            // 상속 부모의 이름도 동일한 룰을 따르도록 처리해야 하지만, 
+            // IType 인터페이스에서는 TypeDefinition으로 캐스팅 후 룰을 적용할 수 있습니다.
+            var baseTypeDef = baseType.GetDefinition();
+            if (baseTypeDef != null)
+            {
+                typeNode.SetAttributeValue("ParentName", GetSchemaNodeName(baseTypeDef));
+            }
+            else
+            {
+                typeNode.SetAttributeValue("ParentName", baseType.Name);
+            }
         }
 
         var fieldNodes = new Dictionary<string, XElement>();
@@ -247,6 +258,9 @@ public static class AssemblyResolver
         fieldNode.SetAttributeValue("Type", GetFriendlyTypeName(type));
     }
 
+    /// <summary>
+    /// 디컴파일러의 리플렉션 타입 이름을 C#에 친숙한 이름으로 변환합니다.
+    /// </summary>
     private static string GetFriendlyTypeName(IType type)
     {
         return type.ReflectionName switch
@@ -260,6 +274,27 @@ public static class AssemblyResolver
             "System.Byte" => "byte",
             _ => type.Name 
         };
+    }
+    
+    /// <summary>
+    /// 디컴파일러가 알아낸 타입을 림월드 방식으로 변환합니다.
+    /// </summary>
+    private static string GetSchemaNodeName(ITypeDefinition typeDef)
+    {
+        string reflectionName = typeDef.ReflectionName;
+        string namespaceName = typeDef.Namespace;
+
+        // 1. 네임스페이스가 없거나 VIP 명단에 속한다면 앞부분(Namespace.)을 잘라냅니다.
+        if (string.IsNullOrEmpty(namespaceName) || Constants.IgnoredNamespaceNames.Contains(namespaceName))
+        {
+            if (!string.IsNullOrEmpty(namespaceName) && reflectionName.StartsWith(namespaceName + "."))
+            {
+                reflectionName = reflectionName.Substring(namespaceName.Length + 1);
+            }
+        }
+        // 2. 외부 모드라면 네임스페이스가 포함된 전체 이름(ReflectionName)이 그대로 유지됩니다.
+        // 3. 중첩 클래스(예: ThingDef+Nested)의 '+' 기호를 XML 규칙에 맞게 '.'으로 치환합니다.
+        return reflectionName.Replace('+', '.');
     }
 
     private static string? ParseExpression(Expression expr)

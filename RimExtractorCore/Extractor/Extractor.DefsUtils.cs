@@ -80,7 +80,7 @@ public static partial class ExtractorEngine
         }
     }
     
-    //TODO 이거 림월드 기본 동작이랑 다시 비교해보기
+    //TODO 이거 림월드 기본 동작이랑 다시 비교해보기 (그냥 패키지에서 바로 가져올까?)
     /// <summary>
     /// 번역 핸들을 생성합니다.
     /// </summary>

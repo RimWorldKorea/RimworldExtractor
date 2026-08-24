@@ -18,10 +18,10 @@ public class Settings
     public bool CommentOriginal { get; set; } = false;
 
     [JsonConverter(typeof(JsonStringEnumConverter))]
-    public DuplicatesPolicy Policy { get; set; } = DuplicatesPolicy.Overwrite;
+    public DuplicateFilePolicy Policy { get; set; } = DuplicateFilePolicy.Overwrite;
 
     [JsonConverter(typeof(JsonStringEnumConverter))]
-    public ExtractionMethod Method { get; set; } = ExtractionMethod.Languages;
+    public ExportFileFormmat Method { get; set; } = ExportFileFormmat.LanguageData;
 
     // 비필수 번역 요소(MayNotTranslate) 추출 여부 스위치
     public bool ExtractMayNotTranslate { get; set; } = true;
@@ -38,9 +38,8 @@ public class Settings
     }
 }
 
-//TODO enum들은 왜 따로 빠져있지?
+/// <summary>파일 저장시 기존 파일이 있는 경우의 동작을 설정할 때 사용합니다.</summary>
+public enum DuplicateFilePolicy { Stop, Overwrite, KeepOriginal }
 
-/// 저장하려는 곳에 중복 파일이 있는 경우 행동 지정
-public enum DuplicatesPolicy { Stop = 0, Overwrite, KeepOriginal }
-/// 출력 파일의 형식 지정
-public enum ExtractionMethod { Excel = 0, Languages, LanguagesWithComments }
+/// <summary>출력 파일의 포맷을 지정할 때 사용합니다.</summary>
+public enum ExportFileFormmat { Spreadsheet, LanguageData, LanguageDataWithComments }

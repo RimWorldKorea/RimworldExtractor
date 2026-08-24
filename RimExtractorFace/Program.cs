@@ -18,7 +18,7 @@ internal static class Program
         {
             try
             {
-                ExtractorCore.Initialize();
+                Engine.Initialize();
             }
             catch (Exception ex)
             {

@@ -45,7 +45,7 @@ public partial class SettingsViewModel : ViewModelBase
         get => (int)Config.Method;
         set
         {
-            Config.Method = (ExtractionMethod)value;
+            Config.Method = (ExportFileFormmat)value;
             OnPropertyChanged(nameof(SelectedExtractionMethodIndex));
         }
     }
@@ -55,7 +55,7 @@ public partial class SettingsViewModel : ViewModelBase
         get => (int)Config.Policy;
         set
         {
-            Config.Policy = (DuplicatesPolicy)value;
+            Config.Policy = (DuplicateFilePolicy)value;
             OnPropertyChanged(nameof(SelectedPolicyIndex));
         }
     }

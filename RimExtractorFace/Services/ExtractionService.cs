@@ -82,13 +82,13 @@ public class ExtractionService : IExtractionService
             switch (SettingManager.Current.Method)
             {
                 // Prefabs.ExtractionMethod에서 ExtractionMethod로 직접 참조하도록 수정
-                case ExtractionMethod.Excel:
+                case ExportFileFormmat.Spreadsheet:
                     FileInterface.ToOds(extraction.Entries.ToList(), Path.Combine(outPath, outPath));
                     break;
-                case ExtractionMethod.Languages:
+                case ExportFileFormmat.LanguageData:
                     FileInterface.ToLanguageXml(extraction.Entries.ToList(), false, false, outPath, outPath);
                     break;
-                case ExtractionMethod.LanguagesWithComments:
+                case ExportFileFormmat.LanguageDataWithComments:
                     FileInterface.ToLanguageXml(extraction.Entries.ToList(), false, true, outPath, outPath);
                     break;
             }

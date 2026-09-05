@@ -20,7 +20,7 @@ namespace RimExtractorTest
                          "Data\\test\\Nephilim Xenotype - 2997308585.xlsx"
                      })
             {
-                var modMetadata = AnalyzerEngine.GetModMetadataFromFilePath(path);
+                var modMetadata = AnalyzerEngine.GetModFromFilePath(path);
                 Assert.IsNotNull(modMetadata);
                 Console.WriteLine(modMetadata);
             }

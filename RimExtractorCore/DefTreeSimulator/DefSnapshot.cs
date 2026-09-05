@@ -9,14 +9,10 @@ public class DefSnapshot
 {
     public List<string> RequiredModIds { get; set; } = new();
     public XDocument Tree { get; set; }
-
-    // [NEW] 이 스냅샷(우주)에서 로드되어야 할 폴더들
-    public List<ExtractableFolder> AssignedFolders { get; set; } = new();
     
-    // [NEW] 이 스냅샷(우주)에서 실행되어야 할 패치 폴더들
-    public List<ExtractableFolder> AssignedPatches { get; set; } = new();
+    public List<FolderLoadUnit> LoadedUnits { get; set; } = new();
     
-    // [추가] 베이스 스냅샷 여부를 명시적으로 추적하는 플래그
+    /// <summary>true인 경우 이 스냅샷이 다른 스냅샷들의 공통 이미지임을 나타냅니다.</summary>
     public bool IsBaseSnapshot { get; set; } = false;
 
     public DefSnapshot(XDocument tree, IEnumerable<string>? requiredModIds = null)
@@ -33,11 +29,7 @@ public class DefSnapshot
         
         return new DefSnapshot(clonedTree, newIds)
         {
-            // 복제될 때 폴더 할당 상태도 그대로 가져갑니다.
-            AssignedFolders = new List<ExtractableFolder>(this.AssignedFolders),
-            AssignedPatches = new List<ExtractableFolder>(this.AssignedPatches),
-            
-            // 복제(파생)된 스냅샷은 조건이 추가된 Branch이므로 무조건 false
+            LoadedUnits = new List<FolderLoadUnit>(this.LoadedUnits),
             IsBaseSnapshot = false
         };
     }

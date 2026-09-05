@@ -12,57 +12,42 @@ namespace RimExtractorCore.Extractor
     /// </summary>
     public static class KeyExtractor
     {
-        public static IEnumerable<TranslationEntry> Extract(DefSnapshot snapshot, ModMetadata targetMod)
+        public static IEnumerable<TranslationEntry> Extract(DefSnapshot snapshot, Mod targetMod)
         {
             var extractedKeys = new Dictionary<string, TranslationEntry>();
             var requiredMods = new RequiredMods();
             requiredMods.AddAllowedByModNames(snapshot.RequiredModIds);
             
             Log.Common($"KeyExtractor.Extract -> {requiredMods.ToString()}");
-
-            // 1. 현재 우주(Snapshot)에 할당된 폴더들에서 Assemblies 탐색
+            
             var assemblyPaths = new List<string>();
-            
-            // [수정됨] ActualLoadFolderRoot를 활용하여 진짜 버전 루트를 중복 없이 추려냅니다.
-            var searchRoots = snapshot.AssignedFolders
-                .Select(f => f.ActualLoadFolderRoot)
-                .Distinct()
-                .ToList();
 
-            // 모드 최상위 루트(RootDir)에 놓인 Assemblies도 놓치지 않도록 포함
-            if (!searchRoots.Contains(targetMod.RootDir, StringComparer.OrdinalIgnoreCase))
+            // 1. DLL 경로 수집
+            foreach (var unit in snapshot.LoadedUnits)
             {
-                searchRoots.Add(targetMod.RootDir);
-            }
-            
-            foreach (var root in searchRoots)
-            {
-                var asmDir = Path.Combine(root, "Assemblies");
-                if (Directory.Exists(asmDir))
-                {
-                    assemblyPaths.AddRange(Directory.GetFiles(asmDir, "*.dll", SearchOption.AllDirectories));
-                }
+                if (unit.Assemblies != null && unit.Assemblies.Exists)
+                    assemblyPaths.AddRange(unit.Assemblies.GetFiles("*.dll", SearchOption.AllDirectories).Select(f => f.FullName));
             }
 
-            // 2. 어셈블리 디컴파일 및 AST 순회
-            foreach (var dllPath in assemblyPaths)
-            {
+            foreach (var dllPath in assemblyPaths.Distinct(StringComparer.OrdinalIgnoreCase))
                 ExtractKeysFromAssembly(dllPath, extractedKeys, requiredMods);
-            }
 
             // 3. 설정된 1차/2차 언어를 기반으로 원문(Original) 텍스트 매핑
             var priorityLanguages = SettingManager.Current.GetLanguagePriorityList().ToList();
             
-            foreach (var folder in snapshot.AssignedFolders)
+            foreach (var unit in snapshot.LoadedUnits)
             {
                 foreach (var lang in priorityLanguages)
                 {
-                    var keyedDir = Path.Combine(folder.FullPath, "Languages", lang, "Keyed");
-                    if (!Directory.Exists(keyedDir)) continue;
+                    var englishName = lang.Split('(')[0].Trim();
+                    var languageInfo = LanguageInfo.Get(englishName);
+                    
+                    var keyedDir = unit.GetKeyedPath(languageInfo);
+                    if (keyedDir == null || !keyedDir.Exists) continue;
 
-                    foreach (var xmlPath in Directory.GetFiles(keyedDir, "*.xml", SearchOption.AllDirectories))
+                    foreach (var xmlFile in keyedDir.GetFiles("*.xml", SearchOption.AllDirectories))
                     {
-                        var doc = FileInterface.ReadXml(xmlPath);
+                        var doc = FileInterface.ReadXml(xmlFile.FullName);
                         if (doc.Root == null) continue;
 
                         foreach (var node in doc.Root.Elements())
@@ -75,7 +60,11 @@ namespace RimExtractorCore.Extractor
                                 // 원문이 비어있다면 우선순위가 높은 언어의 텍스트로 채움
                                 if (string.IsNullOrEmpty(entry.Original))
                                 {
-                                    extractedKeys[key] = entry with { Original = node.Value, SourceFile = Path.GetFileNameWithoutExtension(xmlPath) };
+                                    extractedKeys[key] = entry with
+                                    {
+                                        Original = node.Value, SourceFile =
+                                        Path.GetFileNameWithoutExtension(xmlFile.FullName)
+                                    };
                                 }
                             }
                         }

@@ -10,11 +10,11 @@ public class DefaultExtractionProcedure : IExtractionProcedure
 {
     public string Name => "DefaultExtractionProcedure";
 
-    public IEnumerable<TranslationEntry> Extract(DefSnapshot snapshot, ModMetadata targetMod)
+    public IEnumerable<TranslationEntry> Extract(DefSnapshot snapshot, Mod targetMod)
     {
         if (snapshot.Tree.Root == null) yield break;
 
-        bool isOfficialContent = targetMod.IsOfficialContent;
+        bool isOfficialContent = targetMod.Type == ModType.Official;
 
         // Reference 노드는 제외하고, ExtractionTarget 마커가 있는 모드 고유 노드만 추출 대상에 포함
         var rootElements = snapshot.Tree.Root.Elements()

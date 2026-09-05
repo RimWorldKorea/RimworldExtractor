@@ -11,15 +11,14 @@ public partial class SelectModWindow : Window
 {
     private readonly SelectModViewModel _viewModel;
 
-    public ModMetadata? SelectedMod => _viewModel.SelectedMod;
-    public List<ExtractableFolder> SelectedFolders { get; } = new();
-    public List<ModMetadata> ReferenceMods => _viewModel.ReferenceMods;
+    public Mod? SelectedMod => _viewModel.SelectedMod;
+    public List<Mod> ReferenceMods => _viewModel.ReferenceMods;
 
     public bool IsSuccess { get; private set; } = false;
 
     public SelectModWindow() : this(null) { }
 
-    public SelectModWindow(ModMetadata? initialMod = null)
+    public SelectModWindow(Mod? initialMod = null)
     {
         InitializeComponent();
         
@@ -39,15 +38,6 @@ public partial class SelectModWindow : Window
 
         _viewModel.RequestClose += () =>
         {
-            SelectedFolders.Clear();
-            if (ListBoxFolders.SelectedItems != null)
-            {
-                foreach (var item in ListBoxFolders.SelectedItems)
-                {
-                    if (item is ExtractableFolder folder)
-                        SelectedFolders.Add(folder);
-                }
-            }
             IsSuccess = true;
             Close();
         };

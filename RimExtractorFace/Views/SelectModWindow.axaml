@@ -31,13 +31,12 @@
             <CheckBox Content="선택한 모드만 보기 (S로 참조선택 가능)" 
                       IsChecked="{Binding IsFilterSelectedOnly, Mode=TwoWay}"
                       DockPanel.Dock="Right"/>
-            <TextBlock Text="추출할 폴더 선택 (우측)" VerticalAlignment="Center" Foreground="Gray"/>
         </DockPanel>
 
         <!-- 3행: 모드 리스트 및 폴더 리스트 -->
         <!-- 3. 본문 목록 -->
         <!-- 3. 본문 목록 -->
-        <Grid Grid.Row="2" ColumnDefinitions="*, 300" Margin="0,0,0,8">
+        <Grid Grid.Row="2" ColumnDefinitions="*" Margin="0,0,0,0">
             
             <!-- 좌측: 모드 목록 -->
             <Border Grid.Column="0" Background="#252525" CornerRadius="4" Margin="0,0,8,0" Grid.IsSharedSizeScope="True">
@@ -124,15 +123,6 @@
                     </ListBox.ContextMenu>
                 </ListBox>
             </Border>
-
-            <!-- 우측: 폴더 목록 (기존 유지) -->
-            <ListBox Grid.Column="1" Name="ListBoxFolders" ItemsSource="{Binding ExtractableFolders}" SelectionMode="Multiple,Toggle">
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <TextBlock Text="{Binding}" ToolTip.Tip="{Binding FullPath}" TextWrapping="Wrap"/>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
         </Grid>
 
         <!-- 4행: 조작법 안내 -->

@@ -358,58 +358,60 @@ namespace RimExtractorCore.DataTypes
             }
         }
 
+        private static Mod? SelectBestMod(IReadOnlyList<Mod> mods)
+        {
+            if (mods.Count == 0) return null;
+            return mods.OrderBy(m => m.Type switch
+            {
+                ModType.Local => 1,
+                ModType.Workshop => 2,
+                ModType.Official => 3,
+                _ => 4
+            }).First();
+        }
+        
         private struct PackageIdModNamePair
         {
             public string PackageId
             {
                 get
                 {
-                    if (_packageId != null)
-                        return _packageId;
+                    if (_packageId != null) return _packageId;
                     if (_modName != null)
                     {
                         if (_modName.StartsWith(PACKAGE_ID_PREFIX))
                         {
-                            _packageId = _modName.Substring(PACKAGE_ID_PREFIX.Length, _modName.Length - PACKAGE_ID_PREFIX.Length);
+                            _packageId = _modName.Substring(PACKAGE_ID_PREFIX.Length);
                             return _packageId;
                         }
-                        else
-                        {
-                            _packageId = ModLister.GetModMetadataByModName(_modName)?.PackageId;
-                            return _packageId ?? "##modName##" + _modName;
-                        }
+                        
+                        var mods = ModLister.GetModsByModName(_modName);
+                        var mod = SelectBestMod(mods);
+                        _packageId = mod?.PackageID ?? "##modName##" + _modName;
+                        return _packageId;
                     }
-
                     throw new InvalidOperationException("Both PackageId and ModName are null.");
                 }
             }
-
+            
             public string ModName
             {
                 get
                 {
-                    if (_modName != null)
-                        return _modName;
+                    if (_modName != null) return _modName;
                     if (_packageId != null)
                     {
                         if (_packageId.StartsWith(MOD_NAME_PREFIX))
                         {
-                            _modName = _packageId.Substring(MOD_NAME_PREFIX.Length,
-                                _packageId.Length + MOD_NAME_PREFIX.Length);
+                            _modName = _packageId.Substring(MOD_NAME_PREFIX.Length);
                             return _modName;
                         }
-                        if (ModLister.TryGetModMetadataByPackageId(_packageId, out var modMetadata) &&
-                            modMetadata != null)
-                        {
-                            _modName = modMetadata.ModName;
-                        }
-                        else
-                        {
-                            _modName = "##packageId##" + _packageId;
-                        }
+                        
+                        var mods = ModLister.GetModsByPackageId(_packageId);
+                        var mod = SelectBestMod(mods);
+                        _modName = mod?.Name ?? "##packageId##" + _packageId;
                         return _modName;
                     }
-
                     throw new InvalidOperationException("Both PackageId and ModName are null");
                 }
             }

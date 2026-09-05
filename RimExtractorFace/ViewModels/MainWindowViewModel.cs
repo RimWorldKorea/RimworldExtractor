@@ -25,9 +25,8 @@ public partial class MainWindowViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(ExtractCommand))]
     private bool _canExtract = false;
 
-    public ModMetadata? SelectedMod { get; private set; }
-    public List<ExtractableFolder>? SelectedFolders { get; private set; }
-    public List<ModMetadata>? ReferenceMods { get; private set; }
+    public Mod? SelectedMod { get; private set; }
+    public List<Mod>? ReferenceMods { get; private set; }
 
     // 생성자를 통해 의존성(Service) 주입
     public MainWindowViewModel(
@@ -64,17 +63,16 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    public void UpdateSelectedModInfo(ModMetadata mod, List<ExtractableFolder> folders, List<ModMetadata> refMods)
+    public void UpdateSelectedModInfo(Mod mod, List<Mod> refMods)
     {
         SelectedMod = mod;
-        SelectedFolders = folders;
         ReferenceMods = refMods.Except(new[] { mod }).ToList();
         CanExtract = true;
 
-        var text = $"선택된 모드 : {SelectedMod.ModName}";
+        var text = $"선택된 모드 : {SelectedMod.Name}";
         if (ReferenceMods?.Count > 0)
         {
-            var concatText = string.Join(", ", ReferenceMods.Select(x => x.ModName));
+            var concatText = string.Join(", ", ReferenceMods.Select(x => x.Name));
             var stripedText = concatText.Substring(0, Math.Min(concatText.Length, 200));
             if (concatText.Length > 200) stripedText += "...";
             text += $"\n기준 모드 : {stripedText}";
@@ -88,22 +86,22 @@ public partial class MainWindowViewModel : ViewModelBase
         var result = await _dialogService.ShowSelectModDialogAsync(SelectedMod);
         if (result.IsSuccess && result.SelectedMod != null)
         {
-            UpdateSelectedModInfo(result.SelectedMod, result.SelectedFolders, result.ReferenceMods);
+            UpdateSelectedModInfo(result.SelectedMod, result.ReferenceMods);
         }
     }
 
     [RelayCommand(CanExecute = nameof(CanExtract))]
     private async Task ExtractAsync()
     {
-        if (SelectedMod == null || SelectedFolders == null || ReferenceMods == null) return;
+        if (SelectedMod == null || ReferenceMods == null) return;
 
         Log.Msg("추출 시작...");
 
         try
         {
             // UI 멈춤 방지를 위해 Task.Run 내부적으로 I/O 및 추출을 수행하는 서비스 호출
-            var summary = await _extractionService.ExtractAndSaveAsync(SelectedMod, SelectedFolders, ReferenceMods);
-
+            var summary = await _extractionService.ExtractAndSaveAsync(SelectedMod, ReferenceMods);
+            
             // 콘솔 출력 - (Defs, Keyed, Strings, Patches)
             Log.Msg(
                 $"추출 완료! 총 {summary.TotalCount}개 노드 (Defs {summary.DefsCount}개, Keyed {summary.KeyedCount}개, Strings {summary.StringsCount}개, Patches {summary.PatchesCount}개) 추출됨!");

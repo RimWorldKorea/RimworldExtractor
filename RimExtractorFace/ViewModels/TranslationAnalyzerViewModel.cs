@@ -18,7 +18,7 @@ public partial class TranslationAnalyzerViewModel : ViewModelBase
     public ObservableCollection<TranslationAnalyzerItemViewModel> Items { get; } = new();
     public bool IsSuccess { get; private set; } = false;
 
-    public event Func<ModMetadata?, Task<(bool Success, ModMetadata? Mod, List<ExtractableFolder> Folders, List<ModMetadata> RefMods)>>? RequestSelectModDialog;
+    public event Func<Mod?, Task<(bool Success, Mod? Mod, List<Mod> RefMods)>>? RequestSelectModDialog;
     public event Func<string, string, Task>? RequestShowAlert;
     public event Action? RequestClose;
 
@@ -67,11 +67,9 @@ public partial class TranslationAnalyzerViewModel : ViewModelBase
             var entry = new TranslationAnalyzerEntry(path);
             if (entry.Metadata != null)
             {
-                var autoSelectedFolders =
-                    ModLister.GetExtractableFolders(entry.Metadata, SettingManager.Current.CurrentVersion).ToList();
-
-                var autoSelectedRefMods = ModLister.FindAllReferenceMods(entry.Metadata).Distinct().ToList();
-                entry.ReExtract(autoSelectedFolders, autoSelectedRefMods);
+                var autoSelectedRefMods =
+                    ModLister.FindAllReferenceMods(entry.Metadata).Distinct().ToList();
+                entry.ReExtract(autoSelectedRefMods);
             }
 
             if (entry.Invalid) invalidCount++;
@@ -123,7 +121,7 @@ public partial class TranslationAnalyzerViewModel : ViewModelBase
         {
             SelectedItem.Entry.Metadata = result.Mod;
             SelectedItem.Entry.ResetChanges();
-            SelectedItem.Entry.ReExtract(result.Folders, result.RefMods);
+            SelectedItem.Entry.ReExtract(result.RefMods);
             SelectedItem.UpdateFromEntry();
 
             SelectedModTitle = SelectedItem.Entry.Metadata.ToString();

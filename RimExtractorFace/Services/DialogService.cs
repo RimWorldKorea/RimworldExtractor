@@ -10,7 +10,7 @@ public interface IDialogService
 {
     Task ShowAlertAsync(string title, string message);
     Task<bool> ConfirmAsync(string title, string message);
-    Task<(bool IsSuccess, ModMetadata? SelectedMod, List<ExtractableFolder> SelectedFolders, List<ModMetadata> ReferenceMods)> ShowSelectModDialogAsync(ModMetadata? initialMod = null);
+    Task<(bool IsSuccess, Mod? SelectedMod, List<Mod> ReferenceMods)> ShowSelectModDialogAsync(Mod? initialMod = null);
     Task<string[]?> ShowXmlisterDialogAsync();
     Task ShowSettingsDialogAsync();
     Task ShowImageFileCombinerDialogAsync();
@@ -20,11 +20,7 @@ public interface IDialogService
 public class DialogService : IDialogService
 {
     private readonly Window _owner;
-
-    public DialogService(Window owner)
-    {
-        _owner = owner;
-    }
+    public DialogService(Window owner) { _owner = owner; }
 
     public async Task ShowAlertAsync(string title, string message)
     {
@@ -39,11 +35,11 @@ public class DialogService : IDialogService
         return result == ButtonResult.Yes;
     }
 
-    public async Task<(bool IsSuccess, ModMetadata? SelectedMod, List<ExtractableFolder> SelectedFolders, List<ModMetadata> ReferenceMods)> ShowSelectModDialogAsync(ModMetadata? initialMod = null)
+    public async Task<(bool IsSuccess, Mod? SelectedMod, List<Mod> ReferenceMods)> ShowSelectModDialogAsync(Mod? initialMod = null)
     {
         var win = new SelectModWindow(initialMod);
         await win.ShowDialog(_owner);
-        return (win.IsSuccess, win.SelectedMod, win.SelectedFolders, win.ReferenceMods);
+        return (win.IsSuccess, win.SelectedMod, win.ReferenceMods);
     }
 
     public async Task<string[]?> ShowXmlisterDialogAsync()

@@ -10,7 +10,7 @@ public class SimulationResult
     /// <summary>
     /// 
     /// </summary>
-    public ModMetadata TargetMod { get; set; } = null!;
+    public Mod TargetMod { get; set; } = null!;
     
     public List<DefSnapshot> Snapshots { get; set; } = new();
 }

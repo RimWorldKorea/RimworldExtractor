@@ -67,11 +67,11 @@ public static partial class ExtractorEngine
         return new ExtractionResult(simResult.TargetMod, processedEntries);
     }
 
-    private static List<TranslationEntry> ExtractFromSnapshot(DefSnapshot snapshot, ModMetadata targetMod)
+    private static List<TranslationEntry> ExtractFromSnapshot(DefSnapshot snapshot, Mod targetMod)
     {
         var entries = new List<TranslationEntry>();
-        bool isOfficialContent = targetMod.IsOfficialContent;
-
+        bool isOfficialContent = targetMod.Type == ModType.Official;
+        
         // Step 1: Defs 추출 (스키마 기반 DefaultExtractionProcedure)
         var defEntries = ExtractionProcedureInjector.Instance.Execute(snapshot, targetMod);
         if (defEntries != null) entries.AddRange(defEntries);
@@ -95,82 +95,51 @@ public static partial class ExtractorEngine
 
         // 빠른 검색 및 수정을 위한 딕셔너리 구성 (Key: ClassNode)
         var entryMap = new Dictionary<string, TranslationEntry>();
-        foreach (var entry in entries)
-        {
-            entryMap[entry.ClassNode] = entry;
-        }
-
-        // [수정됨] 꼬리 자르기 역산 없이 객체의 프로퍼티를 즉시 사용!
-        var versionDirs = snapshot.AssignedFolders
-            .SelectMany(f => new[] { f.ActualLoadFolderRoot, f.Root.RootDir })
-            .Where(d => !string.IsNullOrEmpty(d))
-            .Distinct()
-            .ToList();
-
+        foreach (var entry in entries) entryMap[entry.ClassNode] = entry;
+        
         // Language 우선순위가 높은 것부터 채우기
         foreach (var lang in priorityLanguages)
         {
-            var shortLang = lang.Split(' ').First(); // "Korean (한국어)" -> "Korean"
-            var langNames = new HashSet<string> { lang, shortLang };
+            var englishName = lang.Split('(')[0].Trim();
+            var languageInfo = LanguageInfo.Get(englishName);
 
-            foreach (var versionDir in versionDirs)
+            foreach (var unit in snapshot.LoadedUnits)
             {
-                foreach (var langName in langNames)
+                // 1. Keyed XML 병합
+                var keyedDir = unit.GetKeyedPath(languageInfo);
+                if (keyedDir != null && keyedDir.Exists)
                 {
-                    var langDir = Path.Combine(versionDir!, "Languages", langName);
-                    if (!Directory.Exists(langDir)) continue;
+                    var rm = new RequiredMods();
+                    rm.AddAllowedByModNames(snapshot.RequiredModIds);
 
-                    // 2. Keyed 읽기 (비어있는 IL Keyed 원문 채우기 + XML에만 있는 Keyed 추가)
-                    var keyedDir = Path.Combine(langDir, "Keyed");
-                    if (Directory.Exists(keyedDir))
+                    var keyedEntries = LanguageXmlProcessor.ParseKeyed(keyedDir.FullName, rm, isOfficialContent);
+                    foreach (var kEntry in keyedEntries)
                     {
-                        var requiredMods = snapshot.AssignedFolders.FirstOrDefault(x => x.FullPath == keyedDir)
-                            ?.RequiredPackageId;
-                        var rm = requiredMods != null
-                            ? new RequiredMods().Tap(r => r.AddAllowedByPackageIds(requiredMods.Split(',')))
-                            : null;
-
-                        var keyedEntries = LanguageXmlProcessor.ParseKeyed(keyedDir, rm, isOfficialContent);
-                        foreach (var kEntry in keyedEntries)
+                        if (entryMap.TryGetValue(kEntry.ClassNode, out var existingEntry))
                         {
-                            if (entryMap.TryGetValue(kEntry.ClassNode, out var existingEntry))
+                            if (string.IsNullOrWhiteSpace(existingEntry.Original) && !string.IsNullOrEmpty(kEntry.Original))
                             {
-                                // 기존 IL 추출 Keyed의 빈 원문을 덮어씀
-                                if (string.IsNullOrWhiteSpace(existingEntry.Original) &&
-                                    !string.IsNullOrEmpty(kEntry.Original))
-                                {
-                                    entryMap[kEntry.ClassNode] = existingEntry with
-                                    {
-                                        Original = kEntry.Original,
-                                        SourceFile = kEntry.SourceFile ?? existingEntry.SourceFile
-                                    };
-                                }
-                            }
-                            else
-                            {
-                                // XML에만 존재하는 Keyed 항목 추가
-                                entryMap[kEntry.ClassNode] = kEntry;
+                                entryMap[kEntry.ClassNode] = existingEntry with { Original = kEntry.Original, SourceFile = kEntry.SourceFile ?? existingEntry.SourceFile };
                             }
                         }
+                        else { entryMap[kEntry.ClassNode] = kEntry; }
                     }
+                }
 
-                    // 3. Strings 읽기 (TXT 파일에서 추출 및 추가)
-                    var stringsDir = Path.Combine(langDir, "Strings");
-                    if (Directory.Exists(stringsDir))
+                // 2. Strings TXT 병합
+                var localeDir = unit.GetLocaleFolder(languageInfo);
+                if (localeDir != null && localeDir.Exists)
+                {
+                    var stringsDir = new DirectoryInfo(Path.Combine(localeDir.FullName, "Strings"));
+                    if (stringsDir.Exists)
                     {
-                        var requiredMods = snapshot.AssignedFolders.FirstOrDefault(x => x.FullPath == stringsDir)
-                            ?.RequiredPackageId;
-                        var rm = requiredMods != null
-                            ? new RequiredMods().Tap(r => r.AddAllowedByPackageIds(requiredMods.Split(',')))
-                            : null;
+                        var rm = new RequiredMods();
+                        rm.AddAllowedByModNames(snapshot.RequiredModIds);
 
-                        var stringsEntries = LanguageXmlProcessor.ParseStrings(stringsDir, rm);
+                        var stringsEntries = LanguageXmlProcessor.ParseStrings(stringsDir.FullName, rm);
                         foreach (var sEntry in stringsEntries)
                         {
-                            if (!entryMap.ContainsKey(sEntry.ClassNode))
-                            {
-                                entryMap[sEntry.ClassNode] = sEntry;
-                            }
+                            if (!entryMap.ContainsKey(sEntry.ClassNode)) entryMap[sEntry.ClassNode] = sEntry;
                         }
                     }
                 }

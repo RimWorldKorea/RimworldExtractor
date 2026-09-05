@@ -229,10 +229,10 @@ namespace RimExtractorCore
         /// <summary>
         /// RimWorld Mod Korean용 빌드 파일 텍스트를 생성합니다.
         /// </summary>
-        public static string WriteBuildYamlText(ModMetadata ModInfo)
+        public static string WriteBuildYamlText(Mod ModInfo)
         {
             return
-                $"BuildRule:\n  Binding:\n    PackageID: [\"{ModInfo.PackageId}\"]\n    Mode: \"None\"\n    Dependency: \"Independent\"\n  Order:\n    After: \n    Before: \n  Version:\n    Default: \"{SettingManager.Current.CurrentVersion}\"\n    LeftBoundary: \n    RightBoundary: \n    Designate: \n    Ban: \nMetadata:\n  WorkshopID: \"{ModInfo.Id}\"\n  ModName: \"{ModInfo.ModName}\"\n";
+                $"BuildRule:\n  Binding:\n    PackageID: [\"{ModInfo.PackageID}\"]\n    Mode: \"None\"\n    Dependency: \"Independent\"\n  Order:\n    After: \n    Before: \n  Version:\n    Default: \"{SettingManager.Current.CurrentVersion}\"\n    LeftBoundary: \n    RightBoundary: \n    Designate: \n    Ban: \nMetadata:\n  WorkshopID: \"{ModInfo.WorkshopID}\"\n  ModName: \"{ModInfo.Name}\"\n";
         }
         
         // 객체 생성 및 초기화 체이닝을 위한 확장 메서드

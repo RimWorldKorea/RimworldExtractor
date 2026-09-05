@@ -11,6 +11,6 @@ namespace RimExtractorCore.Procedures
     public interface IExtractionProcedure
     {
         string Name { get; }
-        IEnumerable<TranslationEntry> Extract(DefSnapshot snapshot, ModMetadata targetMod);
+        IEnumerable<TranslationEntry> Extract(DefSnapshot snapshot, Mod targetMod);
     }
 }

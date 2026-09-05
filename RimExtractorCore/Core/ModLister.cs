@@ -8,9 +8,25 @@ namespace RimExtractorCore;
 /// </summary>
 public static class ModLister
 {
-    /// <summary>
-    /// 공식 컨텐츠의 루트 경로를 반환합니다.
-    /// </summary>
+    private static readonly Dictionary<string, List<Mod>> ModByPackageIdLookUp = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly Dictionary<string, List<Mod>> ModByModNameLookUp = new(StringComparer.OrdinalIgnoreCase);
+    private static List<Mod>? LocalModsCache = null;
+    private static List<Mod>? WorkshopModsCache = null;
+    
+    public static void ResetCache()
+    {
+        WorkshopModsCache = null;
+        LocalModsCache = null;
+        ModByPackageIdLookUp.Clear();
+        ModByModNameLookUp.Clear();
+        
+        foreach (var mod in Mod.RegisteredMods.ToList())
+        {
+            mod.Dispose();
+        }
+    }
+    
+    /// <summary>공식 컨텐츠의 루트 경로를 반환합니다.</summary>
     public static IEnumerable<string> ModRootsOfficial
     {
         get
@@ -22,9 +38,7 @@ public static class ModLister
         }
     }
 
-    /// <summary>
-    /// 로컬 모드의 루트 경로를 반환합니다.
-    /// </summary>
+    /// <summary>로컬 모드의 루트 경로를 반환합니다.</summary>
     public static IEnumerable<string> ModRootsLocal
     {
         get
@@ -36,9 +50,7 @@ public static class ModLister
         }
     }
 
-    /// <summary>
-    /// 창작마당 모드의 루트 경로를 반환합니다.
-    /// </summary>
+    /// <summary>창작마당 모드의 루트 경로를 반환합니다.</summary>
     public static IEnumerable<string> ModRootsWorkshop
     {
         get
@@ -50,277 +62,147 @@ public static class ModLister
         }
     }
 
-    /// <summary>
-    /// 검색된 모든 모드의 루트 경로를 반환합니다.
-    /// 근데 왜 이건 쓰는 곳이 없지?
-    /// </summary>
-    public static IEnumerable<string> ModRootsAll => ModRootsOfficial.Concat(ModRootsLocal).Concat(ModRootsWorkshop);
+    /// <summary>검색된 모든 모드의 루트 경로를 반환합니다.</summary>
+    public static IEnumerable<string> ModRootsAll =>
+        ModRootsOfficial.Concat(ModRootsLocal).Concat(ModRootsWorkshop);
 
-    public static IEnumerable<ModMetadata> OfficialMods =>
-        ModRootsOfficial.Select(GetModMetadataByModRoot).OrderBy(x => x.ModName);
-
-    public static IEnumerable<ModMetadata> LocalMods
+    public static IEnumerable<Mod> OfficialMods =>
+        ModRootsOfficial.Select(GetModByModRoot).Where(m => m != null).OrderBy(x => x!.Name)!;
+    
+    public static IEnumerable<Mod> LocalMods
     {
         get
         {
             if (LocalModsCache == null)
             {
-                LocalModsCache = ModRootsLocal.Select(GetModMetadataByModRoot).OrderBy(x => x.ModName).ToList();
+                LocalModsCache = ModRootsLocal.Select(GetModByModRoot).Where(m =>
+                    m != null).OrderBy(x => x!.Name).ToList()!;
             }
-
             return LocalModsCache;
         }
     }
 
-    public static IEnumerable<ModMetadata> WorkshopMods
+    public static IEnumerable<Mod> WorkshopMods
     {
         get
         {
             if (WorkshopModsCache == null)
             {
-                WorkshopModsCache = ModRootsWorkshop.Select(GetModMetadataByModRoot).OrderBy(x => x.ModName)
-                    .ToList();
+                WorkshopModsCache = ModRootsWorkshop.Select(GetModByModRoot).Where(m =>
+                    m != null).OrderBy(x => x!.Name).ToList()!;
             }
-
             return WorkshopModsCache;
         }
     }
 
-    public static IEnumerable<ModMetadata> AllMods => OfficialMods.Concat(LocalMods).Concat(WorkshopMods);
-
-    public static void ResetCache()
+    public static IEnumerable<Mod> AllMods => OfficialMods.Concat(LocalMods).Concat(WorkshopMods);
+    
+    /// <summary>지정한 packageId를 가진 모든 모드 목록을 반환합니다.</summary>
+    internal static IReadOnlyList<Mod> GetModsByPackageId(string? packageId)
     {
-        WorkshopModsCache = null;
-        LocalModsCache = null;
-    }
+        if (string.IsNullOrWhiteSpace(packageId)) return Array.Empty<Mod>();
 
+        if (ModByPackageIdLookUp.TryGetValue(packageId, out var cached))
+            return cached;
+
+        var matches = AllMods.Where(x => string.Equals(x.PackageID, packageId, StringComparison.OrdinalIgnoreCase)).ToList();
+        ModByPackageIdLookUp[packageId] = matches;
+        
+        return matches;
+    }
+    
+    /// <summary>지정한 모드 이름을 가진 모든 모드 목록을 반환합니다.</summary>
+    internal static IReadOnlyList<Mod> GetModsByModName(string? modName)
+    {
+        if (string.IsNullOrWhiteSpace(modName)) return Array.Empty<Mod>();
+
+        if (ModByModNameLookUp.TryGetValue(modName, out var cached))
+            return cached;
+
+        var matches = AllMods.Where(x =>
+            string.Equals(x.Name, modName, StringComparison.OrdinalIgnoreCase)).ToList();
+        ModByModNameLookUp[modName] = matches;
+        
+        return matches;
+    }
+    
     /// <summary>
-    /// 주어진 루트 경로로부터 ModMetadata를 생성합니다.
+    /// 모드의 물리적 루트 경로를 기반으로 Mod 객체를 반환합니다. 이미 생성된 객체가 있다면 RegisteredMods에서 가져옵니다.
     /// </summary>
-    public static ModMetadata GetModMetadataByModRoot(string modRoot)
+    public static Mod? GetModByModRoot(string modRoot)
     {
-        var pathAbout = Path.Combine(modRoot, "About", "About.xml");
-        string name = "UNKNOWN";
-        string packageId = "UNKNOWN";
-        var modDependencies = new List<string>();
-        if (File.Exists(pathAbout))
-        {
-            try
-            {
-                var doc = XDocument.Parse(File.ReadAllText(pathAbout));
-                packageId = doc.Root?.Element("packageId")?.Value ?? "UNKNOWN";
-                name = doc.Root?.Element("name")?.Value ?? "UNKNOWN";
-                if (name == "UNKNOWN")
-                {
-                    // Official Contents
-                    if (doc.Root?.Element("author")?.Value == "Ludeon Studios")
-                    {
-                        name = Path.GetFileName(modRoot).Trim();
-                        return new ModMetadata(modRoot, "Official", name, packageId, true);
-                    }
-                }
-
-                var modDependenciesNode = doc.Root?.Element("modDependencies");
-                if (modDependenciesNode != null)
-                {
-                    foreach (var childNode in modDependenciesNode.Elements())
-                    {
-                        var packageIdModDependencies = childNode.Element("packageId");
-                        if (packageIdModDependencies != null)
-                            modDependencies.Add(packageIdModDependencies.Value);
-                    }
-                }
-
-                var modDependenciesByVersionNode = doc.Root?.Element("modDependenciesByVersion");
-                if (modDependenciesByVersionNode != null)
-                {
-                    var nodes = modDependenciesByVersionNode.Element("v" + SettingManager.Current.CurrentVersion)
-                        ?.Elements();
-                    nodes ??= modDependenciesByVersionNode.Elements().LastOrDefault()?.Elements();
-                    if (nodes != null)
-                    {
-                        foreach (var childNode in nodes)
-                        {
-                            var packageIdModDependencies = childNode.Element("packageId");
-                            if (packageIdModDependencies != null)
-                                modDependencies.Add(packageIdModDependencies.Value);
-                        }
-                    }
-                }
-
-
-            }
-            catch (Exception e)
-            {
-                Log.Err($"{pathAbout}에 있는 About.xml 파일을 읽을 수 없었습니다. {e.Message}");
-            }
-        }
-
-        var pathPublishedFileId = Path.Combine(modRoot, "About", "PublishedFileId.txt");
-        var id = "???";
-        if (File.Exists(pathPublishedFileId))
-        {
-            id = File.ReadAllText(pathPublishedFileId).Trim();
-        }
-        else if (modRoot.Contains("workshop\\content\\294100"))
-        {
-            id = Path.GetFileName(modRoot);
-        }
-
-        modDependencies = modDependencies.Distinct().ToList();
-        return new ModMetadata(modRoot, id, name, packageId, false, modDependencies);
-    }
-
-    public static List<ExtractableFolder> GetExtractableFolders(ModMetadata modMetadata, string targetVersion)
-    {
-        var root = modMetadata.RootDir;
-        var sets = new HashSet<ExtractableFolder>(new ExtractableFolderComparer());
-        var pathLoadFolders = Path.Combine(root, "LoadFolders.xml");
-
-        // 타겟 하위 폴더 목록 (Defs, Patches, Keyed, Strings 등)
-        var targetFolders = new List<string> { "Defs", "Patches", "Keyed", "Assemblies" };
-        foreach (var lang in SettingManager.Current.GetLanguagePriorityList())
-        {
-            var shortLang = lang.Split(' ').First();
-            targetFolders.Add(Path.Combine("Languages", lang, "Keyed"));
-            targetFolders.Add(Path.Combine("Languages", shortLang, "Keyed"));
-            targetFolders.Add(Path.Combine("Languages", lang, "Strings"));
-            targetFolders.Add(Path.Combine("Languages", shortLang, "Strings"));
-        }
-        var distinctTargetFolders = targetFolders.Distinct().ToArray();
-
-        IEnumerable<string> GetExtractableFoldersInternal(string path)
-        {
-            foreach (var folder in distinctTargetFolders)
-            {
-                var subDir = Path.Combine(path, folder);
-                if (Directory.Exists(subDir))
-                {
-                    yield return Path.GetRelativePath(root, subDir);
-                }
-            }
-        }
-
-        bool loadFoldersXmlParsed = false;
-
-        // 1. LoadFolders.xml 분석 (현재 버전 노드만 탐색)
-        if (File.Exists(pathLoadFolders))
-        {
-            try
-            {
-                var doc = XDocument.Parse(File.ReadAllText(pathLoadFolders));
-                // 예: <v1.5> 노드 탐색
-                var versionNode = doc.Root?.Element("v" + targetVersion);
-
-                if (versionNode != null)
-                {
-                    loadFoldersXmlParsed = true;
-                    foreach (var li in versionNode.Elements("li"))
-                    {
-                        var requiredPackageIds = li.Attribute("IfModActive")?.Value;
-                        // 루트("/") 매핑 처리
-                        string targetLoadFolder = (li.Value == "/" || li.Value == "\\") ? root : Path.Combine(root, li.Value);
-
-                        foreach (var extractableFolder in GetExtractableFoldersInternal(targetLoadFolder)
-                                     .Select(x => new ExtractableFolder(modMetadata, x, requiredPackageIds, targetVersion)
-                                         { LoadFolderRoot = targetLoadFolder }))
-                        {
-                            sets.Add(extractableFolder);
-                        }
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                Log.Wrn($"LoadFolders.xml 파싱 오류 ({pathLoadFolders}): {e.Message}");
-            }
-        }
-
-        // 2. LoadFolders.xml이 없거나 해당 버전 노드가 없는 경우 (Fallback 로직)
-        if (!loadFoldersXmlParsed)
-        {
-            var versionDir = Path.Combine(root, targetVersion);
+        // 1. 이미 로드된 모드인지 확인
+        string normalizedPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(modRoot));
+        var existingMod = Mod.RegisteredMods.FirstOrDefault(m => 
+            !string.IsNullOrWhiteSpace(m.Path) && 
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(m.Path)).Equals(normalizedPath, StringComparison.OrdinalIgnoreCase));
             
-            // 2-A. 폴더 구조형 모드 (예: /1.5, /Common 폴더가 존재하는 경우)
-            if (Directory.Exists(versionDir))
-            {
-                foreach (var extractableFolder in GetExtractableFoldersInternal(versionDir)
-                             .Select(x => new ExtractableFolder(modMetadata, x, null, targetVersion)
-                                 { LoadFolderRoot = versionDir }))
-                {
-                    sets.Add(extractableFolder);
-                }
+        if (existingMod != null) return existingMod;
 
-                var commonDir = Path.Combine(root, "Common");
-                if (Directory.Exists(commonDir))
-                {
-                    foreach (var extractableFolder in GetExtractableFoldersInternal(commonDir)
-                                 .Select(x => new ExtractableFolder(modMetadata, x, null, "Common")
-                                     { LoadFolderRoot = commonDir }))
-                    {
-                        sets.Add(extractableFolder);
-                    }
-                }
-            }
-            // 2-B. 단일 구조형 모드 (버전 폴더 없이 루트에 몽땅 들어있는 경우)
-            else
-            {
-                foreach (var extractableFolder in GetExtractableFoldersInternal(root)
-                             .Select(x => new ExtractableFolder(modMetadata, x, null, "default")
-                                 { LoadFolderRoot = root }))
-                {
-                    sets.Add(extractableFolder);
-                }
-            }
+        // 2. 새 Mod 객체 생성 (이 과정에서 자동으로 RegisteredMods에 추가됨)
+        try
+        {
+            return new Mod(modRoot, SettingManager.Current);
         }
-
-        return sets.ToList();
+        catch (Exception e)
+        {
+            Log.Err($"[{modRoot}] 모드 로드 실패: {e.Message}");
+            return null;
+        }
     }
-
-    public static IEnumerable<ModMetadata> FindAllReferenceMods(ModMetadata target)
+    
+    /// <summary>target이 직간접적으로 참조하는 모든 모드를 재귀적으로 찾습니다.</summary>
+    /// <remarks>같은 ID를 가지는 다른 모드가 중복으로 존재할 수 있습니다.</remarks>
+    public static IEnumerable<Mod> FindAllReferenceMods(Mod target)
     {
-        foreach (var officialMod in OfficialMods.Where(official => official != target))
+        foreach (var officialMod in OfficialMods.Where(official => official.Equals(target)))
         {
             yield return officialMod;
         }
 
-        var set = new HashSet<ModMetadata>();
-        ModMetadataByPackageIdLookUp.Clear();
+        var set = new HashSet<Mod>();
+        ModByPackageIdLookUp.Clear();
 
-        IEnumerable<ModMetadata> FindAllReferenceModsInternal(ModMetadata modMetadata)
+        IEnumerable<Mod> FindAllReferenceModsInternal(Mod mod)
         {
-            if (modMetadata.ModDependencies != null)
+            // 1. About.xml에 명시된 종속성 검사
+            if (mod.About.modDependencies.Any())
             {
-                foreach (var modDependency in modMetadata.ModDependencies)
+                foreach (var modDependency in mod.About.modDependencies)
                 {
-                    var b = TryGetModMetadataByPackageId(modDependency, out var possible);
-                    if (possible != null)
-                        yield return possible;
+                    // 중복된 ID를 가진 모드가 있을 수 있으므로 전부 가져와서 yield 반환
+                    var matches = GetModsByPackageId(modDependency);
+                    foreach (var match in matches) yield return match;
                 }
             }
-
-            foreach (var extractableFolder in GetExtractableFolders(modMetadata, SettingManager.Current.CurrentVersion))
+            
+            // 2. LoadFolders.xml 조건부 로드에서 요구하는 패키지 ID 검사
+            if (Version.TryParse(SettingManager.Current.CurrentVersion, out var targetVersion))
             {
-                if (extractableFolder.RequiredPackageId != null)
+                if (mod.LoadFolders != null && mod.LoadFolders.Rules.TryGetValue(targetVersion, out var rules))
                 {
-                    foreach (var modDependency in extractableFolder.RequiredPackageId.Split(','))
+                    var allConditionPids = rules.ifActive.Keys.SelectMany(k => k)
+                                            .Concat(rules.ifActiveAll.Keys.SelectMany(k => k))
+                                            .Distinct(StringComparer.OrdinalIgnoreCase);
+
+                    foreach (var pid in allConditionPids)
                     {
-                        var b = TryGetModMetadataByPackageId(modDependency, out var possible);
-                        if (possible != null)
-                            yield return possible;
+                        var matches = GetModsByPackageId(pid);
+                        foreach (var match in matches) yield return match;
                     }
                 }
             }
         }
 
-        IEnumerable<ModMetadata> FindAllReferenceModsRecursive(ModMetadata modMetadata)
+        IEnumerable<Mod> FindAllReferenceModsRecursive(Mod mod)
         {
-            foreach (var child in FindAllReferenceModsInternal(modMetadata))
+            foreach (var child in FindAllReferenceModsInternal(mod))
             {
-                if (set.Contains(child))
-                    continue;
+                if (set.Contains(child)) continue;
+                
                 yield return child;
                 set.Add(child);
+                
                 foreach (var childchild in FindAllReferenceModsRecursive(child))
                 {
                     yield return childchild;
@@ -329,65 +211,10 @@ public static class ModLister
             }
         }
 
-        foreach (var modMetadata in FindAllReferenceModsRecursive(target))
+        foreach (var refMod in FindAllReferenceModsRecursive(target))
         {
-            yield return modMetadata;
+            yield return refMod;
         }
-
-        ModMetadataByPackageIdLookUp.Clear();
+        ModByPackageIdLookUp.Clear();
     }
-
-    internal static bool TryGetModMetadataByPackageId(string? packageId, out ModMetadata? modMetadata)
-    {
-        if (packageId == null)
-        {
-            modMetadata = null;
-            return false;
-        }
-
-        if (ModMetadataByPackageIdLookUp.TryGetValue(packageId, out var value))
-        {
-            modMetadata = value;
-            return value != null;
-        }
-
-
-        var matches = AllMods
-            .Where(x => string.Equals(x.PackageId, packageId, StringComparison.CurrentCultureIgnoreCase)).ToList();
-        switch (matches.Count)
-        {
-            case < 1:
-                modMetadata = null;
-                ModMetadataByPackageIdLookUp[packageId] = null;
-                Log.Wrn($"모드 폴더에서 packageId가 {packageId}인 모드를 찾을 수 없었습니다.");
-                return false;
-            case 1:
-                modMetadata = matches[0];
-                ModMetadataByPackageIdLookUp[packageId] = modMetadata;
-                return true;
-            case > 1:
-                modMetadata = matches[0];
-                ModMetadataByPackageIdLookUp[packageId] = modMetadata;
-                Log.Msg($"중복되는 packageId={packageId}, 중복 갯수={matches.Count}.");
-                return true;
-        }
-    }
-
-    internal static ModMetadata? GetModMetadataByModName(string modName)
-    {
-        if (ModMetadataByModNameLookUp.TryGetValue(modName, out var value))
-        {
-            return value;
-        }
-
-        var result = AllMods.FirstOrDefault(x =>
-            string.Equals(x.ModName, modName, StringComparison.CurrentCultureIgnoreCase));
-        ModMetadataByModNameLookUp.Add(modName, result);
-        return result;
-    }
-
-    private static readonly Dictionary<string, ModMetadata?> ModMetadataByPackageIdLookUp = new();
-    private static readonly Dictionary<string, ModMetadata?> ModMetadataByModNameLookUp = new();
-    private static List<ModMetadata>? LocalModsCache = null;
-    private static List<ModMetadata>? WorkshopModsCache = null;
 }

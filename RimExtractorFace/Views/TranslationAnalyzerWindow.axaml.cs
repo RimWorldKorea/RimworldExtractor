@@ -40,7 +40,7 @@ public partial class TranslationAnalyzerWindow : Window
         {
             var win = new SelectModWindow(initMod);
             await win.ShowDialog(this);
-            return (win.IsSuccess, win.SelectedMod, win.SelectedFolders, win.ReferenceMods);
+            return (win.IsSuccess, win.SelectedMod, win.ReferenceMods);
         };
 
         _viewModel.RequestClose += () => Close();

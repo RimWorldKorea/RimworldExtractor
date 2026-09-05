@@ -43,7 +43,7 @@ public class ExtractionProcedureInjector : IProcedureInjector
     }
 
     // 스냅샷을 받아 등록된 모든 추출기를 순회하며 결과를 합칩니다.
-    public IEnumerable<TranslationEntry> Execute(DefSnapshot snapshot, ModMetadata targetMod)
+    public IEnumerable<TranslationEntry> Execute(DefSnapshot snapshot, Mod targetMod)
     {
         var combinedEntries = new List<TranslationEntry>();
 

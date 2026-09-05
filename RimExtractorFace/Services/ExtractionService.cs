@@ -16,72 +16,35 @@ public record ExtractionResultSummary(
 
 public interface IExtractionService
 {
-    Task<ExtractionResultSummary> ExtractAndSaveAsync(
-        ModMetadata targetMod,
-        List<ExtractableFolder> selectedFolders,
-        List<ModMetadata> referenceMods);
-
+    Task<ExtractionResultSummary> ExtractAndSaveAsync(Mod targetMod, List<Mod> referenceMods);
     Task ConvertXmlToXlsxAsync(string[] rootFolderPaths);
-
     Task ConvertXlsxToXmlAsync(string xlsxFilePath);
-
     Task SaveRefModsListAsync(string filePath, IEnumerable<string> modIdentifiers);
-
     Task<List<string>> LoadRefModsListAsync(string filePath);
 }
 
 public class ExtractionService : IExtractionService
 {
-    public async Task<ExtractionResultSummary> ExtractAndSaveAsync(
-        ModMetadata targetMod,
-        List<ExtractableFolder> selectedFolders,
-        List<ModMetadata> referenceMods)
+    public async Task<ExtractionResultSummary> ExtractAndSaveAsync(Mod targetMod, List<Mod> referenceMods)
     {
         var extraction = await Task.Run(() =>
         {
-            // 1. 참조 모드들로부터 Defs 경로와 PrePatches 수집
-            var refDefs = new List<string>();
-            var prePatches = new List<ExtractableFolder>();
+            if (!Version.TryParse(SettingManager.Current.CurrentVersion, out var targetVersion))
+                throw new ArgumentException($"현재 버전 설정이 올바르지 않습니다: {SettingManager.Current.CurrentVersion}");
 
-            if (referenceMods != null)
-            {
-                foreach (var referenceMod in referenceMods)
-                {
-                    // 버전 파라미터 추가 및 IsAutoSelectable() 조건 삭제
-                    refDefs.AddRange(
-                        from extractableFolder in ModLister.GetExtractableFolders(referenceMod, SettingManager.Current.CurrentVersion)
-                        where Path.GetFileName(extractableFolder.FolderName) == "Defs"
-                        select Path.Combine(referenceMod.RootDir, extractableFolder.FolderName)
-                    );
-                    
-                    // 버전 파라미터 추가 및 IsAutoSelectable() 조건 삭제
-                    prePatches.AddRange(
-                        ModLister.GetExtractableFolders(referenceMod, SettingManager.Current.CurrentVersion)
-                            .Where(x => Path.GetFileName(x.FolderName) == "Patches")
-                    );
-                }
-            }
-
-            // 2. DefTree 파이프라인 시뮬레이션 실행 (Roslyn PostProcessors 및 랭귀지 오버라이드 포함)
-            var simResult = DefTreeSimulator.Execute(
-                targetMod,
-                selectedFolders,
-                prePatches,
-                refDefs,
-                targetMod.IsOfficialContent,
-                referenceMods);
-
-            // 3. 시뮬레이션 결과(SimulationResult)를 인수로 수령하여 번역 항목 추출
+            // 새로운 DefTreeSimulator 시그니처에 맞게 호출
+            var simResult = DefTreeSimulator.Execute(targetMod, targetVersion, referenceMods);
             return ExtractorEngine.ExtractTranslationData(simResult);
         });
 
-        var outPath = targetMod.Identifier.StripInvaildChars();
+        // ModMetadata.Identifier 대체 -> Name과 WorkshopID 조합 혹은 PackageID 사용
+        var modIdentifier = targetMod.Type == ModType.Official ? targetMod.Name : $"{targetMod.Name} - {targetMod.WorkshopID}";
+        var outPath = modIdentifier?.StripInvaildChars() ?? "UnknownMod";
 
         await Task.Run(() =>
         {
             switch (SettingManager.Current.Method)
             {
-                // Prefabs.ExtractionMethod에서 ExtractionMethod로 직접 참조하도록 수정
                 case ExportFileFormmat.Spreadsheet:
                     FileInterface.ToOds(extraction.Entries.ToList(), Path.Combine(outPath, outPath));
                     break;
@@ -100,12 +63,7 @@ public class ExtractionService : IExtractionService
         var (cntDefs, cntKeyed, cntStrings, cntPatches) = RimExtractorCore.Utils.Count(extraction.Entries);
 
         return new ExtractionResultSummary(
-            TotalCount: extraction.Entries.Count,
-            DefsCount: cntDefs,
-            KeyedCount: cntKeyed,
-            StringsCount: cntStrings,
-            PatchesCount: cntPatches,
-            OutputPath: outPath
+            extraction.Entries.Count, cntDefs, cntKeyed, cntStrings, cntPatches, outPath
         );
     }
 

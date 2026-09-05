@@ -5,18 +5,6 @@ namespace RimExtractorCore;
 
 public static class Constants
 {
-    /// <summary>림월드에서 지원하는 언어 목록입니다. </summary>
-    private static readonly List<string> SupportedLanguagesInitializer = new()
-    {
-        "Arabic", "ChineseSimplified", "ChineseTraditional", "Czech", "Danish", "Dutch", "English", "Estonian",
-        "Finnish", "French", "German", "Hungarian", "Italian", "Japanese", "Korean", "Norwegian", "Polish",
-        "Portuguese", "PortugueseBrazilian", "Romanian", "Russian", "Slovak", "Spanish", "SpanishLatin", "Swedish",
-        "Turkish", "Ukrainian"
-    };
-
-    public static readonly ImmutableDictionary<string, string> SupportedLanguages =
-        SupportedLanguagesInitializer.ToImmutableDictionary(x => x, x => x);
-    
     /// <summary>림월드 GenTypes에서 네임스페이스 명시 없이도 접근을 허용하는 바닐라 VIP 명단입니다.</summary>
     public static readonly HashSet<string> IgnoredNamespaceNames = new(StringComparer.OrdinalIgnoreCase)
     {

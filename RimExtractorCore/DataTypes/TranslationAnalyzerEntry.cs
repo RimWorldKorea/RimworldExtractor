@@ -8,7 +8,7 @@ namespace RimExtractorCore.DataTypes
     public class TranslationAnalyzerEntry
     {
         public string FilePath;
-        public ModMetadata? Metadata;
+        public Mod? Metadata;
         public List<TranslationEntry> OriginalTranslations;
         public List<TranslationEntry>? NewTranslations;
         public SaveMethodEnum SaveMethod;
@@ -101,7 +101,7 @@ namespace RimExtractorCore.DataTypes
         {
             FilePath = path;
             SaveMethod = SaveMethodEnum.Append;
-            Metadata = AnalyzerEngine.GetModMetadataFromFilePath(path);
+            Metadata = AnalyzerEngine.GetModFromFilePath(path);
             try
             {
                 OriginalTranslations = FileInterface.FromExcel(path);
@@ -123,45 +123,25 @@ namespace RimExtractorCore.DataTypes
             _changesCached = null;
         }
 
-        public void ReExtract(List<ExtractableFolder> selectedFolders, List<ModMetadata> referenceMods)
+        public void ReExtract(List<Mod> referenceMods)
         {
-            if (Metadata == null)
+            if (Metadata == null) throw new NullReferenceException();
+
+            if (Version.TryParse(SettingManager.Current.CurrentVersion, out var targetVersion))
             {
-                throw new NullReferenceException();
-            }
+                // 완전히 간소화된 DefTreeSimulator 호출
+                var simResult = DefTreeSimulator.DefTreeSimulator.Execute(
+                    Metadata, 
+                    targetVersion, 
+                    referenceMods);
 
-            // refDefs 및 prePatches 수집 로직...
-            var refDefs = new List<string>();
-            var prePatches = new List<ExtractableFolder>();
-            if (referenceMods != null)
+                var extractionResult = ExtractorEngine.ExtractTranslationData(simResult);
+                NewTranslations = extractionResult.Entries.ToList();
+            }
+            else
             {
-                foreach (var referenceMod in referenceMods)
-                {
-                    refDefs.AddRange(
-                        from extractableFolder in ModLister.GetExtractableFolders(referenceMod, SettingManager.Current.CurrentVersion)
-                        where Path.GetFileName(extractableFolder.FolderName) == "Defs"
-                        select Path.Combine(referenceMod.RootDir, extractableFolder.FolderName)
-                    );
-                    
-                    prePatches.AddRange(
-                        ModLister.GetExtractableFolders(referenceMod, SettingManager.Current.CurrentVersion)
-                            .Where(x => Path.GetFileName(x.FolderName) == "Patches")
-                    );
-                }
+                Log.Err("현재 버전을 파싱할 수 없습니다.");
             }
-
-            // DefTreeSimulator로 SimulationResult 생성
-            var simResult = DefTreeSimulator.DefTreeSimulator.Execute(
-                Metadata,
-                selectedFolders,
-                prePatches,
-                refDefs,
-                Metadata.IsOfficialContent,
-                referenceMods);
-
-            // 💡 ExtractionResult에서 Entries만 추출하여 List로 대입
-            var extractionResult = ExtractorEngine.ExtractTranslationData(simResult);
-            NewTranslations = extractionResult.Entries.ToList();
         }
 
         public void MergeTranslation()

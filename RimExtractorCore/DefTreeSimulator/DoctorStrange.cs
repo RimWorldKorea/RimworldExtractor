@@ -9,43 +9,44 @@ namespace RimExtractorCore.DefTreeSimulator;
 public static class DoctorStrange
 {
     /// <summary>
-    /// LoadFolders.xml의 조건 조합(Any/All)을 계산하여 초기 스냅샷(멀티버스)들을 쫙 펼칩니다.
+    /// 대상 모드들의 LoadFolders.xml (Any/All) 규칙을 분석하여 초기 평행우주 스냅샷들을 생성합니다.
     /// </summary>
-    public static List<DefSnapshot> GenerateInitialSnapshots(XDocument prePiledTree,
-        List<ExtractableFolder> allSelectedFolders)
+    public static List<DefSnapshot> GenerateInitialSnapshots(XDocument prePiledTree, IEnumerable<Mod> targetMods, Version targetVersion)
     {
         var snapshots = new List<DefSnapshot>();
+        
+        // 1. 발생 가능한 모든 PackageID 조합(멀티버스)을 계산
+        List<string[]> allPossibleUniverses = CalculateAllModCombinations(targetMods, targetVersion);
+        
+        Log.Common($"[멀티버스] 총 {allPossibleUniverses.Count}개의 초기 우주가 계산되었습니다.");
 
-        // 1. 모든 가능한 모드 로드 경우의 수(PID Combinations) 추출
-        List<string[]> allPossibleUniverses = CalculateAllModCombinations(allSelectedFolders);
-        Log.Common($"ㅁ이맹몽머애쟝");
-        foreach (var d in allPossibleUniverses)
-        {
-            Log.Common($"{String.Join(",", d)}");
-        }
-
-        // 2. 각 경우의 수(우주)마다 스냅샷을 생성하고, 조건에 맞는 폴더를 할당
         foreach (var modCombination in allPossibleUniverses)
         {
+            var activeModsSet = new HashSet<string>(modCombination, StringComparer.OrdinalIgnoreCase);
+            
             var snapshot = new DefSnapshot(new XDocument(prePiledTree), modCombination);
-
-            // [추가] 요구 모드 조건이 전혀 없는(Length == 0) 순정 조합을 베이스로 지정
             if (modCombination.Length == 0) snapshot.IsBaseSnapshot = true;
 
-            // 3. 이 우주(조합)에서 활성화될 수 있는 폴더만 필터링하여 할당
-            foreach (var folder in allSelectedFolders)
+            // 2. 해당 우주에서 각 모드가 활성화해야 할 폴더 상대 경로 산출
+            foreach (var mod in targetMods)
             {
-                if (IsFolderActiveInThisUniverse(folder, modCombination))
+                var activePaths = EvaluateActivePaths(mod, targetVersion, activeModsSet);
+                
+                foreach (var path in activePaths)
                 {
-                    if (folder.FolderName.EndsWith("Patches", StringComparison.OrdinalIgnoreCase))
-                        snapshot.AssignedPatches.Add(folder);
-                    else
-                        snapshot.AssignedFolders.Add(folder);
+                    // [핵심] 이미 생성된 FolderLoadUnit이 있는지 OwnedFolders에서 검색하여 재사용
+                    var unit = mod.OwnedFolders.FirstOrDefault(u => string.Equals(u.RelativePath, path, StringComparison.OrdinalIgnoreCase));
+                    if (unit == null)
+                    {
+                        // 없다면 새로 생성 (생성자 내부에서 자동으로 mod.OwnedFolders에 등록됨)
+                        unit = new FolderLoadUnit(mod, path); 
+                    }
+                    
+                    snapshot.LoadedUnits.Add(unit);
                 }
             }
-
-            Log.Common($"핏폿ㅍ팟 {String.Join(",", snapshot.RequiredModIds)}");
-
+            
+            Log.Common($"[유니버스 생성] 활성 조건: {(modCombination.Length > 0 ? string.Join(", ", snapshot.RequiredModIds) : "기본 우주(Base)")}");
             snapshots.Add(snapshot);
         }
 
@@ -53,44 +54,78 @@ public static class DoctorStrange
     }
 
     /// <summary>
-    /// RMK의 LoadFoldersBuilder 로직으로부터, 폴더들의 로드 조건으로부터 파생되는 
-    /// 모든 유니버스(활성화된 모드 조합)의 경우의 수를 계산합니다.
+    /// 모드들의 LoadFoldersRules에 명시된 IfModActive, IfModActiveAll 조건을 바탕으로 모든 경우의 수를 계산합니다.
     /// </summary>
-    private static List<string[]> CalculateAllModCombinations(List<ExtractableFolder> folders)
+    private static List<string[]> CalculateAllModCombinations(IEnumerable<Mod> mods, Version targetVersion)
     {
         var combinations = new HashSet<string[]>(new StringArrayComparer());
+        combinations.Add(Array.Empty<string>()); // 기본 우주(Base universe)
 
-        // Base universe (어떤 조건부 모드도 활성화되지 않은 기본 상태)
-        combinations.Add(Array.Empty<string>());
-
-        foreach (var folder in folders)
+        foreach (var mod in mods)
         {
-            if (string.IsNullOrEmpty(folder.RequiredPackageId)) continue;
-
-            var pids = folder.RequiredPackageId.Split(',')
-                .Select(p => p.Trim())
-                .Where(p => !string.IsNullOrEmpty(p))
-                .ToArray();
-
-            // RMK의 IfModActive(Any) 처리 논리에 따라, 
-            // 콤마로 구분된 각 PackageID를 각각 독립적인 유니버스로 분화시킵니다.
-            foreach (var pid in pids)
+            if (mod.LoadFolders != null && mod.LoadFolders.Rules.TryGetValue(targetVersion, out var rules))
             {
-                combinations.Add(new[] { pid });
-            }
+                // RMK: IfModActive (Any) - 각 조건 모드가 독립적인 멀티버스 분기 생성
+                foreach (var conditionSet in rules.ifActive.Keys)
+                {
+                    foreach (var pid in conditionSet)
+                    {
+                        combinations.Add(new[] { pid });
+                    }
+                }
 
-            // 추후 IfModActiveAll(All)처럼 전체가 다 활성화되어야 하는 
-            // 복합 조건을 대비해 전체 묶음(PID 전체 교집합)도 하나의 유니버스로 등록합니다.
-            if (pids.Length > 1)
-            {
-                combinations.Add(pids);
+                // RMK: IfModActiveAll (All) - 조건 모드 전체 묶음이 하나의 멀티버스 분기 생성
+                foreach (var conditionSet in rules.ifActiveAll.Keys)
+                {
+                    if (conditionSet.Count > 1)
+                    {
+                        combinations.Add(conditionSet.ToArray());
+                    }
+                }
             }
         }
-
-        // 길이가 제일 짧은 것 부터 정렬하면 0번이 무조건 Base 조합이 됩니다.
         return combinations.OrderBy(x => x.Length).ToList();
     }
 
+    /// <summary>
+    /// 특정 모드의 특정 멀티버스 조합에서 실제로 로드되어야 할 폴더들의 상대 경로(문자열)를 평가하여 반환합니다.
+    /// </summary>
+    internal static IEnumerable<string> EvaluateActivePaths(Mod mod, Version targetVersion, HashSet<string> activeModsSet)
+    {
+        var resolvedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // 1. LoadFolders.xml 규칙 적용
+        if (mod.LoadFolders != null && mod.LoadFolders.Rules.TryGetValue(targetVersion, out var rules))
+        {
+            foreach (var folder in rules.defaultLoad) resolvedPaths.Add(folder);
+
+            foreach (var (conditionSet, folders) in rules.ifActive)
+                if (conditionSet.Overlaps(activeModsSet)) 
+                    foreach (var folder in folders) resolvedPaths.Add(folder);
+
+            foreach (var (conditionSet, folders) in rules.ifActiveAll)
+                if (conditionSet.IsSubsetOf(activeModsSet)) 
+                    foreach (var folder in folders) resolvedPaths.Add(folder);
+        }
+        // 2. LoadFolders.xml이 없는 경우 림월드 Fallback 로직 적용
+        else if (!string.IsNullOrWhiteSpace(mod.Path))
+        {
+            string versionStr = targetVersion.ToString();
+            if (Directory.Exists(Path.Combine(mod.Path, versionStr)))
+            {
+                resolvedPaths.Add(versionStr);
+                if (Directory.Exists(Path.Combine(mod.Path, "Common")))
+                    resolvedPaths.Add("Common");
+            }
+            else 
+            {
+                resolvedPaths.Add(""); // 루트 폴더("/")
+            }
+        }
+        return resolvedPaths;
+    }
+    
+    
     /// <summary>
     /// 특정 유니버스(활성화된 모드 목록)에서 해당 폴더가 로드(True)되어야 하는지 평가합니다.
     /// </summary>
@@ -109,56 +144,47 @@ public static class DoctorStrange
     }
 
     /// <summary>
-    /// 패치 폴더(Patches)의 XML을 읽어와 PatchOperation을 수행하고, 
-    /// FindMod에 의해 분기된 유니버스(DefSnapshot)들을 반환합니다.
+    /// 해당 우주에 로드된 폴더 유닛들 중 'Patches' 폴더가 존재하는 유닛들을 대상으로 PatchOperation을 수행합니다.
     /// </summary>
-    public static List<DefSnapshot> ProcessPatchOperations(DefSnapshot currentUniverse, List<ExtractableFolder> patches)
+    public static List<DefSnapshot> ProcessPatchOperations(DefSnapshot currentUniverse)
     {
         var resultingUniverses = new List<DefSnapshot> { currentUniverse };
 
-        foreach (var patchFolder in patches)
+        foreach (var unit in currentUniverse.LoadedUnits)
         {
-            var folderPath = patchFolder.FullPath;
-            if (!Directory.Exists(folderPath)) continue;
+            // 경로 문자열 기반이 아닌, FolderLoadUnit의 디렉토리 프로퍼티를 직접 사용
+            var patchDir = unit.Patches;
+            if (patchDir == null || !patchDir.Exists) continue;
 
-            // Patches 폴더 안의 모든 .xml 파일을 탐색합니다.
-            var xmlFiles = FileInterface.DescendantFiles(folderPath)
-                .Where(x => x.EndsWith(".xml", StringComparison.OrdinalIgnoreCase));
-
+            var xmlFiles = patchDir.GetFiles("*.xml", SearchOption.AllDirectories);
             foreach (var xmlFile in xmlFiles)
             {
                 try
                 {
-                    var doc = FileInterface.ReadXml(xmlFile);
+                    var doc = FileInterface.ReadXml(xmlFile.FullName);
                     var root = doc.Root;
 
-                    // 림월드 패치 파일은 일반적으로 <Patch> 루트 아래에 <Operation> 노드들이 존재합니다.
                     if (root != null && root.Name.LocalName == "Patch")
                     {
                         var operations = root.Elements("Operation");
                         foreach (var operationNode in operations)
                         {
                             var nextUniverses = new List<DefSnapshot>();
-
-                            // 현재 존재하는 모든 유니버스에 해당 오퍼레이션을 적용해봅니다.
+                            
                             foreach (var universe in resultingUniverses)
                             {
-                                // ApplyPatchRecursive 내에서 FindMod를 만나면 
-                                // True/False 세계선이 갈라지며 nextUniverses가 늘어날 수 있습니다.
                                 nextUniverses.AddRange(PatchOperations.ApplyPatchRecursive(operationNode, universe));
                             }
-
                             resultingUniverses = nextUniverses;
                         }
                     }
                 }
                 catch (Exception e)
                 {
-                    Log.Wrn($"패치 XML 파일 처리 중 오류 발생 ({xmlFile}): {e.Message}");
+                    Log.Wrn($"패치 XML 분석 중 오류 발생 ({xmlFile.FullName}): {e.Message}");
                 }
             }
         }
-
         return resultingUniverses;
     }
 
@@ -170,7 +196,7 @@ public static class DoctorStrange
             if (x == y) return true;
             if (x == null || y == null) return false;
             if (x.Length != y.Length) return false;
-
+            
             return !x.Except(y, StringComparer.OrdinalIgnoreCase).Any();
         }
 
@@ -179,6 +205,7 @@ public static class DoctorStrange
             int hash = 17;
             foreach (var str in obj.OrderBy(s => s, StringComparer.OrdinalIgnoreCase))
                 hash = hash * 31 + StringComparer.OrdinalIgnoreCase.GetHashCode(str);
+            
             return hash;
         }
     }

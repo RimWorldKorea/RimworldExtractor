@@ -212,7 +212,7 @@ public static class AssemblyResolver
             {
                 foreach (var variable in fieldDecl.Variables)
                 {
-                    if (variable.Initializer != null && !variable.Initializer.IsNull)
+                    if (variable.Initializer is not null)
                     {
                         string? valueStr = ParseExpression(variable.Initializer);
                         if (valueStr != null && fieldNodes.TryGetValue(variable.Name, out var fieldNode))

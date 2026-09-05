@@ -180,6 +180,38 @@ public static class FileInterface
         return XDocument.Load(xmlReader);
     }
 
+    //TODO 제미나이야 이거 제대로 썼는지 확인해
+    public static IEnumerable<XDocument> ReadXml(IEnumerable<string> filePaths)
+    {
+        var readerSettings = new XmlReaderSettings
+        {
+            IgnoreComments = true,
+            IgnoreWhitespace = true,
+            CheckCharacters = false
+        };
+
+        List<FileStream> streams = new List<FileStream>();
+        foreach (var filePath in filePaths)
+        {
+            try
+            {
+                streams.Add(File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.Read));
+            }
+            catch (IOException)
+            {
+                //
+            }
+        }
+        
+        IEnumerable<XmlReader> xmlReaders = streams.Select(stream => XmlReader.Create(stream, readerSettings));
+        IEnumerable<XDocument> xDocuments = xmlReaders.Select(XDocument.Load);
+
+        foreach (var stream in streams) stream.Dispose();
+        foreach (var xmlReader in xmlReaders) xmlReader.Dispose();
+        
+        return xDocuments;
+    }
+
     public static IEnumerable<string> DescendantFiles(string root)
     {
         if (!Directory.Exists(root))

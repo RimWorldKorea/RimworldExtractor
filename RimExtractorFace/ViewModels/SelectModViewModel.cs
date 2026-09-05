@@ -11,7 +11,7 @@ namespace RimExtractorFace.ViewModels;
 public partial class ModListItem : ObservableObject
 {
     private readonly SelectModViewModel? _parentVm;
-    public ModMetadata? Metadata { get; }
+    public Mod? Metadata { get; }
     
     // [복구됨] 헤더인지 일반 아이템인지 구분
     public bool IsHeader { get; }
@@ -33,19 +33,20 @@ public partial class ModListItem : ObservableObject
     }
 
     // 2. 일반 아이템용 생성자
-    public ModListItem(ModMetadata metadata, bool isReference, SelectModViewModel parentVm)
+    public ModListItem(Mod metadata, bool isReference, SelectModViewModel parentVm)
     {
         IsHeader = false;
         Metadata = metadata;
         _isReference = isReference;
         _parentVm = parentVm;
-        
-        //TODO "???" 크아악
-        DisplayId = metadata.IsOfficialContent || string.IsNullOrWhiteSpace(metadata.Id) || metadata.Id == "???" 
+
+        DisplayId = metadata.Type == ModType.Official ||
+                    string.IsNullOrWhiteSpace(metadata.WorkshopID) ||
+                    metadata.WorkshopID == "???" 
             ? "-" 
-            : metadata.Id;
+            : metadata.WorkshopID;
             
-        DisplayName = metadata.ModName;
+        DisplayName = metadata.Name ?? "Unknown";
     }
 
     partial void OnIsReferenceChanged(bool value)
@@ -70,11 +71,12 @@ public partial class SelectModViewModel : ViewModelBase
 {
     private readonly IExternalProcessService _processService;
     private readonly IExtractionService _extractionService;
-    private readonly List<ModMetadata> _allModsCached;
-    private readonly List<ModMetadata> _officialModsCached;
-    private readonly List<ModMetadata> _localModsCached;
-    private readonly List<ModMetadata> _workshopModsCached;
+    private readonly List<Mod> _allModsCached;
+    private readonly List<Mod> _officialModsCached;
+    private readonly List<Mod> _localModsCached;
+    private readonly List<Mod> _workshopModsCached;
 
+    //TODO Core 모듈 Constants로 이동
     private static readonly List<string> OfficialDLCSequence = new()
     {
         "Core", "Royalty", "Ideology", "Biotech", "Anomaly", "Odessey"
@@ -91,13 +93,10 @@ public partial class SelectModViewModel : ViewModelBase
     // 뷰(UI)에 바인딩할 동적 최소 너비 속성
     public double IdColumnMinWidth { get; }
 
-    public ModMetadata? SelectedMod { get; private set; }
-    public List<ExtractableFolder> SelectedFolders { get; } = new();
-    public List<ModMetadata> ReferenceMods { get; } = new();
+    public Mod? SelectedMod { get; private set; }
+    public List<Mod> ReferenceMods { get; } = new();
     
-    // [복구됨] 다시 단일 리스트 하나만 사용합니다.
     public ObservableCollection<ModListItem> FilteredMods { get; } = new();
-    public ObservableCollection<ExtractableFolder> ExtractableFolders { get; } = new();
 
     public event Action? RequestClose;
     public event Func<string, Task>? RequestShowAlert;
@@ -105,7 +104,7 @@ public partial class SelectModViewModel : ViewModelBase
     public SelectModViewModel(
         IExternalProcessService processService,
         IExtractionService extractionService,
-        ModMetadata? initialMod = null)
+        Mod? initialMod = null)
     {
         _processService = processService;
         _extractionService = extractionService;
@@ -115,7 +114,7 @@ public partial class SelectModViewModel : ViewModelBase
         _officialModsCached = ModLister.OfficialMods
             .OrderBy(m => 
             {
-                int index = OfficialDLCSequence.IndexOf(m.ModName);
+                int index = OfficialDLCSequence.IndexOf(m.Name ?? "");
                 return index == -1 ? int.MaxValue : index;
             }).ToList();
             
@@ -123,18 +122,19 @@ public partial class SelectModViewModel : ViewModelBase
         _workshopModsCached = ModLister.WorkshopMods.ToList();
         _allModsCached = _officialModsCached.Concat(_localModsCached).Concat(_workshopModsCached).ToList();
 
-        // [추가됨] 창이 열릴 때 한 번만 전체 모드를 스캔하여 ID 최대 길이를 계산합니다.
+        // 창이 열릴 때 한 번만 전체 모드를 스캔하여 ID 최대 길이를 계산합니다.
         int maxIdLength = 0;
         foreach (var mod in _allModsCached)
         {
             //TODO "???"은 어디서 달라붙는겨
-            string id = mod.IsOfficialContent || string.IsNullOrWhiteSpace(mod.Id) || mod.Id == "???" ? "-" : mod.Id;
-            if (id.Length > maxIdLength) 
-                maxIdLength = id.Length;
+            string id = mod.Type == ModType.Official ||
+                        string.IsNullOrWhiteSpace(mod.WorkshopID) ||
+                        mod.WorkshopID == "???"
+                ? "-" : mod.WorkshopID;
+            if (id.Length > maxIdLength) maxIdLength = id.Length;
         }
         // 폰트 크기를 고려해 '글자 수 * 약 8px'로 계산하고 좌우 마진(16) + 여유(10)를 더해줍니다. 기본 하한선은 70입니다.
         IdColumnMinWidth = Math.Max(40.0, (maxIdLength * 8) + 26);
-        
         
         foreach (var officialMod in _officialModsCached)
         {
@@ -146,7 +146,8 @@ public partial class SelectModViewModel : ViewModelBase
 
         if (initialMod != null)
         {
-            SelectedModListItem = FilteredMods.FirstOrDefault(x => !x.IsHeader && x.Metadata?.RootDir == initialMod.RootDir);
+            SelectedModListItem = FilteredMods.FirstOrDefault(x =>
+                !x.IsHeader && x.Metadata?.Path == initialMod.Path);
         }
     }
 
@@ -159,19 +160,14 @@ public partial class SelectModViewModel : ViewModelBase
             return;
             
         SelectedMod = value.Metadata;
-        var info = SelectedMod.ModName;
-        if (SelectedMod.ModDependencies is { Count: > 0 })
+        var info = SelectedMod.Name;
+        if (SelectedMod.About?.modDependencies is { Count: > 0 })
         {
-            info += $"\n[종속성: {string.Join(';', SelectedMod.ModDependencies)}]";
+            info += $"\n[종속성: {string.Join(';', SelectedMod.About.modDependencies)}]";
         }
         SelectedModInfoText = info;
-        ExtractableFolders.Clear();
-        var folders = ModLister.GetExtractableFolders(SelectedMod, SettingManager.Current.CurrentVersion);
-        foreach (var folder in folders)
-        {
-            ExtractableFolders.Add(folder);
-        }
-        CanComplete = ExtractableFolders.Count > 0;
+        
+        CanComplete = true;
     }
 
     public void RefreshModList()
@@ -201,11 +197,12 @@ public partial class SelectModViewModel : ViewModelBase
         }
     }
 
-    private IEnumerable<ModListItem> GetFilteredMods(IEnumerable<ModMetadata> mods, string keyword)
+    private IEnumerable<ModListItem> GetFilteredMods(IEnumerable<Mod> mods, string keyword)
     {
         foreach (var mod in mods)
         {
-            if (string.IsNullOrEmpty(keyword) || mod.Identifier.ToLower().Contains(keyword))
+            var identifier = mod.Type == ModType.Official ? mod.Name : $"{mod.Name} - {mod.WorkshopID}";
+            if (string.IsNullOrEmpty(keyword) || (identifier?.ToLower().Contains(keyword) ?? false))
             {
                 bool isRef = ReferenceMods.Contains(mod);
                 if (IsFilterSelectedOnly && !isRef && SelectedMod != mod)
@@ -222,8 +219,9 @@ public partial class SelectModViewModel : ViewModelBase
         if (SelectedModListItem?.Metadata == null) return;
         var mod = SelectedModListItem.Metadata;
         
-        var requiredMods = mod.ModDependencies?.Select(x => _allModsCached.Find(y => y.PackageId == x)).ToList();
-        if (requiredMods == null || requiredMods.Count == 0)
+        var requiredMods = mod.About?.modDependencies?.Select(x =>
+            _allModsCached.Find(y => y.PackageID == x)).ToList();
+        if (requiredMods == null || requiredMods.Count == 0 || requiredMods.All(x => x == null))
         {
             if (RequestShowAlert != null)
                 await RequestShowAlert.Invoke("종속성이 선언되지 않은 모드입니다!");
@@ -242,9 +240,9 @@ public partial class SelectModViewModel : ViewModelBase
     [RelayCommand]
     private void OpenExplorer()
     {
-        if (SelectedModListItem?.Metadata != null)
+        if (SelectedModListItem?.Metadata?.Path != null)
         {
-            _processService.OpenFolderInExplorer(SelectedModListItem.Metadata.RootDir);
+            _processService.OpenFolderInExplorer(SelectedModListItem.Metadata.Path);
         }
     }
 

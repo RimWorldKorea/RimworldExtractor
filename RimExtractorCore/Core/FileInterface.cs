@@ -52,12 +52,10 @@ public static class FileInterface
         }
 
         // 2. Keyed 읽기 (ExtractorEngine 활용)
-        var keyed = new ExtractableFolder(ModMetadata.Emptry, keyedDir, null);
         translations.AddRange(LanguageXmlProcessor.ParseKeyed(keyedDir, null, isOfficialContent)
             .Select(x => x with { Translated = x.Original, Original = "" }));
 
         // 3. Strings 읽기 (ExtractorEngine 활용)
-        var strings = new ExtractableFolder(ModMetadata.Emptry, stringsDir, null);
         translations.AddRange(LanguageXmlProcessor.ParseStrings(stringsDir, null)
             .Select(x => x with { Translated = x.Original, Original = "" }));
 
@@ -180,7 +178,7 @@ public static class FileInterface
         return XDocument.Load(xmlReader);
     }
 
-    //TODO 제미나이야 이거 제대로 썼는지 확인해
+    //TODO 이건 왜 있는거지?
     public static IEnumerable<XDocument> ReadXml(IEnumerable<string> filePaths)
     {
         var readerSettings = new XmlReaderSettings

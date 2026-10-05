@@ -22,21 +22,25 @@ public class ExtractionProcedureInjector : IProcedureInjector
 
     public void RegisterProcedures()
     {
+
+        
         if (IsInitialized) return;
 
         var baseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Procedures", "Extractor");
         var processors = ProcedureLoader.LoadProceduresFromDirectory<IExtractionProcedure>(baseDir);
 
+        //todo 이거 1개만 등록시켜야 되는데 그렇게 돼있는게 아닌 것 같아
+        
         _extractors.Clear();
         foreach (var processor in processors)
         {
             _extractors.Add(processor);
-            Log.Msg($"{processor.Name} 등록 완료");
+            Log.Good($"{processor.Name} 등록.", true);
         }
 
         if (_extractors.Count == 0)
         {
-            Log.Err("등록된 IExtractionProcedure가 없습니다.");
+            Log.Err("등록된 IExtractionProcedure가 없습니다.", true);
         }
 
         IsInitialized = true;
@@ -47,20 +51,24 @@ public class ExtractionProcedureInjector : IProcedureInjector
     {
         var combinedEntries = new List<TranslationEntry>();
 
-        foreach (var extractor in _extractors)
+        var activeExtractor =
+            _extractors.FirstOrDefault(e => SettingManager.Current.EnabledProcedures.Contains(e.Name));
+        
+        if (activeExtractor != null)
         {
             try
             {
-                var results = extractor.Extract(snapshot, targetMod);
-                if (results != null)
-                {
-                    combinedEntries.AddRange(results);
-                }
+                var results = activeExtractor.Extract(snapshot, targetMod);
+                combinedEntries.AddRange(results);
             }
             catch (Exception e)
             {
-                Log.Err($"추출기({extractor.Name}) 실행 중 오류 발생: {e.Message}");
+                Log.Err($"추출 프로시저 실패 ({activeExtractor.Name}) : {e.Message}");
             }
+        }
+        else
+        {
+            Log.Err("활성화된 추출 프로시저가 없습니다.", true);
         }
 
         return combinedEntries;

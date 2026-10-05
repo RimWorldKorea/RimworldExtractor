@@ -176,9 +176,20 @@ public static class ModLister
                 }
             }
             
-            // 2. LoadFolders.xml 조건부 로드에서 요구하는 패키지 ID 검사
+           
             if (Version.TryParse(SettingManager.Current.CurrentVersion, out var targetVersion))
             {
+                // About.xml (버전별 종속성)
+                if (mod.About.modDependenciesByVersion.TryGetValue(targetVersion, out var versionDeps))
+                {
+                    foreach (var versionDep in versionDeps)
+                    {
+                        var matches = GetModsByPackageId(versionDep);
+                        foreach (var match in matches) yield return match;
+                    }
+                }
+                
+                // 2. LoadFolders.xml 조건부 로드에서 요구하는 패키지 ID 검사
                 if (mod.LoadFolders != null && mod.LoadFolders.Rules.TryGetValue(targetVersion, out var rules))
                 {
                     var allConditionPids = rules.ifActive.Keys.SelectMany(k => k)

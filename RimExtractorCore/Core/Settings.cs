@@ -36,6 +36,11 @@ public class Settings
         if (!list.Contains("English")) list.Add("English");
         return list.Distinct();
     }
+    
+    public List<string> EnabledProcedures { get; set; } = new()
+    {
+        "DefaultExtractionProcedure"
+    };
 }
 
 /// <summary>파일 저장시 기존 파일이 있는 경우의 동작을 설정할 때 사용합니다.</summary>

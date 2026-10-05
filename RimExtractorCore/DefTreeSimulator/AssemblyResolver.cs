@@ -18,7 +18,7 @@ public static class AssemblyResolver
         if (!File.Exists(assemblyPath))
             throw new FileNotFoundException($"어셈블리를 찾을 수 없습니다: {assemblyPath}");
 
-        Log.Msg("IL 어셈블리 분석 및 통합 스키마 트리(PrePiledTree) 생성 중...");
+        Log.Msg("어셈블리 사전 해석 트리 생성 시작.", true);
 
         var decompilerSettings = new DecompilerSettings(LanguageVersion.Latest);
         
@@ -42,32 +42,23 @@ public static class AssemblyResolver
         var defsNode = new XElement("Defs");
         var typesNode = new XElement("Types");
 
-        // [NEW] 스레드 안전한(Thread-Safe) 결과 수집용 컬렉션
+        // 스레드 안전한(Thread-Safe) 결과 수집용 컬렉션
         var concurrentDefs = new ConcurrentBag<XElement>();
         var concurrentTypes = new ConcurrentBag<XElement>();
         
         var parallelOptions = new ParallelOptions 
         { 
-            /*
-             * 5600X 테스트 결과
-             * 2 -> 44s
-             * 3 -> 37-45s
-             * 4 -> 36-41s
-             * 5 -> 31-37s
-             * 6 -> 31-36s
-             * 8 -> 32-34s
-             * 그 이상은 유의미한 성능 향상 없었음
-             */
+            // 최대 8개가 적당한 것으로 판단
             MaxDegreeOfParallelism = Math.Min(8, Environment.ProcessorCount)
         };
 
-        Log.Msg($"어셈블리 내의 모든 유효 타입({allValidTypes.Count}개) 딥 스키마 추출 시작.\n{parallelOptions.MaxDegreeOfParallelism}개 스레드 투입.");
+        Log.Msg($"{allValidTypes.Count}개 타입 해석 시작.\n{parallelOptions.MaxDegreeOfParallelism}개 스레드 가동.", true);
 
-        // [NEW] 스레드별로 독립적인 디컴파일러 인스턴스를 생성하여 할당합니다.
+        // 스레드별로 독립적인 디컴파일러 인스턴스를 생성하여 할당합니다.
         using (var threadLocalDecompiler = new ThreadLocal<CSharpDecompiler>(() => 
                    CreateDecompilerWithResolver(assemblyPath, decompilerSettings)))
         {
-            // [NEW] 병렬 루프 (Parallel.ForEach) 적용
+            // 병렬 루프 (Parallel.ForEach) 적용
             Parallel.ForEach(allValidTypes, parallelOptions, typeDef =>
             {
                 // 공통 메서드 호출!
@@ -80,24 +71,22 @@ public static class AssemblyResolver
             });
         }
 
-        // [NEW] 병렬 처리가 끝난 후, 메인 스레드에서 안전하게 한 번에 쏟아 넣습니다.
+        // 병렬 처리가 끝난 후, 메인 스레드에서 안전하게 한 번에 쏟아 넣습니다.
         defsNode.Add(concurrentDefs.OrderBy(x => x.Name.LocalName));
         typesNode.Add(concurrentTypes.OrderBy(x => x.Name.LocalName));
 
         rootNode.Add(defsNode, typesNode);
         
-        // [수정됨] 누락되었던 XDocument 인스턴스 생성!
         var doc = new XDocument(rootNode);
 
         doc.Save(outputFilePath);
-        Log.Msg($"통합 스키마 추출 완료 (총 {allValidTypes.Count}개 타입 분석됨): {outputFilePath}");
         stopwatch.Stop();
-        Log.Msg($"{stopwatch.ElapsedMilliseconds/1000}s 소요");
+        Log.Good($"사전 해석 완료.\n\t소요시간: {stopwatch.ElapsedMilliseconds/1000}s\n\t저장 위치: {outputFilePath}", true);
         
         return outputFilePath;
     }
     
-    // [NEW] 여러 모드 어셈블리를 읽어 메모리 상의 typesNode에 병합하는 메서드
+    // 여러 모드 어셈블리를 읽어 메모리 상의 typesNode에 병합하는 메서드
     public static void AppendModAssembliesSchema(IEnumerable<string> assemblyPaths, XElement typesNode)
     {
         //TODO 디컴파일러 설정 공부하기
@@ -110,7 +99,7 @@ public static class AssemblyResolver
         {
             if (!File.Exists(assemblyPath)) continue;
 
-            Log.Msg($"모드 어셈블리 딥 스키마 병합 중... : {Path.GetFileName(assemblyPath)}");
+            Log.Msg($"모드 어셈블리 해석 트리 병합 시작. ({Path.GetFileName(assemblyPath)})");
 
             try
             {
@@ -147,7 +136,7 @@ public static class AssemblyResolver
             }
             catch (Exception e)
             {
-                Log.Wrn($"어셈블리({assemblyPath}) 분석 중 오류 발생: {e.Message}");
+                Log.Wrn($"어셈블리({assemblyPath}) 분석 중 오류 발생: {e.Message}", true);
             }
         }
     }

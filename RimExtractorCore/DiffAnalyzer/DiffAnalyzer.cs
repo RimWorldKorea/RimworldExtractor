@@ -125,6 +125,4 @@ public static class AnalyzerEngine
 
         return null;
     }
-
-    private static readonly Dictionary<string, ModMetadata?> ModMetadatasByFilePath = new();
 }

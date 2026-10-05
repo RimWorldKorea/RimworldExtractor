@@ -28,7 +28,7 @@ public class TranslationEntryProcedureInjector : IProcedureInjector
             if (!_processors.Any(p => p.Name == processor.Name))
             {
                 _processors.Add(processor);
-                Log.Msg($"{processor.Name} 등록");
+                Log.Good($"{processor.Name} 등록.", true);
             }
         }
         
@@ -40,6 +40,9 @@ public class TranslationEntryProcedureInjector : IProcedureInjector
         var result = entries;
         foreach (var processor in _processors)
         {
+            // 화이트리스트 설정에 포함된 경우만 실행
+            if (!SettingManager.Current.EnabledProcedures.Contains(processor.Name)) continue;
+            
             try
             {
                 result = processor.Process(result);

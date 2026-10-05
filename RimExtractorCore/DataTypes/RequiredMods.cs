@@ -438,9 +438,9 @@ namespace RimExtractorCore.DataTypes
                 return result;
             }
 
-            public static PackageIdModNamePair FromModMetadata(ModMetadata modMetadata)
+            public static PackageIdModNamePair FromModMetadata(Mod modMetadata)
             {
-                var result = new PackageIdModNamePair(modMetadata.PackageId, modMetadata.ModName);
+                var result = new PackageIdModNamePair(modMetadata.PackageID, modMetadata.Name);
                 return result;
             }
 

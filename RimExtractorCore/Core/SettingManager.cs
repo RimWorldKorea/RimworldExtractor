@@ -58,21 +58,16 @@ namespace RimExtractorCore
         {
             Current = new Settings();
         }
-        
-        /// <summary>
-        /// 림월드 폴더에서 게임 버전 기록을 읽어 특정 형태로 가공합니다.
-        /// </summary>
-        public static string GetFormattedFullVersion()
+
+        /// <summary>림월드 폴더에서 게임 버전을 읽습니다.</summary>
+        public static string GetFullVersion()
         {
             try
             {
                 var pathVersion = Path.Combine(Current.PathRimworld, "Version.txt");
+                
                 if (File.Exists(pathVersion))
-                {
-                    var rawContext = File.ReadAllText(pathVersion).Trim();
-                    // 점(.)과 공백( )을 언더바(_)로 치환
-                    return rawContext.Replace(".", "_").Replace(" ", "_");
-                }
+                    return File.ReadAllText(pathVersion).Trim();
             }
             catch (Exception e)
             {
@@ -80,35 +75,31 @@ namespace RimExtractorCore
             }
             return "UnknownVersion";
         }
+        
+        /// <summary>림월드 폴더에서 정규화된 게임 버전을 읽습니다.</summary>
+        public static string GetFormattedFullVersion() => GetFullVersion().Replace(".", "_").Replace(" ", "_");
 
-        /// <summary>
-        /// 설치된 림월드의 버전을 읽어들입니다.
-        /// </summary>
+        /// <summary>설치된 림월드의 버전을 읽어들입니다.</summary>
         public static string AutoDetectRimworldVersion()
         {
             try
             {
-                var pathVersion = Path.Combine(Current.PathRimworld, "Version.txt");
-                
-                if (File.Exists(pathVersion))
-                {
-                    var context = File.ReadAllText(pathVersion).Trim();
-                    
-                    // "1.5.4062 rev824" 같은 형태에서 "1.5.4062" 부분만 추출
-                    var versionString = context.Split(' ')[0];
+                var rawText = GetFullVersion();
 
-                    // System.Version을 이용해 안전하게 파싱 (성공 시 Major.Minor만 반환)
-                    if (Version.TryParse(versionString, out var version))
-                    {
-                        return $"{version.Major}.{version.Minor}";
-                    }
+                // "1.5.4062 rev824" 같은 형태에서 "1.5.4062" 부분만 추출
+                var versionString = rawText.Split(' ')[0];
+
+                // System.Version을 이용해 안전하게 파싱 (성공 시 Major.Minor만 반환)
+                if (Version.TryParse(versionString, out var version))
+                {
+                    return $"{version.Major}.{version.Minor}";
                 }
             }
             catch (Exception e)
             {
                 Log.Err($"버전 감지 실패: {e.Message}");
             }
-            
+
             return Current.CurrentVersion;
         }
     }

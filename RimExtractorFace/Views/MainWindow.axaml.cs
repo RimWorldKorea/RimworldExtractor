@@ -32,7 +32,7 @@ public partial class MainWindow : Window
         DataContext = _viewModel;
 
         // 2. 로그 라이터 연결
-        var logPrinter = new LogPrinter(TextBoxLog);
+        var logPrinter = new LogPrinter(TextBlockLog, LogScrollViewer);
         Log.Out = logPrinter;
 
         // 기존 큐에 쌓여있던 완성된 로그 문자열들을 직접 printer에 밀어넣기

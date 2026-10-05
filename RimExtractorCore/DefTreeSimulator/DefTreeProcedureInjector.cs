@@ -36,7 +36,7 @@ public class DefTreeProcedureInjector : IProcedureInjector
                 if (!list.Any(p => p.Name == processor.Name))
                 {
                     list.Add(processor);
-                    Log.Msg($"{processor.Stage}에 {processor.Name} 등록");
+                    Log.Good($"{processor.Name} 등록. ({processor.Stage})", true);
                 }
             }
         }
@@ -54,6 +54,9 @@ public class DefTreeProcedureInjector : IProcedureInjector
         var resultDoc = currentDefTree;
         foreach (var processor in processors)
         {
+            // 화이트리스트 설정에 포함된 경우만 실행
+            if (!SettingManager.Current.EnabledProcedures.Contains(processor.Name)) continue;
+            
             try
             {
                 resultDoc = processor.Process(resultDoc);

@@ -160,6 +160,7 @@ public class Mod : IEquatable<Mod>, IDisposable
 public class About
 {
     public readonly Mod Parent;
+    /// <remarks>About.xml이 아닌 About 폴더의 경로입니다.</remarks>
     public string? Path => string.IsNullOrWhiteSpace(Parent.Path) ? null :
         System.IO.Path.Combine(Parent.Path, "About");
     
@@ -174,62 +175,67 @@ public class About
     public About(Mod parent)
     {
         Parent = parent;
-        if (!Directory.Exists(Path)) return;
+        if (string.IsNullOrEmpty(Path) || !Directory.Exists(Path)) return;
+        
+        var xmlPath = System.IO.Path.Combine(Path, "About.xml");
         
         try
         {
-            var doc = FileInterface.ReadXml(Path);
-            if (doc.Root is null) return;
-
-            packageID = doc.Root.Element("packageId")?.Value ?? null;
-            name = doc.Root.Element("name")?.Value ?? null;
-            author = doc.Root.Element("author")?.Value ?? null;
-
-            // modDependencies 파싱
-            var depNode = doc.Root.Element("modDependencies");
-            if (depNode != null)
+            if (File.Exists(xmlPath))
             {
-                foreach (var li in depNode.Elements("li"))
-                {
-                    var pid = li.Element("packageId")?.Value;
-                    if (!string.IsNullOrWhiteSpace(pid))
-                        modDependencies.Add(pid);
-                }
-                
-                // 중복 의존성 제거
-                modDependencies = modDependencies.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-            }
+                var doc = FileInterface.ReadXml(xmlPath);
+                if (doc.Root is null) return;
 
-            // modDependenciesByVersion 파싱
-            var depByVersionNode = doc.Root.Element("modDependenciesByVersion");
-            if (depByVersionNode != null)
-            {
-                foreach (var versionNode in depByVersionNode.Elements())
+                packageID = doc.Root.Element("packageId")?.Value ?? null;
+                name = doc.Root.Element("name")?.Value ?? null;
+                author = doc.Root.Element("author")?.Value ?? null;
+
+                // modDependencies 파싱
+                var depNode = doc.Root.Element("modDependencies");
+                if (depNode != null)
                 {
-                    // "v1.4", "v1.5" 등에서 'v' 제거
-                    string versionStr = versionNode.Name.LocalName;
-                    if (versionStr.StartsWith("v", StringComparison.OrdinalIgnoreCase))
-                        versionStr = versionStr.Substring(1);
-                    
-                    if (Version.TryParse(versionStr, out Version parsedVersion))
+                    foreach (var li in depNode.Elements("li"))
                     {
-                        var versionDeps = new List<string>();
-                        foreach (var li in versionNode.Elements("li"))
+                        var pid = li.Element("packageId")?.Value;
+                        if (!string.IsNullOrWhiteSpace(pid))
+                            modDependencies.Add(pid);
+                    }
+
+                    // 중복 의존성 제거
+                    modDependencies = modDependencies.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                }
+
+                // modDependenciesByVersion 파싱
+                var depByVersionNode = doc.Root.Element("modDependenciesByVersion");
+                if (depByVersionNode != null)
+                {
+                    foreach (var versionNode in depByVersionNode.Elements())
+                    {
+                        // "v1.4", "v1.5" 등에서 'v' 제거
+                        string versionStr = versionNode.Name.LocalName;
+                        if (versionStr.StartsWith("v", StringComparison.OrdinalIgnoreCase))
+                            versionStr = versionStr.Substring(1);
+
+                        if (Version.TryParse(versionStr, out Version parsedVersion))
                         {
-                            var pid = li.Element("packageId")?.Value;
-                            if (!string.IsNullOrWhiteSpace(pid))
-                                versionDeps.Add(pid);
+                            var versionDeps = new List<string>();
+                            foreach (var li in versionNode.Elements("li"))
+                            {
+                                var pid = li.Element("packageId")?.Value;
+                                if (!string.IsNullOrWhiteSpace(pid))
+                                    versionDeps.Add(pid);
+                            }
+
+                            modDependenciesByVersion[parsedVersion] =
+                                versionDeps.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
                         }
-                        
-                        modDependenciesByVersion[parsedVersion] =
-                            versionDeps.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
                     }
                 }
             }
         }
         catch (Exception e)
         {
-            Log.Err($"About.xml 파싱 실패 ({Path}): {e.Message}");
+            Log.Err($"About.xml 파싱 실패 ({xmlPath}): {e.Message}");
         }
 
         // PublishedFileId.txt 확인 (워크샵 모드인 경우)

@@ -18,7 +18,7 @@ namespace RimExtractorCore.Extractor
             var requiredMods = new RequiredMods();
             requiredMods.AddAllowedByModNames(snapshot.RequiredModIds);
             
-            Log.Common($"KeyExtractor.Extract -> {requiredMods.ToString()}");
+            Log.Msg($"KeyExtractor.Extract -> {requiredMods.ToString()}");
             
             var assemblyPaths = new List<string>();
 

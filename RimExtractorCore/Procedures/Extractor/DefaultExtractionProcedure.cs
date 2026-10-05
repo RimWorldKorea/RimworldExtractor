@@ -8,7 +8,7 @@ namespace RimExtractorCore.Procedures;
 
 public class DefaultExtractionProcedure : IExtractionProcedure
 {
-    public string Name => "DefaultExtractionProcedure";
+    public string Name => "기본 추출 프로시저";
 
     public IEnumerable<TranslationEntry> Extract(DefSnapshot snapshot, Mod targetMod)
     {

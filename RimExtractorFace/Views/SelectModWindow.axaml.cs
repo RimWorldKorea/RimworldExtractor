@@ -33,7 +33,7 @@ public partial class SelectModWindow : Window
         _viewModel.RequestShowAlert += async (msg) =>
         {
             var box = MessageBoxManager.GetMessageBoxStandard("알림", msg);
-            await box.ShowAsync();
+            await box.ShowWindowDialogAsync(this);
         };
 
         _viewModel.RequestClose += () =>

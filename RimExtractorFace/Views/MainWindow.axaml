@@ -10,39 +10,47 @@
     <!-- RowDefinitions를 Auto, Auto, * 로 변경하여 마지막 행(로그 영역)이 남은 높이를 모두 차지하도록 수정 -->
     <Grid RowDefinitions="Auto, Auto, *" Margin="12">
         <!-- 상단 메뉴 및 선택된 모드 정보 (Row 0) -->
-        <Grid Grid.Row="0" ColumnDefinitions="220, *" Margin="0,0,0,10">
-            <!-- 왼쪽 메뉴 버튼들 -->
+        <Grid Grid.Row="0" ColumnDefinitions="160, *, 160" Margin="0,0,0,10">
+            
+            <!-- 1. 왼쪽 메인 메뉴 버튼들 -->
             <StackPanel Grid.Column="0" Spacing="6">
-                <Button Content="1. 추출할 모드 선택" Height="42" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                <Button Content="추출 모드 선택" Height="40" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                         Command="{Binding SelectModCommand}"/>
                 
-                <Button Content="2. 번역 데이터 추출" Height="42" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                <Button Content="번역 파일 추출" Height="40" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                         Command="{Binding ExtractCommand}"/>
                 
-                <Grid ColumnDefinitions="*, *">
-                    <Button Grid.Column="0" Content="XML -&gt; XLSX" Height="40" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,0,3,0"
-                            Command="{Binding ConvertXlsxCommand}"/>
-                    <Button Grid.Column="1" Content="XLSX -&gt; XML" Height="40" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="3,0,0,0"
-                            Command="{Binding ConvertXmlCommand}"/>
-                </Grid>
+                <!-- 분석기 버튼을 단독으로 크게 배치 -->
+                <Button Content="번역 분석기 (WIP)" Height="40" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                        Command="{Binding OpenTranslationAnalyzerCommand}"/>
 
-                <Grid ColumnDefinitions="*, *">
-                    <Button Grid.Column="0" Content="번역 분석기&#10;열기 (WIP)" Height="42" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,0,3,0"
-                            Command="{Binding OpenTranslationAnalyzerCommand}"/>
-                    <Button Grid.Column="1" Content="이미지 + 파일&#10;합치기" Height="42" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="3,0,0,0"
-                            Command="{Binding OpenJpgPackagerCommand}"/>
-                </Grid>
-
-                <Button Content="옵션" Height="40" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                <!-- 옵션 버튼 크기 축소하여 하단 여백 맞춤 -->
+                <Button Content="설정" Height="40" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                         Command="{Binding OpenSettingsCommand}"/>
             </StackPanel>
 
-            <!-- 오른쪽 설명 및 선택된 모드 텍스트 -->
-            <StackPanel Grid.Column="1" Margin="15,0,0,0" Spacing="8">
+            <!-- 2. 중앙 설명 및 선택된 모드 텍스트 -->
+            <StackPanel Grid.Column="1" Margin="15,0,15,0" Spacing="8">
                 <ScrollViewer Height="180" Background="Black" Padding="8">
                     <TextBlock Text="{Binding SelectedModsText}" TextWrapping="Wrap" TextAlignment="Center"/>
                 </ScrollViewer>
             </StackPanel>
+
+            <!-- 3. 우측 도구(유틸리티) 버튼들 -->
+            <StackPanel Grid.Column="2" Spacing="6">
+                <Button Content="XML -&gt; XLSX" Height="40" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                        Command="{Binding ConvertXlsxCommand}"/>
+                
+                <Button Content="XLSX -&gt; XML" Height="40" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                        Command="{Binding ConvertXmlCommand}"/>
+                
+                <!-- 새로 추가된 검증 버튼 (기능 미연결) -->
+                <Button Content="번역 기본 검증" Height="40" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                
+                <Button Content="이미지 + 파일&#10;합치기" Height="40" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                        Command="{Binding OpenJpgPackagerCommand}"/>
+            </StackPanel>
+            
         </Grid>
 
         <!-- 중간 정보 / 링크 바 (Row 1) -->
@@ -57,12 +65,12 @@
         </Grid>
 
         <!-- 하단 로그 터미널 Box (Row 2: 남은 세로 공간 자동 채움) -->
-        <TextBox Grid.Row="2" Name="TextBoxLog" 
-                 IsReadOnly="True" 
-                 AcceptsReturn="True" 
-                 TextWrapping="Wrap"
-                 Background="Black" 
-                 Foreground="White" 
-                 FontFamily="Consolas, Monospace, Courier New"/>
+        <ScrollViewer Grid.Row="2" Name="LogScrollViewer" Background="Black" Margin="0,5,0,0">
+            <SelectableTextBlock Name="TextBlockLog" 
+                                 TextWrapping="Wrap"
+                                 Foreground="White" 
+                                 FontFamily="Consolas, Monospace, Courier New"
+                                 Padding="4"/>
+        </ScrollViewer>
     </Grid>
 </Window>

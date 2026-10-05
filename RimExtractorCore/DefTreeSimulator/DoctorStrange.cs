@@ -18,7 +18,7 @@ public static class DoctorStrange
         // 1. 발생 가능한 모든 PackageID 조합(멀티버스)을 계산
         List<string[]> allPossibleUniverses = CalculateAllModCombinations(targetMods, targetVersion);
         
-        Log.Common($"[멀티버스] 총 {allPossibleUniverses.Count}개의 초기 우주가 계산되었습니다.");
+        Log.Msg($"[멀티버스] 총 {allPossibleUniverses.Count}개의 초기 우주가 계산되었습니다.");
 
         foreach (var modCombination in allPossibleUniverses)
         {
@@ -46,7 +46,7 @@ public static class DoctorStrange
                 }
             }
             
-            Log.Common($"[유니버스 생성] 활성 조건: {(modCombination.Length > 0 ? string.Join(", ", snapshot.RequiredModIds) : "기본 우주(Base)")}");
+            Log.Msg($"[유니버스 생성] 활성 조건: {(modCombination.Length > 0 ? string.Join(", ", snapshot.RequiredModIds) : "기본 우주(Base)")}");
             snapshots.Add(snapshot);
         }
 
@@ -125,24 +125,6 @@ public static class DoctorStrange
         return resolvedPaths;
     }
     
-    
-    /// <summary>
-    /// 특정 유니버스(활성화된 모드 목록)에서 해당 폴더가 로드(True)되어야 하는지 평가합니다.
-    /// </summary>
-    private static bool IsFolderActiveInThisUniverse(ExtractableFolder folder, string[] activeModsInUniverse)
-    {
-        if (string.IsNullOrEmpty(folder.RequiredPackageId)) return true;
-
-        var pids = folder.RequiredPackageId.Split(',')
-            .Select(p => p.Trim())
-            .Where(p => !string.IsNullOrEmpty(p))
-            .ToArray();
-
-        // 현재 ModLister는 IfModActive 속성을 추출하므로 RMK의 BindingMode.Any 에 해당합니다.
-        // 따라서 요구되는 패키지 ID 중 '하나라도' 현재 유니버스에 존재하면(활성화되면) 폴더를 로드합니다.
-        return pids.Any(pid => activeModsInUniverse.Contains(pid, StringComparer.OrdinalIgnoreCase));
-    }
-
     /// <summary>
     /// 해당 우주에 로드된 폴더 유닛들 중 'Patches' 폴더가 존재하는 유닛들을 대상으로 PatchOperation을 수행합니다.
     /// </summary>

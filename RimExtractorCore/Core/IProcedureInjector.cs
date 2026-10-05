@@ -9,3 +9,4 @@ public interface IProcedureInjector
     
     void RegisterProcedures();
 }
+

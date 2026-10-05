@@ -13,7 +13,7 @@ public partial class ModListItem : ObservableObject
     private readonly SelectModViewModel? _parentVm;
     public Mod? Metadata { get; }
     
-    // [복구됨] 헤더인지 일반 아이템인지 구분
+    /// 구분선 용도로 쓰는 껍데기 개체 여부입니다.
     public bool IsHeader { get; }
     public string HeaderText { get; } = string.Empty;
 
@@ -219,15 +219,40 @@ public partial class SelectModViewModel : ViewModelBase
         if (SelectedModListItem?.Metadata == null) return;
         var mod = SelectedModListItem.Metadata;
         
-        var requiredMods = mod.About?.modDependencies?.Select(x =>
-            _allModsCached.Find(y => y.PackageID == x)).ToList();
-        if (requiredMods == null || requiredMods.Count == 0 || requiredMods.All(x => x == null))
+        // 1. 기본 종속성과 버전별 종속성을 모두 담을 집합(중복 방지)
+        var allDependencies = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        
+        if (mod.About?.modDependencies != null)
+        {
+            foreach (var pid in mod.About.modDependencies)
+                allDependencies.Add(pid);
+        }
+
+        // 2. 현재 버전에 맞는 종속성(modDependenciesByVersion) 추가
+        if (Version.TryParse(SettingManager.Current.CurrentVersion, out var currentVersion))
+        {
+            if (mod.About?.modDependenciesByVersion != null && 
+                mod.About.modDependenciesByVersion.TryGetValue(currentVersion, out var versionDeps))
+            {
+                foreach (var pid in versionDeps)
+                    allDependencies.Add(pid);
+            }
+        }
+        
+        // 3. 수집된 종속성 ID들을 캐시된 모드 리스트에서 검색
+        var requiredMods = allDependencies
+            .Select(x => _allModsCached.Find(y => string.Equals(y.PackageID, x, StringComparison.OrdinalIgnoreCase)))
+            .Where(x => x != null)
+            .ToList();
+
+        if (requiredMods.Count == 0)
         {
             if (RequestShowAlert != null)
-                await RequestShowAlert.Invoke("종속성이 선언되지 않은 모드입니다!");
+                await RequestShowAlert.Invoke("종속성이 선언되지 않았거나 설치된 모드 중 일치하는 종속성을 찾을 수 없습니다!");
             return;
         }
         
+        // 실제 참조 모드 로드
         foreach (var refMod in ModLister.FindAllReferenceMods(mod))
         {
             if (!ReferenceMods.Contains(refMod))
@@ -238,11 +263,47 @@ public partial class SelectModViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void OpenExplorer()
+    private async Task OpenExplorerAsync()
     {
         if (SelectedModListItem?.Metadata?.Path != null)
         {
-            _processService.OpenFolderInExplorer(SelectedModListItem.Metadata.Path);
+            var path = SelectedModListItem.Metadata.Path;
+            var targetMod = SelectedModListItem.Metadata;
+            
+            // 폴더 존재 여부를 뷰모델 단계에서 먼저 확인
+            if (!System.IO.Directory.Exists(path))
+            {
+                if (RequestShowAlert != null)
+                {
+                    await RequestShowAlert.Invoke("존재하지 않는 폴더입니다.");
+                }
+                
+                // 1. 뷰모델의 캐시 리스트에서 해당 모드 제거
+                _allModsCached.Remove(targetMod);
+                _officialModsCached.Remove(targetMod);
+                _localModsCached.Remove(targetMod);
+                _workshopModsCached.Remove(targetMod);
+                
+                // 2. 참조 모드로 선택되어 있었다면 제거
+                if (ReferenceMods.Contains(targetMod))
+                {
+                    ReferenceMods.Remove(targetMod);
+                }
+
+                // 3. 현재 선택된 모드 초기화
+                SelectedModListItem = null;
+                SelectedModInfoText = "선택된 모드가 없습니다.";
+                CanComplete = false;
+
+                // 4. Core 엔진 레지스트리(RegisteredMods)에서 영구 삭제 및 자원 해제
+                targetMod.Dispose();
+                
+                // 5. 남은 캐시를 바탕으로 UI 리스트 갱신
+                RefreshModList(); 
+                return;
+            }
+
+            _processService.OpenFolderInExplorer(path);
         }
     }
 

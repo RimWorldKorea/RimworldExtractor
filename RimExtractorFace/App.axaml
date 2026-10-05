@@ -22,11 +22,16 @@
             <Setter Property="ExtendClientAreaTitleBarHeightHint" Value="-1" />
             
             <Setter Property="Padding" Value="0,32,0,0"/>
+            
         </Style>
         
         <Style Selector="Button">
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        
+        <Style Selector="WindowDrawnDecorations /template/ Button#PART_FullScreenButton">
+            <Setter Property="IsVisible" Value="False" />
         </Style>
     </Application.Styles>
 </Application>

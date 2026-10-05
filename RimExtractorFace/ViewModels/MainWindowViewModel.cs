@@ -16,7 +16,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IExternalProcessService _processService;
 
     [ObservableProperty]
-    private string _selectedModsText = "모드를 선택해주세요.\n\n=== 사용 순서 ===\n1) '1. 모드 선택' 버튼 클릭\n2) '2. 번역 데이터 추출' 버튼 클릭\n3) 언어팩 생성 완료!\n5) 즐거운 림월드 되세요!\n\n제보 및 문의: 디스코드";
+    private string _selectedModsText = "▸ 모드를 선택하면 추출 버튼이 활성화됩니다.\n\n▸ 번역 후 기본 검증 기능을 사용하여 결과물을 점검해보세요.\n\n▸ 안내: 현재 번역 분석기는 동작하지 않습니다.";
 
     [ObservableProperty]
     private string _versionText = "버전 확인 중...";

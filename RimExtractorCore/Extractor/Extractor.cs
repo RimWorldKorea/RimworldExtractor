@@ -21,7 +21,7 @@ public static partial class ExtractorEngine
             return new ExtractionResult(simResult.TargetMod, finalEntries);
         }
 
-        Log.Common($" 빙빙빙");
+        Log.Msg($" 빙빙빙");
         var baseEntries = ExtractFromSnapshot(baseSnapshot, simResult.TargetMod);
 
         finalEntries.AddRange(baseEntries);

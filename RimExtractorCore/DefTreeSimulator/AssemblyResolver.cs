@@ -11,6 +11,19 @@ namespace RimExtractorCore.DefTreeSimulator;
 
 public static class AssemblyResolver
 {
+    /// <summary>어셈블리 추출 시 걸러낼 타입을 정의한 함수입니다.</summary>
+    private static readonly Func<ITypeDefinition, bool> IsValidType = t =>
+        (t.Kind == TypeKind.Class || t.Kind == TypeKind.Struct) &&
+        t.TypeParameterCount == 0 && // 제네릭 타입 차단
+        !t.ReflectionName.StartsWith("Microsoft.") &&
+        !t.ReflectionName.StartsWith("System.") &&
+        !t.ReflectionName.StartsWith("UnityEngine.") &&
+        !t.ReflectionName.StartsWith("Unity.") &&
+        !t.ReflectionName.Contains("Steamworks") &&
+        !t.ReflectionName.Contains('<') &&
+        !t.ReflectionName.Contains('>') &&
+        !t.ReflectionName.Contains('$');
+    
     public static string GenerateBaseDefTree(string assemblyPath, string outputFilePath)
     {
         Stopwatch stopwatch = Stopwatch.StartNew();
@@ -18,7 +31,7 @@ public static class AssemblyResolver
         if (!File.Exists(assemblyPath))
             throw new FileNotFoundException($"어셈블리를 찾을 수 없습니다: {assemblyPath}");
 
-        Log.Msg("어셈블리 사전 해석 트리 생성 시작.", true);
+        Log.Msg("사전 해석 모델 생성 중.", true);
 
         var decompilerSettings = new DecompilerSettings(LanguageVersion.Latest);
         
@@ -27,15 +40,7 @@ public static class AssemblyResolver
         var typeSystem = mainDecompiler.TypeSystem;
 
         var allValidTypes = typeSystem.MainModule.TopLevelTypeDefinitions
-            .Where(t => (t.Kind == TypeKind.Class || t.Kind == TypeKind.Struct) &&
-                        t.TypeParameterCount == 0 && // 제네릭 타입 차단
-                        !t.ReflectionName.StartsWith("System.") &&
-                        !t.ReflectionName.StartsWith("UnityEngine.") &&
-                        !t.ReflectionName.StartsWith("Unity.") &&
-                        !t.ReflectionName.Contains("Steamworks") &&
-                        !t.ReflectionName.Contains('<') && 
-                        !t.ReflectionName.Contains('>') &&
-                        !t.ReflectionName.Contains('$'))   
+            .Where(IsValidType)   
             .ToList();
 
         var rootNode = new XElement("PrePiled");
@@ -48,106 +53,109 @@ public static class AssemblyResolver
         
         var parallelOptions = new ParallelOptions 
         { 
-            // 최대 8개가 적당한 것으로 판단
+            // CPU따라 다르긴 할건데 일단 이 정도가 적당한 듯?
             MaxDegreeOfParallelism = Math.Min(8, Environment.ProcessorCount)
         };
 
-        Log.Msg($"{allValidTypes.Count}개 타입 해석 시작.\n{parallelOptions.MaxDegreeOfParallelism}개 스레드 가동.", true);
+        //Log.Msg($"{allValidTypes.Count}개 타입 해석 중.", true);
 
-        // 스레드별로 독립적인 디컴파일러 인스턴스를 생성하여 할당합니다.
-        using (var threadLocalDecompiler = new ThreadLocal<CSharpDecompiler>(() => 
-                   CreateDecompilerWithResolver(assemblyPath, decompilerSettings)))
+        Log.RunWithCyclingDot(() =>
         {
-            // 병렬 루프 (Parallel.ForEach) 적용
-            Parallel.ForEach(allValidTypes, parallelOptions, typeDef =>
+            // 스레드별로 독립적인 디컴파일러 인스턴스를 생성하여 할당합니다.
+            using (var threadLocalDecompiler = new ThreadLocal<CSharpDecompiler>(() => 
+                       CreateDecompilerWithResolver(assemblyPath, decompilerSettings)))
             {
-                // 공통 메서드 호출!
-                var typeNode = ExtractTypeSchemaNode(typeDef, threadLocalDecompiler.Value!);
+                // 병렬 루프 (Parallel.ForEach) 적용
+                Parallel.ForEach(allValidTypes, parallelOptions, typeDef =>
+                {
+                    // 공통 메서드 호출!
+                    var typeNode = ExtractTypeSchemaNode(typeDef, threadLocalDecompiler.Value!);
                 
-                // 분기 처리만 남음
-                bool isDef = InheritsFrom(typeDef, "Verse.Def");
-                if (isDef) concurrentDefs.Add(typeNode);
-                else concurrentTypes.Add(typeNode);
-            });
-        }
+                    // 분기 처리만 남음
+                    bool isDef = InheritsFrom(typeDef, "Verse.Def");
+                    if (isDef) concurrentDefs.Add(typeNode);
+                    else concurrentTypes.Add(typeNode);
+                });
+            }
 
-        // 병렬 처리가 끝난 후, 메인 스레드에서 안전하게 한 번에 쏟아 넣습니다.
-        defsNode.Add(concurrentDefs.OrderBy(x => x.Name.LocalName));
-        typesNode.Add(concurrentTypes.OrderBy(x => x.Name.LocalName));
+            // 병렬 처리가 끝난 후, 메인 스레드에서 안전하게 한 번에 쏟아 넣습니다.
+            defsNode.Add(concurrentDefs.OrderBy(x => x.Name.LocalName));
+            typesNode.Add(concurrentTypes.OrderBy(x => x.Name.LocalName));
 
-        rootNode.Add(defsNode, typesNode);
-        
-        var doc = new XDocument(rootNode);
+            rootNode.Add(defsNode, typesNode);
+            var doc = new XDocument(rootNode);
 
-        doc.Save(outputFilePath);
+            doc.Save(outputFilePath);
+        });
+
         stopwatch.Stop();
         Log.Good($"사전 해석 완료.\n\t소요시간: {stopwatch.ElapsedMilliseconds/1000}s\n\t저장 위치: {outputFilePath}", true);
         
         return outputFilePath;
     }
     
-    // 여러 모드 어셈블리를 읽어 메모리 상의 typesNode에 병합하는 메서드
+    /// <summary>
+    /// 여러 모드로부터 어셈블리를 읽어 XML 구조에 병합합니다.
+    /// </summary>
+    /// <param name="assemblyPaths">병합할 어셈블리 경로입니다.</param>
+    /// <param name="typesNode">어셈블리가 병합될 XML 노드입니다.</param>
     public static void AppendModAssembliesSchema(IEnumerable<string> assemblyPaths, XElement typesNode)
     {
-        //TODO 디컴파일러 설정 공부하기
-        var decompilerSettings = new DecompilerSettings(LanguageVersion.Latest);
+        Log.Msg("모드 어셈블리 해석 모델 병합 중.", true);
         
-        // 현재 시스템의 모든 논리 코어(가용 스레드)를 100% 할당
+        var decompilerSettings = new DecompilerSettings(LanguageVersion.Latest);
         var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount };
-
+        
         foreach (var assemblyPath in assemblyPaths)
         {
             if (!File.Exists(assemblyPath)) continue;
 
-            Log.Msg($"모드 어셈블리 해석 트리 병합 시작. ({Path.GetFileName(assemblyPath)})");
-
-            try
+            Log.Msg($"\t{Path.GetFileName(assemblyPath)}", true);
+            Log.RunWithCyclingDot(() =>
             {
-                var mainDecompiler = CreateDecompilerWithResolver(assemblyPath, decompilerSettings);
-                var typeSystem = mainDecompiler.TypeSystem;
-                
-                var allValidTypes = typeSystem.MainModule.TopLevelTypeDefinitions
-                    .Where(t => (t.Kind == TypeKind.Class || t.Kind == TypeKind.Struct) &&
-                                t.TypeParameterCount == 0 && 
-                                !t.ReflectionName.StartsWith("System.") &&
-                                !t.ReflectionName.StartsWith("UnityEngine.") &&
-                                !t.ReflectionName.StartsWith("Unity.") &&
-                                !t.ReflectionName.Contains("Steamworks") &&
-                                !t.ReflectionName.Contains('<') && 
-                                !t.ReflectionName.Contains('>') &&
-                                !t.ReflectionName.Contains('$'))   
-                    .ToList();
-
-                var concurrentTypes = new ConcurrentBag<XElement>();
-                
-                using (var threadLocalDecompiler = new ThreadLocal<CSharpDecompiler>(() => 
-                           CreateDecompilerWithResolver(assemblyPath, decompilerSettings)))
+                try
                 {
-                    Parallel.ForEach(allValidTypes, parallelOptions, typeDef =>
-                    {
-                        // 공통 메서드 호출 후 전부 Types에 담기!
-                        var typeNode = ExtractTypeSchemaNode(typeDef, threadLocalDecompiler.Value!);
-                        concurrentTypes.Add(typeNode);
-                    });
-                }
+                    var mainDecompiler = CreateDecompilerWithResolver(assemblyPath, decompilerSettings);
+                    var typeSystem = mainDecompiler.TypeSystem;
+                
+                    var allValidTypes = typeSystem.MainModule.TopLevelTypeDefinitions
+                        .Where(IsValidType)   
+                        .ToList();
 
-                // 메모리의 typesNode에 곧바로 병합
-                typesNode.Add(concurrentTypes.OrderBy(x => x.Name.LocalName).ToList());
-            }
-            catch (Exception e)
-            {
-                Log.Wrn($"어셈블리({assemblyPath}) 분석 중 오류 발생: {e.Message}", true);
-            }
+                    var concurrentTypes = new ConcurrentBag<XElement>();
+                
+                    using (var threadLocalDecompiler = new ThreadLocal<CSharpDecompiler>(() => 
+                               CreateDecompilerWithResolver(assemblyPath, decompilerSettings)))
+                    {
+                        Parallel.ForEach(allValidTypes, parallelOptions, typeDef =>
+                        {
+                            // 공통 메서드 호출 후 전부 Types에 담기!
+                            var typeNode = ExtractTypeSchemaNode(typeDef, threadLocalDecompiler.Value!);
+                            concurrentTypes.Add(typeNode);
+                        });
+                    }
+
+                    // 메모리의 typesNode에 곧바로 병합
+                    typesNode.Add(concurrentTypes.OrderBy(x => x.Name.LocalName).ToList());
+                }
+                catch (Exception e)
+                {
+                    Log.Wrn($"어셈블리({assemblyPath}) 분석 중 오류 발생: {e.Message}", true);
+                }
+            }, 20);
         }
     }
     
-    // [NEW] 중복을 제거하기 위해 분리한 "단일 타입 스키마 추출" 핵심 공통 메서드
+    /// <summary>디컴파일된 타입 정의를 XML로 변환합니다.</summary>
+    /// <param name="typeDef"></param>
+    /// <param name="localDecompiler"></param>
+    /// <returns></returns>
     private static XElement ExtractTypeSchemaNode(ITypeDefinition typeDef, CSharpDecompiler localDecompiler)
     {
         var nodeName = GetSchemaNodeName(typeDef);
-        var typeNode = new XElement(typeDef.Name);
+        var typeNode = new XElement(nodeName);
 
-        typeNode.SetAttributeValue("Name", typeDef.Name);
+        typeNode.SetAttributeValue("Name", nodeName);
         typeNode.SetAttributeValue("Abstract", "True");
 
         var baseType = typeDef.DirectBaseTypes.FirstOrDefault(b => 
@@ -159,6 +167,7 @@ public static class AssemblyResolver
         {
             // 상속 부모의 이름도 동일한 룰을 따르도록 처리해야 하지만, 
             // IType 인터페이스에서는 TypeDefinition으로 캐스팅 후 룰을 적용할 수 있습니다.
+            //TODO ↑ 무슨 뜻이었지?
             var baseTypeDef = baseType.GetDefinition();
             if (baseTypeDef != null)
             {
@@ -247,9 +256,7 @@ public static class AssemblyResolver
         fieldNode.SetAttributeValue("Type", GetFriendlyTypeName(type));
     }
 
-    /// <summary>
-    /// 디컴파일러의 리플렉션 타입 이름을 C#에 친숙한 이름으로 변환합니다.
-    /// </summary>
+    /// <summary>C# 컨벤션과 다른 디컴파일러 타입 이름을 C# 스타일로 변환합니다.</summary>
     private static string GetFriendlyTypeName(IType type)
     {
         return type.ReflectionName switch
@@ -265,23 +272,18 @@ public static class AssemblyResolver
         };
     }
     
-    /// <summary>
-    /// 디컴파일러가 알아낸 타입을 림월드 방식으로 변환합니다.
-    /// </summary>
+    /// <summary>디컴파일러가 알아낸 타입 이름을 림월드 환경에 맞는 형태로 변환합니다.</summary>
     private static string GetSchemaNodeName(ITypeDefinition typeDef)
     {
         string reflectionName = typeDef.ReflectionName;
         string namespaceName = typeDef.Namespace;
 
-        // 1. 네임스페이스가 없거나 VIP 명단에 속한다면 앞부분(Namespace.)을 잘라냅니다.
-        if (string.IsNullOrEmpty(namespaceName) || Constants.IgnoredNamespaceNames.Contains(namespaceName))
-        {
-            if (!string.IsNullOrEmpty(namespaceName) && reflectionName.StartsWith(namespaceName + "."))
-            {
-                reflectionName = reflectionName.Substring(namespaceName.Length + 1);
-            }
-        }
+        // 네임스페이스가 VIP 명단에 속한다면 잘라냅니다.
+        if (!string.IsNullOrEmpty(namespaceName) && Constants.IgnoredNamespaceNames.Contains(namespaceName))
+            reflectionName = reflectionName.Substring(namespaceName.Length + 1);
+        
         // 2. 외부 모드라면 네임스페이스가 포함된 전체 이름(ReflectionName)이 그대로 유지됩니다.
+        
         // 3. 중첩 클래스(예: ThingDef+Nested)의 '+' 기호를 XML 규칙에 맞게 '.'으로 치환합니다.
         return reflectionName.Replace('+', '.');
     }

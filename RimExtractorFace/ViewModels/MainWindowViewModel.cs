@@ -103,10 +103,9 @@ public partial class MainWindowViewModel : ViewModelBase
             var summary = await _extractionService.ExtractAndSaveAsync(SelectedMod, ReferenceMods);
             
             // 콘솔 출력 - (Defs, Keyed, Strings, Patches)
-            Log.Msg(
-                $"추출 완료! 총 {summary.TotalCount}개 노드 (Defs {summary.DefsCount}개, Keyed {summary.KeyedCount}개, Strings {summary.StringsCount}개, Patches {summary.PatchesCount}개) 추출됨!");
+            Log.Good($"추출 완료.\n\tDefs: {summary.DefsCount}\n\tKeyed: {summary.KeyedCount}\n\tStrings: {summary.StringsCount}\n\tPatches: {summary.PatchesCount}\n\tTotal: {summary.TotalCount}", true);
 
-            if (await _dialogService.ConfirmAsync("추출 완료", "결과 폴더를 열어보시겠습니까?"))
+            if (await _dialogService.ConfirmAsync("추출 완료", "저장한 폴더를 열어보시겠습니까?"))
             {
                 _processService.OpenFolderInExplorer(summary.OutputPath);
             }
@@ -121,23 +120,23 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private async Task ConvertXlsxAsync()
+    private async Task ConvertToSheetAsync()
     {
         var fileNames = await _dialogService.ShowXmlisterDialogAsync();
         if (fileNames != null && fileNames.Length > 0)
         {
-            await _extractionService.ConvertXmlToXlsxAsync(fileNames);
+            await _extractionService.ConvertXmlToOdsAsync(fileNames);
             await _dialogService.ShowAlertAsync("작업 완료", "변환이 완료되었습니다!");
         }
     }
 
     [RelayCommand]
-    private async Task ConvertXmlAsync()
+    private async Task ConvertToXmlAsync()
     {
         var path = await _storageService.OpenFileAsync("변환할 Excel 파일 선택", "Excel 파일", "*.xlsx");
         if (!string.IsNullOrEmpty(path))
         {
-            await _extractionService.ConvertXlsxToXmlAsync(path);
+            await _extractionService.ConvertSheetToXmlAsync(path);
             if (await _dialogService.ConfirmAsync("변환 완료", "결과 폴더를 열어보시겠습니까?"))
             {
                 _processService.OpenFolderInExplorer(Path.GetDirectoryName(path) ?? "");
@@ -148,6 +147,9 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private async Task OpenSettingsAsync() => await _dialogService.ShowSettingsDialogAsync();
 
+    [RelayCommand]
+    private async Task OpenProcedureSettingsAsync() => await _dialogService.ShowProcedureSettingsDialogAsync();
+    
     [RelayCommand]
     private async Task OpenJpgPackagerAsync() => await _dialogService.ShowImageFileCombinerDialogAsync();
 

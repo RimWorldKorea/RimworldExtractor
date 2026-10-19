@@ -17,8 +17,8 @@ public record ExtractionResultSummary(
 public interface IExtractionService
 {
     Task<ExtractionResultSummary> ExtractAndSaveAsync(Mod targetMod, List<Mod> referenceMods);
-    Task ConvertXmlToXlsxAsync(string[] rootFolderPaths);
-    Task ConvertXlsxToXmlAsync(string xlsxFilePath);
+    Task ConvertXmlToOdsAsync(string[] rootFolderPaths);
+    Task ConvertSheetToXmlAsync(string xlsxFilePath);
     Task SaveRefModsListAsync(string filePath, IEnumerable<string> modIdentifiers);
     Task<List<string>> LoadRefModsListAsync(string filePath);
 }
@@ -67,7 +67,7 @@ public class ExtractionService : IExtractionService
         );
     }
 
-    public async Task ConvertXmlToXlsxAsync(string[] rootFolderPaths)
+    public async Task ConvertXmlToOdsAsync(string[] rootFolderPaths)
     {
         await Task.Run(() =>
         {
@@ -81,7 +81,7 @@ public class ExtractionService : IExtractionService
         });
     }
 
-    public async Task ConvertXlsxToXmlAsync(string xlsxFilePath)
+    public async Task ConvertSheetToXmlAsync(string xlsxFilePath)
     {
         await Task.Run(() =>
         {

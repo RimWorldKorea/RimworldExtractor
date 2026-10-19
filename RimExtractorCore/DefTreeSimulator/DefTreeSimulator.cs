@@ -12,8 +12,7 @@ namespace RimExtractorCore.DefTreeSimulator;
 public static class DefTreeSimulator
 {
     public static Dictionary<string, XElement> DeepSchemaTypes { get; private set; } = new();
-
-    // [리팩토링] 복잡했던 매개변수를 쳐내고, Mod 객체와 TargetVersion을 중심으로 개편
+    
     public static SimulationResult Execute(Mod targetMod, Version targetVersion, List<Mod>? referenceMods = null)
     {
         Stopwatch stopwatch = Stopwatch.StartNew();
@@ -42,7 +41,7 @@ public static class DefTreeSimulator
             var patchedUniverses = DoctorStrange.ProcessPatchOperations(snapshot);
             return patchedUniverses;
         }).SelectMany(x => x).ToList();
-
+        
         // [Phase7, 8 & 9] 후처리 병렬 수행
         Parallel.ForEach(finalMultiverse, snapshot =>
         {
@@ -81,8 +80,8 @@ public static class DefTreeSimulator
                 {
                     if (string.IsNullOrWhiteSpace(mod.Path)) continue;
                     
-                    // 대신 DoctorStrange의 순수 경로 평가기를 사용하여 문자열 경로만 받아옵니다.
-                    var activePaths = DoctorStrange.EvaluateActivePaths(mod, targetVersion, new HashSet<string>());
+                    var activePaths =
+                        DoctorStrange.EvaluateActivePaths(mod, targetVersion, new HashSet<string>());
                     
                     foreach (var relativePath in activePaths)
                     {
@@ -98,11 +97,8 @@ public static class DefTreeSimulator
                 }
 
                 if (assemblyPaths.Count > 0)
-                {
-                    Log.Msg($"추가된 모드 어셈블리 {assemblyPaths.Count}개 스키마 병합 중...");
                     AssemblyResolver.AppendModAssembliesSchema(assemblyPaths, typesNode);
-                }
-
+                //todo 문네무젤멪루ㅐㅁㅈ
                 DoXmlInheritance(typesNode);
                 DeepSchemaTypes.Clear();
                 foreach (var typeElem in typesNode.Elements())
@@ -124,7 +120,6 @@ public static class DefTreeSimulator
 
         foreach (var unit in loadedUnits)
         {
-            // [리팩토링] 하드코딩 패스 대신 FolderLoadUnit의 Defs 프로퍼티 직접 참조
             if (unit.Defs == null || !unit.Defs.Exists) continue;
 
             var xmlFiles = unit.Defs.GetFiles("*.xml", SearchOption.AllDirectories);
@@ -151,7 +146,7 @@ public static class DefTreeSimulator
     }
     
     /// <summary>
-    /// XML 트리의 ParentName을 추적하여 상속(Inheritance) 병합을 수행합니다.
+    /// XML 트리의 ParentName을 추적하여 상속 병합을 수행합니다.
     /// </summary>
     private static void DoXmlInheritance(XElement? root)
     {
@@ -162,6 +157,7 @@ public static class DefTreeSimulator
 
         try
         {
+            // Name이 붙여져있다 => Property가 아니라 Type이다.
             var defsByName = allDefs
                 .Where(e => e.Attribute("Name") != null)
                 .ToDictionary(e => e.Attribute("Name")!.Value, e => e);
@@ -201,7 +197,7 @@ public static class DefTreeSimulator
             {
                 ResolveInheritanceRecursive(parentDef, defsByName, resolvedSet);
 
-                // [NEW] 핵심 로직: 부모는 타겟(추출 대상)이 아닌데 자식은 타겟인 경우 true가 됩니다.
+                // 핵심 로직: 부모는 타겟(추출 대상)이 아닌데 자식은 타겟인 경우 true가 됩니다.
                 bool markMayNotTranslate = parentDef.Attribute("ExtractionTarget")?.Value != "True" &&
                                            def.Attribute("ExtractionTarget")?.Value == "True";
 
@@ -230,7 +226,7 @@ public static class DefTreeSimulator
             {
                 var newElem = new XElement(parentElem);
 
-                // [NEW] 외부(비대상)에서 복사되어 들어오는 요소에 Notice Tag 부여
+                // 외부(비대상)에서 복사되어 들어오는 요소에 Notice Tag 부여
                 if (markMayNotTranslate)
                 {
                     // 자기 자신에게 부여
@@ -253,9 +249,7 @@ public static class DefTreeSimulator
         }
     }
 
-    /// <summary>
-    /// 상속 처리가 모두 끝난 후, 불필요한 Abstract 노드를 삭제합니다.
-    /// </summary>
+    /// <summary>상속 처리가 모두 끝난 후, 불필요한 Abstract 노드를 삭제합니다.</summary>
     private static void CleanUpAbstractNodes(XElement? root)
     {
         if (root == null) return;
@@ -355,7 +349,7 @@ public static class DefTreeSimulator
         }
     }
 
-    // [NEW] DefInjected 번역 데이터를 찾아 실제 XML Tree에 주입하고 Notice Tag를 제거하는 메서드
+    // DefInjected 번역 데이터를 찾아 실제 XML Tree에 주입하고 Notice Tag를 제거하는 메서드
     private static void ApplyDefInjectedLanguageData(DefSnapshot snapshot)
     {
         // 주의: 우선순위가 높은 언어가 나중에 덮어써야 하므로 Reverse()를 적용합니다. (RimWorld의 동작 방식과 동일)
@@ -411,9 +405,7 @@ public static class DefTreeSimulator
         }
     }
     
-    /// <summary>
-    /// Defs 노드 하위에서 타겟 타입을 찾아 어트리뷰트를 주입합니다. (프로시저용)
-    /// </summary>
+    /// <summary>Defs 노드 하위에서 타겟 타입을 찾아 어트리뷰트를 주입합니다. (프로시저용)</summary>
     public static void GetDefAndSetAttribute(this XDocument doc, string targetType, string memberName, string attributeName, string value)
     {
         var defsNode = doc.Root?.Element("Defs");
@@ -432,9 +424,7 @@ public static class DefTreeSimulator
         memberNode.SetAttributeValue(attributeName, value);
     }
 
-    /// <summary>
-    /// Types 노드 하위에서 타겟 타입을 찾아 어트리뷰트를 주입합니다. (프로시저용)
-    /// </summary>
+    /// <summary>Types 노드 하위에서 타겟 타입을 찾아 어트리뷰트를 주입합니다. (프로시저용)</summary>
     public static void GetTypeAndSetAttribute(this XDocument doc, string targetType, string memberName, string attributeName, string value)
     {
         var typesNode = doc.Root?.Element("Types");

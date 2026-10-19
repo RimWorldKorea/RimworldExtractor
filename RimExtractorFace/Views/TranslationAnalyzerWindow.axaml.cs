@@ -33,7 +33,7 @@ public partial class TranslationAnalyzerWindow : Window
         _viewModel.RequestShowAlert += async (title, msg) =>
         {
             var box = MessageBoxManager.GetMessageBoxStandard(title, msg);
-            await box.ShowAsync();
+            await box.ShowWindowDialogAsync(this);
         };
 
         _viewModel.RequestSelectModDialog += async (initMod) =>

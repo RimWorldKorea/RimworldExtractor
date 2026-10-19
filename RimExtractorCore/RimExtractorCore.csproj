@@ -30,14 +30,7 @@
     <Compile Include="Procedures\Translations\ITranslationEntryProcedure.cs" />
     <Compile Include="Procedures\DefTree\IXDocumentProcedure.cs" />
     <Compile Include="Procedures\Extractor\IExtractionProcedure.cs" />
-
-    <!-- Procedure 인터페이스 정의 파일을 출력 디렉토리에 복사 -->
-    <!--
-    <Compile Update="Procedures\Extractor\IExtractionProcedure.cs;Procedures\Translations\ITranslationEntryProcedure.cs;Procedures\DefTree\IXDocumentProcedure.cs">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Compile>
-    -->
-
+    
     <!-- Procedure 구현 파일을 출력 디렉토리에 복사 -->
     <None Include="Procedures\**\*.cs" Exclude="Procedures\Extractor\IExtractionProcedure.cs;Procedures\Translations\ITranslationEntryProcedure.cs;Procedures\DefTree\IXDocumentProcedure.cs">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

@@ -35,7 +35,7 @@ public class ExtractionProcedureInjector : IProcedureInjector
         foreach (var processor in processors)
         {
             _extractors.Add(processor);
-            Log.Good($"{processor.Name} 등록.", true);
+            Log.Good($"{processor.Name} 등록 완료.", true);
         }
 
         if (_extractors.Count == 0)

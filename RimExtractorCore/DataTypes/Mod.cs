@@ -216,7 +216,7 @@ public class About
                         if (versionStr.StartsWith("v", StringComparison.OrdinalIgnoreCase))
                             versionStr = versionStr.Substring(1);
 
-                        if (Version.TryParse(versionStr, out Version parsedVersion))
+                        if (Version.TryParse(versionStr, out var parsedVersion))
                         {
                             var versionDeps = new List<string>();
                             foreach (var li in versionNode.Elements("li"))

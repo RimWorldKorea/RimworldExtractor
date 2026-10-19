@@ -110,15 +110,11 @@ public class FolderLoadUnit : IEquatable<FolderLoadUnit>, IDisposable
     {
         if (Directory is null)
         {
-            Log.Wrn($"경로가 유효하지 않습니다.");
+            Log.Wrn($"할당된 디렉토리가 없습니다.");
             return null;
         }
         
-        if (Languages is null)
-        {
-            Log.Wrn($"{FullPath}에 Languages 폴더가 없습니다.");
-            return null;
-        }
+        if (Languages is null) return null;
         
         var pathWithEnglishLanguageName =
             Path.Combine(Languages.FullName, language.EnglishName);
@@ -134,17 +130,14 @@ public class FolderLoadUnit : IEquatable<FolderLoadUnit>, IDisposable
             if (isEnglishNameDirectoryExists)
                 Log.Wrn($"{Languages}에 {language.ExtendedName}(와)과 {language.EnglishName} 폴더가 중복으로 존재합니다.");
             
-            Log.Msg($"{FullPath}에서 발견한 언어 폴더");
             return new DirectoryInfo(pathWithExtendedLanguageName);
         }
 
         if (isEnglishNameDirectoryExists)
         {
-            Log.Msg($"{FullPath}에서 발견한 언어 폴더");
             return new DirectoryInfo(pathWithEnglishLanguageName);
         }
         
-        Log.Wrn($"{Languages}에 {language.ExtendedName} 폴더가 없습니다.");
         return null;
     }
 }

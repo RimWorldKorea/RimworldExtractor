@@ -41,7 +41,7 @@ public class TranslationEntryProcedureInjector : IProcedureInjector
         foreach (var processor in _processors)
         {
             // 화이트리스트 설정에 포함된 경우만 실행
-            if (!SettingManager.Current.EnabledProcedures.Contains(processor.Name)) continue;
+            if (!SettingManager.Current.EnabledTranslationEntryProcedures.Contains(processor.Name)) continue;
             
             try
             {

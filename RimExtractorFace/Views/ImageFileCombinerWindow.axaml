@@ -3,14 +3,14 @@
         xmlns:vm="clr-namespace:RimExtractorFace.ViewModels"
         x:Class="RimExtractorFace.Views.ImageFileCombinerWindow"
         x:DataType="vm:ImageFileCombinerViewModel"
-        Title="이미지 + 파일 합치기 툴 (디시 업로드용)"
-        Width="600" Height="260"
+        Title="이미지 + 파일 합치기"
+        Width="640" Height="280"
         CanResize="False"
         WindowStartupLocation="CenterOwner">
 
     <Grid RowDefinitions="Auto, Auto, Auto, *, Auto" Margin="12">
         <Grid Grid.Row="0" ColumnDefinitions="160, *, Auto" Margin="0,0,0,8">
-            <TextBlock Grid.Column="0" Text="이미지 경로 지정 (선택)" VerticalAlignment="Center"/>
+            <TextBlock Grid.Column="0" Text="이미지 경로 (선택)" VerticalAlignment="Center"/>
             <TextBox Grid.Column="1" Text="{Binding PathImage, Mode=TwoWay}" Margin="0,0,6,0"/>
             <Button Grid.Column="2" Content="..." Width="40" HorizontalContentAlignment="Center"
                     Command="{Binding SelectPathImageCommand}"
@@ -18,7 +18,7 @@
         </Grid>
 
         <Grid Grid.Row="1" ColumnDefinitions="160, *, Auto, Auto" Margin="0,0,0,8">
-            <TextBlock Grid.Column="0" Text="합칠 파일/폴더 경로 지정" VerticalAlignment="Center"/>
+            <TextBlock Grid.Column="0" Text="합칠 파일 or 폴더 경로" VerticalAlignment="Center"/>
             <TextBox Grid.Column="1" Text="{Binding PathFile, Mode=TwoWay}" Margin="0,0,6,0"/>
             <Button Grid.Column="2" Content="파일 지정" Margin="0,0,4,0"
                     Command="{Binding SelectPathFileCommand}"
@@ -28,12 +28,12 @@
                     CommandParameter="{Binding $parent[Window].StorageProvider}"/>
         </Grid>
 
-        <Border Grid.Row="2" Background="#F8F8F8" BorderBrush="LightGray" BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,4,0,8">
-            <TextBlock Text="이미지 파일과 압축 파일(.zip)을 합치는 툴입니다.&#10;이미지의 확장자를 '.zip'으로 바꾸면 압축 파일 내부를 볼 수 있습니다.&#10;이미지 경로가 지정되지 않으면 기본 이미지가 사용됩니다.&#10;폴더가 선택되었다면 자동으로 압축 후 합쳐집니다."
-                       TextAlignment="Center" LineHeight="20" Foreground="#555555"/>
+        <Border Grid.Row="2" Background="#252525" Margin="0,4,0,8" Padding="0,8">
+            <TextBlock Text="이미지와 zip 압축 파일을 합치는 도구입니다.&#10;합친 이미지는 확장자를 zip으로 바꾸거나 압축 프로그램으로 열어 내용물을 꺼낼 수 있습니다.&#10;이미지 경로를 지정하지 않으면 기본 이미지가 적용됩니다.&#10;폴더 선택시 자동으로 압축 후 합쳐집니다."
+                       TextAlignment="Center" LineHeight="20" Foreground="White"/>
         </Border>
 
-        <Button Grid.Row="4" Content="완료" Height="36" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+        <Button Grid.Row="4" Content="합치기" Height="36" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                 Command="{Binding ProcessPackageCommand}"/>
     </Grid>
 </Window>

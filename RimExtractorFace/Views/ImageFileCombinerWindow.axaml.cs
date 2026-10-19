@@ -18,13 +18,13 @@ public partial class ImageFileCombinerWindow : Window
         viewModel.RequestShowAlert += async (title, msg) =>
         {
             var box = MessageBoxManager.GetMessageBoxStandard(title, msg);
-            await box.ShowAsync();
+            await box.ShowWindowDialogAsync(this);
         };
 
         viewModel.RequestConfirm += async (title, msg) =>
         {
             var box = MessageBoxManager.GetMessageBoxStandard(title, msg, ButtonEnum.YesNo);
-            return await box.ShowAsync() == ButtonResult.Yes;
+            return await box.ShowWindowDialogAsync(this) == ButtonResult.Yes;
         };
 
         viewModel.RequestSaveFilePicker += async (suggestedName, ext) =>

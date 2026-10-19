@@ -17,7 +17,7 @@ public partial class SettingsWindow : Window
         viewModel.RequestShowAlert += async (title, message) =>
         {
             var box = MessageBoxManager.GetMessageBoxStandard(title, message);
-            await box.ShowAsync();
+            await box.ShowWindowDialogAsync(this);
         };
 
         viewModel.RequestClose += () => Close();

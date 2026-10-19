@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 
 namespace RimExtractorCore
@@ -82,35 +81,31 @@ namespace RimExtractorCore
             Out.WriteLine(str);
         }
         
-        /// <summary>
-        /// 꼬리에 . .. ... .... 효과를 비동기적으로 나타내는 로그를 특정 작업과 함께 띄웁니다.
-        /// </summary>
-        /// <param name="baseMessage"></param>
-        /// <param name="work"></param>
-        /// <param name="colorHexOrName"></param>
-        /// <param name="filePath"></param>
-        /// <param name="memberName"></param>
-        public static void TaskWithCyclingDot(string baseMessage, string colorHexOrName, bool hideTrace, Action work,
-            [CallerFilePath] string filePath = "", [CallerMemberName] string memberName = "")
+        /// <summary>작업을 실행하고 마지막 로그의 꼬리에 진행 중 효과를 비동기적으로 실행합니다.</summary>
+        /// <param name="work">효과를 나타낼 작업입니다.</param>
+        /// <param name="dotLength">따라붙는 점의 최대 개수입니다.</param>
+        /// <param name="millisecondsInterval">점이 늘어나는 시간 간격입니다.</param>
+        public static void RunWithCyclingDot(Action work, int dotLength = 19, int millisecondsInterval = 30)
         {
-            string className = _classNameCache.GetOrAdd(filePath, path => Path.GetFileNameWithoutExtension(path));
-            string prefix = $"{className}\\{memberName}::";
+            // _logQueue에 방금 막 추가된 마지막 문자열(색상 태그 포함)을 가져옵니다.
+            string baseMessage = _logQueue.LastOrDefault() ?? "";
             
-            // 🟢 처음 한 번만 색상 태그와 호출자 정보를 포함해 [REPLACE] 텍스트를 구성합니다.
-            Out.WriteLine($"[REPLACE][COLOR:{colorHexOrName}]{prefix}{baseMessage}");
-
             using var cts = new CancellationTokenSource();
             
             var progressTask = Task.Run(async () =>
             {
-                string[] dots = { ".", "..", "..." };
-                int i = 0;
+                string[] dotPack = new string[dotLength + 1];
+                
+                dotPack[0] = string.Empty;
+                for (int i = 1; i < dotPack.Length; i++)
+                    dotPack[i] = dotPack[i - 1] + ".";
+                
+                int j = 0;
                 while (!cts.Token.IsCancellationRequested)
                 {
-                    // 이후부터는 색상 태그 없이 텍스트만 업데이트
-                    ReplaceLast($"{prefix}{baseMessage}{dots[i % 3]}");
-                    i++;
-                    try { await Task.Delay(500, cts.Token); } catch { break; }
+                    ReplaceLast($"{baseMessage}{dotPack[j % dotPack.Length]}");
+                    j++;
+                    try { await Task.Delay(millisecondsInterval, cts.Token); } catch { break; }
                 }
             });
 
@@ -122,6 +117,9 @@ namespace RimExtractorCore
             {
                 cts.Cancel();
                 progressTask.Wait();
+                
+                // 작업이 끝나면 점이 없는 원래 텍스트 상태로 되돌립니다.
+                ReplaceLast(baseMessage);
             }
         }
         

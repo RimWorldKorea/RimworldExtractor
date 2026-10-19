@@ -37,10 +37,35 @@ public class Settings
         return list.Distinct();
     }
     
+    public List<string> EnabledDefTreeProcedures { get; set; } = new();
+    
     public List<string> EnabledProcedures { get; set; } = new()
     {
-        "DefaultExtractionProcedure"
+        "기본 추출 프로시저"
     };
+    
+    public List<string> EnabledTranslationEntryProcedures { get; set; } = new();
+    
+    public Settings Clone()
+    {
+        return new Settings()
+        {
+            PathRimworld = this.PathRimworld,
+            PathWorkshop = this.PathWorkshop,
+            PathBaseRefList = this.PathBaseRefList,
+            CurrentVersion = this.CurrentVersion,
+            OriginalLanguage = this.OriginalLanguage,
+            SecondaryLanguage = this.SecondaryLanguage,
+            TranslationLanguage = this.TranslationLanguage,
+            CommentOriginal = this.CommentOriginal,
+            Policy = this.Policy,
+            Method = this.Method,
+            ExtractMayNotTranslate = this.ExtractMayNotTranslate,
+            EnabledDefTreeProcedures = new List<string>(this.EnabledDefTreeProcedures),
+            EnabledProcedures = new List<string>(this.EnabledProcedures),
+            EnabledTranslationEntryProcedures = new List<string>(this.EnabledTranslationEntryProcedures)
+        };
+    }
 }
 
 /// <summary>파일 저장시 기존 파일이 있는 경우의 동작을 설정할 때 사용합니다.</summary>

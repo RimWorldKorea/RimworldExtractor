@@ -13,6 +13,7 @@ public interface IDialogService
     Task<(bool IsSuccess, Mod? SelectedMod, List<Mod> ReferenceMods)> ShowSelectModDialogAsync(Mod? initialMod = null);
     Task<string[]?> ShowXmlisterDialogAsync();
     Task ShowSettingsDialogAsync();
+    Task ShowProcedureSettingsDialogAsync();
     Task ShowImageFileCombinerDialogAsync();
     Task ShowTranslationAnalyzerDialogAsync();
 }
@@ -25,13 +26,13 @@ public class DialogService : IDialogService
     public async Task ShowAlertAsync(string title, string message)
     {
         var box = MessageBoxManager.GetMessageBoxStandard(title, message);
-        await box.ShowAsync();
+        await box.ShowWindowDialogAsync(_owner);
     }
 
     public async Task<bool> ConfirmAsync(string title, string message)
     {
         var box = MessageBoxManager.GetMessageBoxStandard(title, message, ButtonEnum.YesNo);
-        var result = await box.ShowAsync();
+        var result = await box.ShowWindowDialogAsync(_owner);
         return result == ButtonResult.Yes;
     }
 
@@ -55,6 +56,12 @@ public class DialogService : IDialogService
         await win.ShowDialog(_owner);
     }
 
+    public async Task ShowProcedureSettingsDialogAsync()
+    {
+        var win = new ProcedureSettingsWindow();
+        await win.ShowDialog(_owner);
+    }
+    
     public async Task ShowImageFileCombinerDialogAsync()
     {
         var win = new ImageFileCombinerWindow();

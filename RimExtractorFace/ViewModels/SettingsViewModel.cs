@@ -7,6 +7,7 @@ namespace RimExtractorFace.ViewModels;
 public partial class SettingsViewModel : ViewModelBase
 {
     // --- UI 바인딩용 정적 배열 ---
+    //TODO 여기서 따로 만들지 말고 코어모듈에 이미 있는거 가져다쓰기
     public static string[] Languages { get; } = new[]
     {
         "English", "Korean (한국어)", "Catalan (Català)", "ChineseSimplified (简体中文)", "ChineseTraditional (繁體中文)",
@@ -19,43 +20,44 @@ public partial class SettingsViewModel : ViewModelBase
         "Ukrainian (Українська)"
     };
     
-    // [추가됨] 2차 언어용 목록 (없음 옵션 포함)
+    // 2차 언어용 목록 (없음 옵션 포함)
     public static string[] SecondaryLanguages { get; } = new[] { "None" }.Concat(Languages).ToArray();
     
     public static string[] ExtractionMethods { get; } = new[] { "스프레드 시트 (.ods)", "표준 언어팩 XML", "주석 포함 언어팩 XML" };
     public static string[] DuplicationPolicies { get; } = new[] { "중단", "덮어쓰기", "기존유지" };
 
     // --- 1. 모델 직접 바인딩 (XAML에서 {Binding Config.XXX} 사용) ---
-    public Settings Config => SettingManager.Current;
+    public Settings settings { get; }
+    public string gameVersion => settings.CurrentVersion;
     
-    // [추가됨] 2차 언어 값이 비어있을 때 "None"으로 매핑해주는 Wrapper
+    // 2차 언어 값이 비어있을 때 "None"으로 매핑해주는 Wrapper
     public string SelectedSecondaryLanguage
     {
-        get => string.IsNullOrEmpty(Config.SecondaryLanguage) ? "None" : Config.SecondaryLanguage;
+        get => string.IsNullOrEmpty(settings.SecondaryLanguage) ? "None" : settings.SecondaryLanguage;
         set
         {
-            Config.SecondaryLanguage = (value == "None") ? "" : value;
+            settings.SecondaryLanguage = (value == "None") ? "" : value;
             OnPropertyChanged(nameof(SelectedSecondaryLanguage));
         }
     }
 
-    // --- 2. Enum ↔ ComboBox Index 어댑터 ---
+    // Enum ↔ ComboBox Index 어댑터 ---
     public int SelectedExtractionMethodIndex
     {
-        get => (int)Config.Method;
+        get => (int)settings.Method;
         set
         {
-            Config.Method = (ExportFileFormmat)value;
+            settings.Method = (ExportFileFormmat)value;
             OnPropertyChanged(nameof(SelectedExtractionMethodIndex));
         }
     }
 
     public int SelectedPolicyIndex
     {
-        get => (int)Config.Policy;
+        get => (int)settings.Policy;
         set
         {
-            Config.Policy = (DuplicateFilePolicy)value;
+            settings.Policy = (DuplicateFilePolicy)value;
             OnPropertyChanged(nameof(SelectedPolicyIndex));
         }
     }
@@ -65,13 +67,13 @@ public partial class SettingsViewModel : ViewModelBase
 
     public SettingsViewModel()
     {
-        SettingManager.Load();
+        settings = SettingManager.Current.Clone();
         RefreshAdapters();
     }
 
     private void RefreshAdapters()
     {
-        OnPropertyChanged(nameof(Config));
+        OnPropertyChanged(nameof(settings));
         OnPropertyChanged(nameof(SelectedExtractionMethodIndex));
         OnPropertyChanged(nameof(SelectedPolicyIndex));
         OnPropertyChanged(nameof(SelectedSecondaryLanguage));
@@ -94,8 +96,8 @@ public partial class SettingsViewModel : ViewModelBase
         });
         if (files.Count > 0)
         {
-            Config.PathRimworld = System.IO.Path.GetDirectoryName(files[0].Path.LocalPath) ?? string.Empty;
-            OnPropertyChanged(nameof(Config)); // 모델 데이터 변경 알림
+            settings.PathRimworld = Path.GetDirectoryName(files[0].Path.LocalPath) ?? string.Empty;
+            OnPropertyChanged(nameof(settings)); // 모델 데이터 변경 알림
         }
     }
 
@@ -109,8 +111,8 @@ public partial class SettingsViewModel : ViewModelBase
         });
         if (folders.Count > 0)
         {
-            Config.PathWorkshop = folders[0].Path.LocalPath;
-            OnPropertyChanged(nameof(Config));
+            settings.PathWorkshop = folders[0].Path.LocalPath;
+            OnPropertyChanged(nameof(settings));
         }
     }
 
@@ -125,37 +127,52 @@ public partial class SettingsViewModel : ViewModelBase
         });
         if (files.Count > 0)
         {
-            Config.PathBaseRefList = files[0].Path.LocalPath;
-            OnPropertyChanged(nameof(Config));
+            settings.PathBaseRefList = files[0].Path.LocalPath;
+            OnPropertyChanged(nameof(settings));
         }
     }
 
     [RelayCommand]
     private void AutoDetectVersion()
     {
-        Config.CurrentVersion = SettingManager.AutoDetectRimworldVersion();
-        OnPropertyChanged(nameof(Config));
+        SettingManager.UpdateGameVersion();
+        OnPropertyChanged(nameof(gameVersion));
+    }
+    
+    [RelayCommand]
+    private void Apply()
+    {
+        ApplySettings(SettingManager.Current);
     }
 
+    // 2. 저장: 프로시저 창과 동일하게 우선 저장 로직만 실행하도록 연결
     [RelayCommand]
-    private void SaveAndClose()
+    private void Save()
     {
-        SettingManager.Save();
+        ApplySettings(SettingManager.Current);
+        ApplySettings(SettingManager.LastSaved);
+        SettingManager.SaveToDisk();
+    }
+
+    // 3. 닫기: 저장 없이 창만 닫음
+    [RelayCommand]
+    private void Close()
+    {
         RequestClose?.Invoke();
     }
-
-    [RelayCommand]
-    private void Cancel()
+    
+    private void ApplySettings(Settings target)
     {
-        SettingManager.Load(); // 변경 사항 롤백
-        RefreshAdapters();
-        RequestClose?.Invoke();
-    }
-
-    [RelayCommand]
-    private void Reset()
-    {
-        SettingManager.InitDefault(); // 기본값으로 덮어쓰기
-        RefreshAdapters();
+        target.PathRimworld = settings.PathRimworld;
+        target.PathWorkshop = settings.PathWorkshop;
+        target.PathBaseRefList = settings.PathBaseRefList;
+        target.CurrentVersion = settings.CurrentVersion;
+        target.OriginalLanguage = settings.OriginalLanguage;
+        target.SecondaryLanguage = settings.SecondaryLanguage;
+        target.TranslationLanguage = settings.TranslationLanguage;
+        target.CommentOriginal = settings.CommentOriginal;
+        target.Policy = settings.Policy;
+        target.Method = settings.Method;
+        target.ExtractMayNotTranslate = settings.ExtractMayNotTranslate;
     }
 }

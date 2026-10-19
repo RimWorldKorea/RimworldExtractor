@@ -44,12 +44,12 @@ public static class Engine
     private static void PreparePrePiledTree()
     {
         var outDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PrePiled");
-        PrePiledTreePath = Path.Combine(outDir, $"Assembly-{SettingManager.GetFormattedFullVersion()}.xml");
+        PrePiledTreePath = Path.Combine(outDir, $"Assembly-{SettingManager.GetFormattedFullGameVersion()}.xml");
 
         // 현재 버전에 맞는 XML 파일이 없다면 (버전업이 되었거나 처음 실행인 경우)
         if (!File.Exists(PrePiledTreePath))
         {
-            Log.Msg($"신규 버전 감지. ({SettingManager.GetFullVersion()})\n사전 해석 모델 생성 시작.", true);
+            Log.Msg($"신규 버전 감지. ({SettingManager.GetFullGameVersion()})", true);
             
             if (Directory.Exists(outDir))
             {
@@ -90,12 +90,12 @@ public static class Engine
             }
             else
             {
-                Log.Err("림월드 게임 폴더에서 Assembly-CSharp.dll을 찾지 못했습니다.", true);
+                Log.Err("게임 폴더에서 Assembly-CSharp.dll을 찾지 못했습니다.", true);
             }
         }
         else
         {
-            Log.Msg($"설치된 림월드 버전과 일치하는 사전 해석 모델 파일 확인. ({SettingManager.GetFullVersion()})", true);
+            Log.Msg($"설치된 버전과 일치하는 사전 해석 파일 확인. ({SettingManager.GetFullGameVersion()})", true);
         }
     }
 }

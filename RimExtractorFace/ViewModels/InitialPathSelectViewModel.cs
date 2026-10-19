@@ -69,7 +69,11 @@ public partial class InitialPathSelectViewModel : ViewModelBase
     {
         SettingManager.Current.PathRimworld = PathRimworld;
         SettingManager.Current.PathWorkshop = PathWorkshop;
-        SettingManager.Save();
+        
+        SettingManager.LastSaved.PathRimworld = PathRimworld;
+        SettingManager.LastSaved.PathWorkshop = PathWorkshop;
+        
+        SettingManager.SaveToDisk(); // 디스크 저장
 
         RequestClose?.Invoke();
     }

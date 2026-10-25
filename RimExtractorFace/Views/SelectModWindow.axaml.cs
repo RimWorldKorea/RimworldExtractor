@@ -41,6 +41,8 @@ public partial class SelectModWindow : Window
             IsSuccess = true;
             Close();
         };
+        
+        Loaded += async (s, e) => await _viewModel.InitializeAsync();
     }
 
     private void Window_KeyDown(object? sender, KeyEventArgs e)

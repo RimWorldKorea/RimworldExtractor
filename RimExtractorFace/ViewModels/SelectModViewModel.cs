@@ -69,12 +69,17 @@ public partial class ModListItem : ObservableObject
 
 public partial class SelectModViewModel : ViewModelBase
 {
+    [ObservableProperty] private bool _isLoading = true;
+    [ObservableProperty] private double _idColumnMinWidth = 40.0; // 뷰(UI)에 바인딩할 동적 최소 너비 속성
+    
     private readonly IExternalProcessService _processService;
     private readonly IExtractionService _extractionService;
-    private readonly List<Mod> _allModsCached;
-    private readonly List<Mod> _officialModsCached;
-    private readonly List<Mod> _localModsCached;
-    private readonly List<Mod> _workshopModsCached;
+    
+    private List<Mod> _allModsCached = new();
+    private List<Mod> _officialModsCached = new();
+    private List<Mod> _localModsCached = new();
+    private List<Mod> _workshopModsCached = new();
+    private readonly Mod? _initialMod;
 
     //TODO Core 모듈 Constants로 이동
     private static readonly List<string> OfficialDLCSequence = new()
@@ -90,9 +95,6 @@ public partial class SelectModViewModel : ViewModelBase
     [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(CompleteCommand))]
     private bool _canComplete = false;
     
-    // 뷰(UI)에 바인딩할 동적 최소 너비 속성
-    public double IdColumnMinWidth { get; }
-
     public Mod? SelectedMod { get; private set; }
     public List<Mod> ReferenceMods { get; } = new();
     
@@ -101,41 +103,43 @@ public partial class SelectModViewModel : ViewModelBase
     public event Action? RequestClose;
     public event Func<string, Task>? RequestShowAlert;
 
-    public SelectModViewModel(
-        IExternalProcessService processService,
-        IExtractionService extractionService,
-        Mod? initialMod = null)
+    public SelectModViewModel(IExternalProcessService processService, IExtractionService extractionService, Mod? initialMod = null)
     {
         _processService = processService;
         _extractionService = extractionService;
+        _initialMod = initialMod;
+    }
+
+    /// <summary>UI와 분리된 비동기 초기화 메서드입니다.</summary>
+    public async Task InitializeAsync()
+    {
+        IsLoading = true;
+        int maxIdLength = 0;
+
+        await Task.Run(() =>
+        {
+            ModLister.ResetCache();
         
-        ModLister.ResetCache();
-        
-        _officialModsCached = ModLister.OfficialMods
-            .OrderBy(m => 
-            {
+            _officialModsCached = ModLister.OfficialMods.OrderBy(m => {
                 int index = OfficialDLCSequence.IndexOf(m.Name ?? "");
                 return index == -1 ? int.MaxValue : index;
             }).ToList();
-            
-        _localModsCached = ModLister.LocalMods.ToList();
-        _workshopModsCached = ModLister.WorkshopMods.ToList();
-        _allModsCached = _officialModsCached.Concat(_localModsCached).Concat(_workshopModsCached).ToList();
-
-        // 창이 열릴 때 한 번만 전체 모드를 스캔하여 ID 최대 길이를 계산합니다.
-        int maxIdLength = 0;
-        foreach (var mod in _allModsCached)
-        {
-            //TODO "???"은 어디서 달라붙는겨
-            string id = mod.Type == ModType.Official ||
-                        string.IsNullOrWhiteSpace(mod.WorkshopID) ||
-                        mod.WorkshopID == "???"
-                ? "-" : mod.WorkshopID;
-            if (id.Length > maxIdLength) maxIdLength = id.Length;
-        }
-        // 폰트 크기를 고려해 '글자 수 * 약 8px'로 계산하고 좌우 마진(16) + 여유(10)를 더해줍니다. 기본 하한선은 70입니다.
-        IdColumnMinWidth = Math.Max(40.0, (maxIdLength * 8) + 26);
         
+            _localModsCached = ModLister.LocalMods.ToList();
+            _workshopModsCached = ModLister.WorkshopMods.ToList();
+            _allModsCached = _officialModsCached.Concat(_localModsCached).Concat(_workshopModsCached).ToList();
+
+            foreach (var mod in _allModsCached)
+            {
+                string id = mod.Type == ModType.Official || string.IsNullOrWhiteSpace(mod.WorkshopID) || mod.WorkshopID == "???" 
+                    ? "-" : mod.WorkshopID;
+                if (id.Length > maxIdLength) maxIdLength = id.Length;
+            }
+        });
+
+        // UI 스레드 복귀 후 UI 바인딩 갱신
+        IdColumnMinWidth = Math.Max(40.0, (maxIdLength * 8) + 26);
+
         foreach (var officialMod in _officialModsCached)
         {
             if (!ReferenceMods.Contains(officialMod))
@@ -144,13 +148,14 @@ public partial class SelectModViewModel : ViewModelBase
 
         RefreshModList();
 
-        if (initialMod != null)
+        if (_initialMod != null)
         {
-            SelectedModListItem = FilteredMods.FirstOrDefault(x =>
-                !x.IsHeader && x.Metadata?.Path == initialMod.Path);
+            SelectedModListItem = FilteredMods.FirstOrDefault(x => !x.IsHeader && x.Metadata?.Path == _initialMod.Path);
         }
-    }
 
+        IsLoading = false;
+    }
+    
     partial void OnSearchTextChanged(string value) => RefreshModList();
     partial void OnIsFilterSelectedOnlyChanged(bool value) => RefreshModList();
     partial void OnSelectedModListItemChanged(ModListItem? value)

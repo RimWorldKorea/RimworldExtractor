@@ -121,11 +121,23 @@
                     </ListBox.ContextMenu>
                 </ListBox>
             </Border>
+            
+            <!-- 모드 목록 로딩 중 표시 오버레이 -->
+            <Border Grid.Column="0" Background="#B3252525" CornerRadius="4" Margin="0,0,8,0" 
+                    IsVisible="{Binding IsLoading}">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
+                    <TextBlock Text="모드 목록을 불러오는 중입니다..." 
+                               FontSize="16" FontWeight="Bold" Foreground="White" 
+                               HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+            
         </Grid>
 
         <!-- 5행: 완료 버튼 -->
         <Button Grid.Row="3" Content="선택 완료" Height="40" 
                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                 Command="{Binding CompleteCommand}"/>
+        
     </Grid>
 </Window>

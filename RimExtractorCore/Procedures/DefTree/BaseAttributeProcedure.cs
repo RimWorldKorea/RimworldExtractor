@@ -4,9 +4,12 @@ using RimExtractorCore.DefTreeSimulator;
 
 namespace RimExtractorCore.DefTreeSimulator.Procedures;
 
-public class ModSpecificAttributeProcedure : IXDocumentProcedure
+/// <summary>
+/// 림월드 자체 어셈블리의 미흡한 번역 태그 등록 상태를 보완하기 위한 프로시저입니다.
+/// </summary>
+public class BaseAttributeProcedure : IXDocumentProcedure
 {
-    public string Name => "Fortified Features Framework 프로시저";
+    public string Name => "기본 ";
     public InjectionStage Stage => InjectionStage.StageA;
 
     public XDocument Process(XDocument defTree)

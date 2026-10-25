@@ -21,9 +21,9 @@ public partial class TranslationAnalyzerPathSelectViewModel : ViewModelBase
     {
         var files = await storageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "엑셀 파일(.xlsx)을 선택해주세요.",
+            Title = "스프레드시트 파일을 지정해주세요.",
             AllowMultiple = true,
-            FileTypeFilter = new[] { new FilePickerFileType("림왈도 형식 엑셀 파일") { Patterns = new[] { "*.xlsx" } } }
+            FileTypeFilter = new[] { new FilePickerFileType("림추출기 형식 스프레드시트") { Patterns = new[] { "*.ods", "*.xlsx" } } }
         });
 
         if (files.Count > 0)
@@ -37,7 +37,7 @@ public partial class TranslationAnalyzerPathSelectViewModel : ViewModelBase
     {
         var folders = await storageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = "엑셀 파일이 있는 루트 폴더를 선택해주세요.",
+            Title = "스프레드시트 파일이 있는 루트 폴더를 지정해주세요.",
             AllowMultiple = true
         });
 

@@ -12,10 +12,9 @@ public static class LanguageXmlProcessor
 {
     /// <summary>
     /// 번역 데이터를 분석하여 저장해야 할 XML 파일들과 TXT 파일들의 내용을 경로와 함께 반환합니다.
-    /// (물리적 디스크 I/O를 수행하지 않는 순수 데이터 가공 메서드)
     /// </summary>
     public static (Dictionary<string, XDocument> XmlFiles, Dictionary<string, List<string>> TxtFiles)
-        GenerateLanguageFiles(
+        GenerateLanguagePackData(
             List<TranslationEntry> translations,
             bool skipNoTranslation,
             bool commentOriginal,
@@ -160,7 +159,7 @@ public static class LanguageXmlProcessor
         // 5. Full List Translations (XML)
         if (defInjectedFullListTranslations.Count > 0)
         {
-    var defInjectedDir = Path.Combine(translationDir, "DefInjected");
+            var defInjectedDir = Path.Combine(translationDir, "DefInjected");
 
             // 그룹화: ClassName과 부모 노드 이름(인덱스를 뺀 부분)을 기준으로 묶습니다.
             // 예: "RecipeDef.recipeUsers.0" -> "RecipeDef.recipeUsers"

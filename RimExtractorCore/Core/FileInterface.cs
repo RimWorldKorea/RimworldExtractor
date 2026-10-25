@@ -18,7 +18,7 @@ public static class FileInterface
     public static string HeaderOriginal => "Original Text";
     public static string HeaderTranslation => "Translation Text";
 
-    public static List<TranslationEntry> FromExcel(string inputPath)
+    public static List<TranslationEntry> FromSheetFile(string inputPath)
     {
         return SpreadsheetReader.ReadTranslations(inputPath);
     }
@@ -65,7 +65,7 @@ public static class FileInterface
     public static void ToLanguageXml(List<TranslationEntry> translations, bool skipNoTranslation, bool commentOriginal, string ModName, string rootDirPath)
     {
         // 1. LanguageXmlProcessor를 통해 파일 생성에 필요한 경로와 데이터를 모두 메모리 상에서 완성하여 받아옵니다.
-        var (xmlFiles, txtFiles) = LanguageXmlProcessor.GenerateLanguageFiles(
+        var (xmlFiles, txtFiles) = LanguageXmlProcessor.GenerateLanguagePackData(
             translations, skipNoTranslation, commentOriginal, ModName, rootDirPath);
 
         // 2. 반환받은 Dictionary를 순회하며 순수하게 '폴더 생성'과 '파일 저장'만 수행합니다. (XML)

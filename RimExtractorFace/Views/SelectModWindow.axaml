@@ -8,7 +8,7 @@
         WindowStartupLocation="CenterOwner"
         KeyDown="Window_KeyDown">
 
-    <Grid RowDefinitions="Auto, Auto, *, Auto, Auto" Margin="12">
+    <Grid RowDefinitions="Auto, Auto, *, Auto" Margin="12">
         <!-- 1행: 검색 및 selected 정보 -->
         <Grid Grid.Row="0" ColumnDefinitions="*, *" Margin="0,0,0,8">
             <StackPanel Grid.Column="0">
@@ -34,8 +34,6 @@
         </DockPanel>
 
         <!-- 3행: 모드 리스트 및 폴더 리스트 -->
-        <!-- 3. 본문 목록 -->
-        <!-- 3. 본문 목록 -->
         <Grid Grid.Row="2" ColumnDefinitions="*" Margin="0,0,0,0">
             
             <!-- 좌측: 모드 목록 -->
@@ -125,12 +123,8 @@
             </Border>
         </Grid>
 
-        <!-- 4행: 조작법 안내 -->
-        <TextBlock Grid.Row="3" Text="조작법: '좌클릭' = 추출 모드 선택 | '우클릭' = 메뉴 | 'A' = 탐색기 열기 | 'D' = 선택 모드만 보기"
-                   Foreground="White" FontSize="11" Margin="0,0,0,8" HorizontalAlignment="Center"/>
-
         <!-- 5행: 완료 버튼 -->
-        <Button Grid.Row="4" Content="선택 완료" Height="40" 
+        <Button Grid.Row="3" Content="선택 완료" Height="40" 
                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                 Command="{Binding CompleteCommand}"/>
     </Grid>

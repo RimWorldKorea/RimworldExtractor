@@ -101,7 +101,7 @@ public static partial class ExtractorEngine
         foreach (var lang in priorityLanguages)
         {
             var englishName = lang.Split('(')[0].Trim();
-            var languageInfo = LanguageInfo.Get(englishName);
+            if (!LanguageInfo.TryParse(englishName, out var languageInfo)) continue;
 
             foreach (var unit in snapshot.LoadedUnits)
             {

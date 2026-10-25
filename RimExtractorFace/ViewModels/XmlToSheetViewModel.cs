@@ -4,7 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace RimExtractorFace.ViewModels;
 
-public partial class XmlisterViewModel : ViewModelBase
+public partial class XmlToSheetViewModel : ViewModelBase
 {
     [ObservableProperty] private string _folderPathText = string.Empty;
 

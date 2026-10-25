@@ -1,11 +1,16 @@
 ﻿<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:RimExtractorFace.ViewModels"
+        xmlns:utils="clr-namespace:RimExtractorFace.Utils"
         x:Class="RimExtractorFace.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="RimExtractor"
         Width="820" Height="520"
         WindowStartupLocation="CenterScreen">
+    
+    <Window.Resources>
+        <utils:VersionColorConverter x:Key="VersionColorConverter" />
+    </Window.Resources>
 
     <!-- RowDefinitions를 Auto, Auto, * 로 변경하여 마지막 행(로그 영역)이 남은 높이를 모두 차지하도록 수정 -->
     <Grid RowDefinitions="Auto, Auto, *" Margin="12">
@@ -42,7 +47,8 @@
                         Command="{Binding ConvertToXmlCommand}"/>
                 
                 <!-- 새로 추가된 검증 버튼 (기능 미연결) -->
-                <Button Content="번역 기본 검증" Height="40" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                <Button Content="번역 기본 검증" Height="40" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                        Command="{Binding InspectTranslationCommand}"/>
                 
                 <Button Content="이미지 + 파일&#10;합치기" Height="40" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                         Command="{Binding OpenJpgPackagerCommand}"/>
@@ -51,13 +57,32 @@
         </Grid>
 
         <!-- 중간 정보 / 링크 바 (Row 1) -->
-        <Grid Grid.Row="1" ColumnDefinitions="Auto, *, Auto" Margin="0,5">
-            <Button Grid.Column="0" Content="{Binding VersionText}" Background="Transparent" Foreground="Blue"
-                    Command="{Binding OpenVersionUrlCommand}"/>
+        <Grid Grid.Row="1" Margin="0,5">
             
-            <TextBlock Grid.Column="1" Text="로그" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
+            <StackPanel HorizontalAlignment="Left" Orientation="Horizontal" Spacing="5">
+                
+                <Button Content="{Binding VersionText}"
+                        Command="{Binding OpenVersionUrlCommand}"
+                        Background="{Binding IsLatest,Converter={StaticResource VersionColorConverter}}"
+                        Foreground="White"/>
+                
+                <Border Background="Goldenrod"
+                        BorderBrush="Black"
+                        BorderThickness="2"
+                        CornerRadius="4" 
+                        Padding="6,0"
+                        IsVisible="{Binding IsSpecialBuildIfNotEmpty, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <TextBlock Text="{Binding IsSpecialBuildIfNotEmpty}" 
+                               Foreground="Black" 
+                               FontWeight="Bold"
+                               VerticalAlignment="Center"/>
+                </Border>
+                
+            </StackPanel>
             
-            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+            <TextBlock Text="로그" HorizontalAlignment="Center" VerticalAlignment="Bottom" FontWeight="Bold"/>
+            
+            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Spacing="10">
                 
                 <Button Content="일반 설정" 
                         Command="{Binding OpenSettingsCommand}" /> 

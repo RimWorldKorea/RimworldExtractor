@@ -40,7 +40,7 @@ namespace RimExtractorCore.Extractor
                 foreach (var lang in priorityLanguages)
                 {
                     var englishName = lang.Split('(')[0].Trim();
-                    var languageInfo = LanguageInfo.Get(englishName);
+                    if(!LanguageInfo.TryParse(englishName, out var languageInfo)) continue;
                     
                     var keyedDir = unit.GetKeyedPath(languageInfo);
                     if (keyedDir == null || !keyedDir.Exists) continue;

@@ -349,7 +349,9 @@ public static class DefTreeSimulator
         }
     }
 
-    // DefInjected 번역 데이터를 찾아 실제 XML Tree에 주입하고 Notice Tag를 제거하는 메서드
+    /// <summary>
+    /// DefInjected 번역 데이터를 찾아 실제 XML Tree에 주입하고 Notice Tag를 제거합니다.
+    /// </summary>
     private static void ApplyDefInjectedLanguageData(DefSnapshot snapshot)
     {
         // 주의: 우선순위가 높은 언어가 나중에 덮어써야 하므로 Reverse()를 적용합니다. (RimWorld의 동작 방식과 동일)
@@ -358,7 +360,7 @@ public static class DefTreeSimulator
         foreach (var lang in priorityLanguages)
         {
             var englishName = lang.Split('(')[0].Trim();
-            var languageInfo = LanguageInfo.Get(englishName);
+            if(!LanguageInfo.TryParse(englishName, out var languageInfo)) continue;
 
             foreach (var unit in snapshot.LoadedUnits)
             {

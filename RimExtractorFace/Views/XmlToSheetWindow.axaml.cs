@@ -3,18 +3,18 @@ using RimExtractorFace.ViewModels;
 
 namespace RimExtractorFace.Views;
 
-public partial class XmlisterWindow : Window
+public partial class XmlToSheetWindow : Window
 {
-    private readonly XmlisterViewModel _viewModel;
+    private readonly XmlToSheetViewModel _viewModel;
 
     public string[] FileNames => _viewModel.FileNames;
     public bool IsSuccess => _viewModel.IsSuccess;
 
-    public XmlisterWindow()
+    public XmlToSheetWindow()
     {
         InitializeComponent();
 
-        _viewModel = new XmlisterViewModel();
+        _viewModel = new XmlToSheetViewModel();
         DataContext = _viewModel;
 
         _viewModel.RequestClose += () => Close();

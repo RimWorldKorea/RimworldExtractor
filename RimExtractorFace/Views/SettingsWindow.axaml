@@ -4,84 +4,105 @@
         x:Class="RimExtractorFace.Views.SettingsWindow"
         x:DataType="vm:SettingsViewModel"
         Title="일반 설정"
-        Width="600"
+        Width="640"
         SizeToContent="Height"
+        Foreground="White"
         CanResize="False"
         WindowStartupLocation="CenterOwner">
-    <Grid RowDefinitions="*, Auto" Margin="12">
+    
+    <Window.Styles>
+        <Style Selector="TextBox">
+            <Setter Property="Height" Value="28" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        
+        <Style Selector="ComboBox">
+            <Setter Property="Height" Value="28" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="Margin" Value="0,5,0,0" />
+        </Style>
+        
+        <Style Selector="Border.SettingGroup">
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="LightGray" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Padding" Value="10" />
+        </Style>
+    </Window.Styles>
+    
+    <Grid RowDefinitions="*, Auto" Margin="10">
 
-        <StackPanel Spacing="10" Margin="4">
+        <StackPanel Spacing="10">
                 
             <!-- 1. 경로 설정 -->
-            <Border BorderBrush="LightGray" BorderThickness="1" CornerRadius="4" Padding="10">
-                <StackPanel Spacing="6">
-                    <TextBlock Text="경로 설정" FontWeight="Bold" Foreground="#333333" Margin="0,0,0,4"/>
-                    <TextBlock Text="Rimworld 설치 경로:"/>
-                    <Grid ColumnDefinitions="*, Auto">
-                        <TextBox Grid.Column="0" Text="{Binding settings.PathRimworld, Mode=TwoWay}" Margin="0,0,6,0"/>
+            <Border Classes="SettingGroup">
+                <StackPanel Spacing="5">
+                    <TextBlock Text="경로 설정" FontWeight="Bold" TextAlignment="Center"/>
+                    
+                    <TextBlock Text="림월드 설치 경로" Margin="0,5,0,0"/>
+                    
+                    <Grid ColumnDefinitions="*, Auto" ColumnSpacing="10">
+                        <TextBox Grid.Column="0" Text="{Binding settings.PathRimworld, Mode=TwoWay}"/>
                         <Button Grid.Column="1" Content="..." Width="40" HorizontalContentAlignment="Center"
                                 Command="{Binding SelectPathRimworldCommand}"
                                 CommandParameter="{Binding $parent[Window].StorageProvider}"/>
                     </Grid>
-                    <TextBlock Text="창작마당 폴더 경로:" Margin="0,4,0,0"/>
-                    <Grid ColumnDefinitions="*, Auto">
-                        <TextBox Grid.Column="0" Text="{Binding settings.PathWorkshop, Mode=TwoWay}" Margin="0,0,6,0"/>
+                    
+                    <TextBlock Text="창작마당 폴더 경로" Margin="0,5,0,0"/>
+                    
+                    <Grid ColumnDefinitions="*, Auto" ColumnSpacing="10">
+                        <TextBox Grid.Column="0" Text="{Binding settings.PathWorkshop, Mode=TwoWay}"/>
                         <Button Grid.Column="1" Content="..." Width="40" HorizontalContentAlignment="Center"
                                 Command="{Binding SelectPathWorkshopCommand}"
                                 CommandParameter="{Binding $parent[Window].StorageProvider}"/>
                     </Grid>
-                    <Grid ColumnDefinitions="*" Margin="0,4,0,0">
-                        <StackPanel Grid.Column="0" Margin="4,0,0,0">
-                            <TextBlock Text="현재 버전:"/>
-                            <Grid ColumnDefinitions="*, Auto">
-                                <TextBox Grid.Column="0" Text="{Binding gameVersion, Mode=TwoWay}" Margin="0,0,4,0"/>
-                                <Button Grid.Column="1" Content="자동 감지" Command="{Binding AutoDetectVersionCommand}"/>
-                            </Grid>
-                        </StackPanel>
+                    
+                    <TextBlock Text="현재 버전" Margin="0,5,0,0"/>
+                    
+                    <Grid ColumnDefinitions="*, Auto" ColumnSpacing="10">
+                        <TextBox Grid.Column="0" Text="{Binding gameVersion, Mode=TwoWay}"/>
+                        <Button Grid.Column="1" Content="자동 감지" Command="{Binding AutoDetectVersionCommand}"/>
                     </Grid>
                 </StackPanel>
             </Border>
 
             <!-- 2. 추출 및 저장 설정 -->
-            <Border BorderBrush="LightGray" BorderThickness="1" CornerRadius="4" Padding="10">
-                <StackPanel Spacing="6">
-                    <TextBlock Text="언어 및 추출 설정" FontWeight="Bold" Foreground="#333333" Margin="0,0,0,4"/>
+            <Border Classes="SettingGroup">
+                <StackPanel Spacing="5">
+                    <TextBlock Text="언어 및 추출 설정" FontWeight="Bold" TextAlignment="Center"/>
                     
-                    <Grid ColumnDefinitions="*, *">
-                        <StackPanel Grid.Column="0" Margin="0,0,4,0">
-                            <TextBlock Text="1차 추출 언어:"/>
-                            <ComboBox ItemsSource="{Binding Languages}" SelectedItem="{Binding settings.OriginalLanguage, Mode=TwoWay}" HorizontalAlignment="Stretch"/>
+                    <Grid ColumnDefinitions="*, *, *" ColumnSpacing="5" Margin="0,5,0,0">
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="주 추출 언어"/>
+                            <ComboBox ItemsSource="{Binding Languages}"
+                                      SelectedItem="{Binding settings.OriginalLanguage, Mode=TwoWay}"/>
                         </StackPanel>
-                        <StackPanel Grid.Column="1" Margin="4,0,0,0">
-                            <TextBlock Text="2차 추출 언어:"/>
-                            <ComboBox ItemsSource="{Binding SecondaryLanguages}" SelectedItem="{Binding SelectedSecondaryLanguage, Mode=TwoWay}" HorizontalAlignment="Stretch"/>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="보조 추출 언어"/>
+                            <ComboBox ItemsSource="{Binding SecondaryLanguages}"
+                                      SelectedItem="{Binding SelectedSecondaryLanguage, Mode=TwoWay}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="번역(목표) 언어"/>
+                            <ComboBox ItemsSource="{Binding Languages}"
+                                      SelectedItem="{Binding settings.TranslationLanguage, Mode=TwoWay}"/>
                         </StackPanel>
                     </Grid>
                     
-                    <StackPanel Margin="0,4,0,0">
-                        <TextBlock Text="번역(목표) 언어:"/>
-                        <ComboBox ItemsSource="{Binding Languages}" SelectedItem="{Binding settings.TranslationLanguage, Mode=TwoWay}" HorizontalAlignment="Stretch"/>
-                    </StackPanel>
-
                     <!-- 추출 방식 / 중복 처리 정책 -->
-                    <Grid ColumnDefinitions="*, *" Margin="0,8,0,0">
-                        <StackPanel Grid.Column="0" Margin="0,0,4,0">
-                            <TextBlock Text="추출 방식:"/>
-                            <ComboBox ItemsSource="{Binding ExtractionMethods}" SelectedIndex="{Binding SelectedExtractionMethodIndex, Mode=TwoWay}" HorizontalAlignment="Stretch"/>
+                    <Grid ColumnDefinitions="*, *" ColumnSpacing="5" Margin="0,5,0,0" >
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="저장 포맷"/>
+                            <ComboBox ItemsSource="{Binding ExtractionMethods}"
+                                      SelectedIndex="{Binding SelectedExtractionMethodIndex, Mode=TwoWay}"/>
                         </StackPanel>
-                        <StackPanel Grid.Column="1" Margin="4,0,0,0">
-                            <TextBlock Text="중복 번역 처리:"/>
-                            <ComboBox ItemsSource="{Binding DuplicationPolicies}" SelectedIndex="{Binding SelectedPolicyIndex, Mode=TwoWay}" HorizontalAlignment="Stretch"/>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="중복 처리"/>
+                            <ComboBox ItemsSource="{Binding DuplicationPolicies}"
+                                      SelectedIndex="{Binding SelectedPolicyIndex, Mode=TwoWay}"/>
                         </StackPanel>
                     </Grid>
-                        
-                    <TextBlock Text="레퍼런스 모드 목록 (.refMods):" Margin="0,8,0,0"/>
-                    <Grid ColumnDefinitions="*, Auto">
-                        <TextBox Grid.Column="0" Text="{Binding settings.PathBaseRefList, Mode=TwoWay}" Margin="0,0,6,0"/>
-                        <Button Grid.Column="1" Content="..." Width="40" HorizontalContentAlignment="Center"
-                                Command="{Binding SelectBaseRefListCommand}"
-                                CommandParameter="{Binding $parent[Window].StorageProvider}"/>
-                    </Grid>
+                    
                 </StackPanel>
             </Border>
                 
@@ -92,11 +113,11 @@
                     Orientation="Horizontal" 
                     HorizontalAlignment="Right" 
                     Spacing="10" 
-                    Margin="0,13,0,0">
+                    Margin="0,10,0,0">
     
-            <Button Content="적용" Command="{Binding ApplyCommand}" />
-            <Button Content="저장" Command="{Binding SaveCommand}" />
-            <Button Content="닫기" Command="{Binding CloseCommand}" />
+            <Button Content="적용" Command="{Binding ApplyCommand}" Width="60"/>
+            <Button Content="저장" Command="{Binding SaveCommand}" Width="60"/>
+            <Button Content="닫기" Command="{Binding CloseCommand}" Width="60"/>
         </StackPanel>
     </Grid>
 </Window>

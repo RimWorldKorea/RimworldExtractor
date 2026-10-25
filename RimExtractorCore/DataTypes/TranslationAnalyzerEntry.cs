@@ -104,7 +104,7 @@ namespace RimExtractorCore.DataTypes
             Metadata = AnalyzerEngine.GetModFromFilePath(path);
             try
             {
-                OriginalTranslations = FileInterface.FromExcel(path);
+                OriginalTranslations = FileInterface.FromSheetFile(path);
             }
             catch (XlsxHeaderReadingException e)
             {

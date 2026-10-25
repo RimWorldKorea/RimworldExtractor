@@ -41,7 +41,6 @@ public class UpdateCheckService : IUpdateCheckService
 
     public async Task<string> GetLatestVersionAsync()
     {
-        // .Result 대신 async/await를 사용하여 UI 스레드 블로킹을 방지합니다.
         var response = await _httpClient.GetAsync(LatestUrl);
 
         if (response.StatusCode is HttpStatusCode.Redirect or HttpStatusCode.MovedPermanently or HttpStatusCode.Found)

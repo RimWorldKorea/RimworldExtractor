@@ -1,19 +1,23 @@
 using Avalonia;
 using System.Reflection;
-using RimExtractorCore; // 🟢 Internal 네임스페이스 추가
+using System.Reflection.Metadata;
+using RimExtractorCore;
 
 namespace RimExtractorFace;
 
 internal static class Program
 {
-    public const string VERSION = ""; // Github Action에 의해 게시 전 자동으로 생성
+    //TODO 이거 기존엔 GitHub Action으로 자동 빌드하면서 넣어줬던 것 같은데 어떻게 할지 나중에 결정
+    public static readonly string VERSION =
+        Assembly.GetExecutingAssembly()
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+            .InformationalVersion ?? String.Empty;
 
     [STAThread]
     public static void Main(string[] args)
     {
         AppDomain.CurrentDomain.AssemblyResolve += CurrentDomainOnAssemblyResolve;
-
-        // 🟢 메인 윈도우 렌더링을 방해하지 않도록 백그라운드 스레드에서 프로시저 동적 컴파일 시작
+        
         Task.Run(() =>
         {
             try
@@ -22,7 +26,7 @@ internal static class Program
             }
             catch (Exception ex)
             {
-                Log.Err($"[GUI] 초기화 중 예외 발생: {ex.Message}");
+                Log.Err($"초기화 중 예외 발생\n\t{ex.Message}");
             }
         });
 
@@ -34,8 +38,7 @@ internal static class Program
             .UsePlatformDetect()
             .WithInterFont()
             .LogToTrace();
-
-    // 기존 dll 동적 로드 로직 유지
+    
     private static Assembly? CurrentDomainOnAssemblyResolve(object? sender, ResolveEventArgs args)
     {
         if (args.Name.Contains(".resources")) return null;

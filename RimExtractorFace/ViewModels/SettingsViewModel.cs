@@ -23,8 +23,8 @@ public partial class SettingsViewModel : ViewModelBase
     // 2차 언어용 목록 (없음 옵션 포함)
     public static string[] SecondaryLanguages { get; } = new[] { "None" }.Concat(Languages).ToArray();
     
-    public static string[] ExtractionMethods { get; } = new[] { "스프레드 시트 (.ods)", "표준 언어팩 XML", "주석 포함 언어팩 XML" };
-    public static string[] DuplicationPolicies { get; } = new[] { "중단", "덮어쓰기", "기존유지" };
+    public static string[] ExtractionMethods { get; } = new[] { "스프레드시트 (.ods)", "XML 언어팩", "XML 언어팩 (주석 포함)" };
+    public static string[] DuplicationPolicies { get; } = new[] { "작업중단", "덮어쓰기", "다른 이름으로 저장" };
 
     // --- 1. 모델 직접 바인딩 (XAML에서 {Binding Config.XXX} 사용) ---
     public Settings settings { get; }

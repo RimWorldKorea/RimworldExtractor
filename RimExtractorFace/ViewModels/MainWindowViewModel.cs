@@ -22,6 +22,12 @@ public partial class MainWindowViewModel : ViewModelBase
     private string _versionText = "버전 확인 중...";
 
     [ObservableProperty]
+    private bool? _isLatest;
+    
+    [ObservableProperty]
+    private string _isSpecialBuildIfNotEmpty;
+
+    [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ExtractCommand))]
     private bool _canExtract = false;
 
@@ -49,16 +55,29 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         try
         {
-            // 비동기 버전 확인
-            var latest = await _versionService.GetLatestVersionAsync();
-            var current = _versionService.CurrentVersion;
-            VersionText = latest == current
-                ? $"{current} (최신 버전)"
-                : $"{current} < {latest} (업데이트 필요)";
+            var latestRaw = await _versionService.GetLatestVersionAsync();
+            var latest = Version.Parse(latestRaw);
+            
+            var currentRaw = _versionService.CurrentVersion.Split("+").First().Split("-");
+            var current = Version.Parse(currentRaw.First());
+            if (currentRaw.Length > 1) IsSpecialBuildIfNotEmpty = currentRaw.Last();
+            
+            if (current >= latest)
+            {
+                IsLatest = true;
+                VersionText = $"{current} 최신";
+            }
+            
+            if (current < latest)
+            {
+                IsLatest = false;
+                VersionText = $"{current} < {latestRaw} 업데이트 필요";
+            }
         }
         catch (Exception e)
         {
-            Log.Wrn($"버전 확인 중 에러: {e.Message}");
+            Log.Wrn($"버전 확인 중 에러\n\t{e.Message}");
+            IsLatest = null;
             VersionText = "버전 확인 실패";
         }
     }
@@ -122,7 +141,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private async Task ConvertToSheetAsync()
     {
-        var fileNames = await _dialogService.ShowXmlisterDialogAsync();
+        var fileNames = await _dialogService.ShowXmlListerDialogAsync();
         if (fileNames != null && fileNames.Length > 0)
         {
             await _extractionService.ConvertXmlToOdsAsync(fileNames);
@@ -133,7 +152,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private async Task ConvertToXmlAsync()
     {
-        var path = await _storageService.OpenFileAsync("변환할 Excel 파일 선택", "Excel 파일", "*.xlsx");
+        var path = await _storageService.OpenFileAsync("변환할 스프레드시트 선택", "스프레드시트", "*.xlsx", "*.ods");
         if (!string.IsNullOrEmpty(path))
         {
             await _extractionService.ConvertSheetToXmlAsync(path);
@@ -142,6 +161,33 @@ public partial class MainWindowViewModel : ViewModelBase
                 _processService.OpenFolderInExplorer(Path.GetDirectoryName(path) ?? "");
             }
         }
+    }
+    
+    [RelayCommand]
+    private async Task InspectTranslationAsync()
+    {
+        // 폴더 선택 창 호출
+        var path = await _storageService.OpenFolderAsync("검증할 번역의 Languages 폴더가 위치한 폴더를 지정해주세요.");
+        if (string.IsNullOrEmpty(path)) return;
+
+        string translationLanguageString = SettingManager.Current.TranslationLanguage;
+
+        if (string.IsNullOrEmpty(translationLanguageString))
+        {
+            Log.Err("목표 언어가 설정되지 않음.");
+            return;
+        }
+        
+        if (!LanguageInfo.TryParse(translationLanguageString, out LanguageInfo? translationLanguage))
+        {
+            Log.Err($"\"{translationLanguageString}\"(은)는 유효한 언어가 아닙니다.");
+            return;
+        }
+
+        await Task.Run(() =>
+            RimExtractorCore.TranslationInspector.TranslationInspector.CheckTranslation(path, translationLanguage!)
+        );
+
     }
 
     [RelayCommand]

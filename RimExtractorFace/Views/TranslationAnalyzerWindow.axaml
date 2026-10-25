@@ -51,7 +51,7 @@
 
         <!-- 우측 제어 패널 -->
         <StackPanel Grid.Column="1" Spacing="10">
-            <Border Background="#F5F5F5" CornerRadius="4" Padding="10" Height="80">
+            <Border Background="#252525" CornerRadius="4" Padding="10" Height="80">
                 <ScrollViewer>
                     <TextBlock Text="{Binding SelectedModTitle}" TextWrapping="Wrap"/>
                 </ScrollViewer>

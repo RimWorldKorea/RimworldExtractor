@@ -1,0 +1,29 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:RimExtractorFace.ViewModels"
+        x:Class="RimExtractorFace.Views.XmlToSheetWindow"
+        x:DataType="vm:XmlToSheetViewModel"
+        Title="XML -&gt; Sheet 변환 도구"
+        Width="600"
+        SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+
+    <Grid RowDefinitions="Auto, Auto, Auto" Margin="10" RowSpacing="10">
+        
+        <TextBlock Grid.Row="0" HorizontalAlignment="Center"
+                   Text="Languages 폴더가 있는 루트 폴더를 지정해주세요. (다중선택 가능)"/>
+        
+        <Grid Grid.Row="1" ColumnDefinitions="*, Auto" ColumnSpacing="10">
+            <TextBox Grid.Column="0" Text="{Binding FolderPathText, Mode=TwoWay}"/>
+            <Button Grid.Column="1" Content="..." Width="40" HorizontalContentAlignment="Center"
+                    Command="{Binding SelectFoldersCommand}"
+                    CommandParameter="{Binding $parent[Window].StorageProvider}"/>
+        </Grid>
+
+        <Button Grid.Row="2" Content="변환" Width="80" 
+                HorizontalAlignment="Right" HorizontalContentAlignment="Center"
+                Command="{Binding CompleteCommand}"/>
+        
+    </Grid>
+</Window>

@@ -11,7 +11,7 @@ public interface IDialogService
     Task ShowAlertAsync(string title, string message);
     Task<bool> ConfirmAsync(string title, string message);
     Task<(bool IsSuccess, Mod? SelectedMod, List<Mod> ReferenceMods)> ShowSelectModDialogAsync(Mod? initialMod = null);
-    Task<string[]?> ShowXmlisterDialogAsync();
+    Task<string[]?> ShowXmlListerDialogAsync();
     Task ShowSettingsDialogAsync();
     Task ShowProcedureSettingsDialogAsync();
     Task ShowImageFileCombinerDialogAsync();
@@ -43,9 +43,9 @@ public class DialogService : IDialogService
         return (win.IsSuccess, win.SelectedMod, win.ReferenceMods);
     }
 
-    public async Task<string[]?> ShowXmlisterDialogAsync()
+    public async Task<string[]?> ShowXmlListerDialogAsync()
     {
-        var win = new XmlisterWindow();
+        var win = new XmlToSheetWindow();
         await win.ShowDialog(_owner);
         return win.IsSuccess ? win.FileNames : null;
     }

@@ -85,9 +85,13 @@ public class ExtractionService : IExtractionService
     {
         await Task.Run(() =>
         {
-            var translations = FileInterface.FromExcel(xlsxFilePath);
-            // Prefabs.CommentOriginal을 ConfigManager.Current.CommentOriginal로 교체
-            FileInterface.ToLanguageXml(translations, true, SettingManager.Current.CommentOriginal, Path.GetFileName(xlsxFilePath), Path.GetDirectoryName(xlsxFilePath) ?? "");
+            var translations = FileInterface.FromSheetFile(xlsxFilePath);
+            FileInterface.ToLanguageXml(
+                translations, 
+                true, 
+                SettingManager.Current.CommentOriginal, 
+                Path.GetFileName(xlsxFilePath), 
+                Path.GetDirectoryName(xlsxFilePath) ?? "");
         });
     }
 

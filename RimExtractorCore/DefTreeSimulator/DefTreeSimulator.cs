@@ -11,54 +11,75 @@ namespace RimExtractorCore.DefTreeSimulator;
 /// </summary>
 public static class DefTreeSimulator
 {
+    /// <summary>어셈블리에서 읽은 타입 정보를 저장해둡니다.</summary>
     public static Dictionary<string, XElement> DeepSchemaTypes { get; private set; } = new();
     
     public static SimulationResult Execute(Mod targetMod, Version targetVersion, List<Mod>? referenceMods = null)
     {
-        Stopwatch stopwatch = Stopwatch.StartNew();
         var result = new SimulationResult { TargetMod = targetMod };
 
-        Log.Msg("[Phase1] 일차 스키마(PrePiledTree) 로드 및 생성...");
         // 1. 필요한 모든 DLL(어셈블리)을 긁어모아 스키마 트리 생성
+        Log.Msg("사전 해석 트리 생성.", true);
         XDocument prePiledTree = LoadOrGeneratePrePiledTree(targetMod, referenceMods, targetVersion);
-
-        // [Phase2] (생략 - Core Defs 통합 등 필요한 경우 추가 가능)
-        // [Phase3] PostProcessor (Stage A)
-        prePiledTree = DefTreeProcedureInjector.Instance.ExecuteStage(InjectionStage.StageA, prePiledTree);
         
-        // [Phase4] 멀티버스(평행우주) 스냅샷 생성
-        Log.Msg("[Phase4] LoadFolders 규칙 평가 및 초기 평행우주 생성...");
-        var targetMods = new List<Mod> { targetMod };
-        List<DefSnapshot> multiverse = DoctorStrange.GenerateInitialSnapshots(prePiledTree, targetMods, targetVersion);
+        // 분기 환경 스냅샷 생성
+        Log.Msg("런타임 환경 분기 생성.", true);
+        List<DefSnapshot> multiverse =
+            DoctorStrange.GenerateInitialSnapshots(prePiledTree, targetMod, referenceMods, targetVersion);
         
         // [Phase5 & 6] 각 유니버스별 Defs 병합 및 PatchOperation 수행
-        List<DefSnapshot> finalMultiverse = multiverse.AsParallel().Select(snapshot =>
-        {
-            // 5. 현재 우주에 로드된 폴더(LoadedUnits)들의 Defs 폴더 병합
-            LoadAndMergeModDefs(snapshot.Tree, snapshot.LoadedUnits, true);
-            
-            // 6. 패치 연산 적용
-            var patchedUniverses = DoctorStrange.ProcessPatchOperations(snapshot);
-            return patchedUniverses;
-        }).SelectMany(x => x).ToList();
+        Log.Msg("Def 정의 및 Patch 병합.", true);
+        var finalMultiverse = new List<DefSnapshot>();
+        /*Log.RunWithCyclingDot(() =>
+        {*/
+            finalMultiverse = multiverse.AsParallel().Select(snapshot =>
+            {
+                // 5. 현재 우주에 로드된 폴더(LoadedUnits)들의 Defs 폴더 병합
+                LoadAndMergeModDefs(snapshot.Tree, snapshot.LoadedUnits, targetMod);
+                // 6. 패치 연산 적용
+                var patchedUniverses = DoctorStrange.ProcessPatchOperations(snapshot);
+                return patchedUniverses;
+            }).SelectMany(x => x).ToList();
+        /*});*/
+
+
+        var _Debug1 = finalMultiverse.FirstOrDefault(x => x.IsBaseSnapshot);
+        if (_Debug1 != null && _Debug1.Tree != null)
+            ExportDebugFile(_Debug1.Tree, "Debug_BaseSnapshotTree_Inter2.xml");
+        
         
         // [Phase7, 8 & 9] 후처리 병렬 수행
-        Parallel.ForEach(finalMultiverse, snapshot =>
+        Log.Msg("상속 처리 및 타입 정보 주입.", true);
+        Log.RunWithCyclingDot(() =>
         {
-            DoXmlInheritance(snapshot.Tree.Root); // 7. 상속 처리
-            CleanUpAbstractNodes(snapshot.Tree.Root);
-            InjectDeepSchemaRecursive(snapshot.Tree.Root); // 8. 딥 스키마 주입
-            ApplyDefInjectedLanguageData(snapshot); // 9. 언어 데이터(DefInjected) 반영
+            Parallel.ForEach(finalMultiverse, snapshot =>
+            {
+                DoXmlInheritance(snapshot.Tree.Root); // 7. 상속 처리
+                if(snapshot.IsBaseSnapshot)
+                    ExportDebugFile(snapshot.Tree, "Debug_BaseSnapshotTree_Inter3.xml");
+                
+                CleanUpAbstractNodes(snapshot.Tree.Root);
+                // 여기까진 각 속성의 타입 정보는 주입되지 않습니다.
+                InjectDeepSchemaRecursive(snapshot.Tree.Root); // 8. 딥 스키마 주입
+                // 이제 각 속성이 어떤 타입인지 알 수 있습니다.
+                ApplyDefInjectedLanguageData(snapshot); // 9. 언어 데이터(DefInjected) 반영
+            
+                // 프로시저 실행
+                DefTreeProcedureInjector.Instance.ExecuteStage(InjectionStage.PostTreeGeneration, snapshot);
+            });
         });
-
-        Log.Msg($"{stopwatch.ElapsedMilliseconds/1000} ms 소요됨.");
+        
+        var baseSnapshot = finalMultiverse.FirstOrDefault(x => x.IsBaseSnapshot);
+        if (baseSnapshot != null && baseSnapshot.Tree != null)
+        {
+            ExportDebugFile(baseSnapshot.Tree, "Debug_BaseSnapshotTree_Inter5.xml");
+        }
+        
         result.Snapshots = finalMultiverse;
         return result;
     }
 
-    /// <summary>
-    /// 어셈블리로부터 C# 클래스 구조를 미러링한 뼈대 트리를 가져옵니다.
-    /// </summary>
+    /// <summary>어셈블리로부터 C# 클래스 구조를 미러링한 뼈대 트리를 가져옵니다.</summary>
     private static XDocument LoadOrGeneratePrePiledTree(Mod targetMod, List<Mod>? referenceMods, Version targetVersion)
     {
         var path = Engine.PrePiledTreePath;
@@ -98,56 +119,73 @@ public static class DefTreeSimulator
 
                 if (assemblyPaths.Count > 0)
                     AssemblyResolver.AppendModAssembliesSchema(assemblyPaths, typesNode);
-                //todo 문네무젤멪루ㅐㅁㅈ
-                DoXmlInheritance(typesNode);
+
+                // Types는 DeepSchemaTypes로 뺍니다.
+                DoXmlInheritance(typesNode); // 이건 뭔 이유가 있어서 여기 필요했는데 기억이 안나
                 DeepSchemaTypes.Clear();
                 foreach (var typeElem in typesNode.Elements())
                     DeepSchemaTypes[typeElem.Name.LocalName] = typeElem;
             }
+            
+            // Defs는 반환값으로 뺍니다.
             var defsNode = doc.Root.Element("Defs");
             if (defsNode != null) return new XDocument(defsNode);
         }
         return doc;
     }
 
-    /// <summary>
-    /// 추출된 Defs 폴더들의 XML을 읽어 Base 트리에 병합합니다.
-    /// </summary>
-    private static void LoadAndMergeModDefs(XDocument baseTree, List<FolderLoadUnit> loadedUnits, bool markAsTarget = false)
+    /// <summary> 추출된 Defs 폴더들의 XML을 읽어 Base 트리에 병합합니다. </summary>
+    private static void LoadAndMergeModDefs(XDocument baseTree, List<FolderLoadUnit> loadedUnits, Mod targetMod)
     {
         var baseRoot = baseTree.Root;
         if (baseRoot == null) return;
-
+        
+        var fileJobs = new List<(string FilePath, bool IsTarget)>();
         foreach (var unit in loadedUnits)
         {
             if (unit.Defs == null || !unit.Defs.Exists) continue;
-
+        
+            bool isTargetMod = unit.Parent.Equals(targetMod);
             var xmlFiles = unit.Defs.GetFiles("*.xml", SearchOption.AllDirectories);
-            foreach (var xmlFile in xmlFiles)
+
+            foreach (var file in xmlFiles)
+                fileJobs.Add((file.FullName, isTargetMod));
+        }
+
+        var parsedResults = fileJobs.AsParallel().Select(job =>
             {
                 try
                 {
-                    var modDefDoc = FileInterface.ReadXml(xmlFile.FullName);
-                    var modRoot = modDefDoc.Root;
-                    if (modRoot != null && modRoot.Name.LocalName == "Defs")
-                    {
-                        var elements = modRoot.Elements().ToList();
-                        if (markAsTarget)
-                            foreach (var element in elements) element.SetAttributeValue("ExtractionTarget", "True");
-                        baseRoot.Add(elements);
-                    }
+                    var modDefDoc = FileInterface.ReadXml(job.FilePath);
+                    return (Doc: modDefDoc, job.IsTarget, job.FilePath);
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
-                    Log.Wrn($"Def XML 병합 실패 ({xmlFile.FullName}): {e.Message}");
+                    Log.Wrn($"{job.FilePath} 읽기 실패.", true);
+                    return (Doc: (XDocument?)null, job.IsTarget, job.FilePath);
                 }
-            }
+            })
+            .Where(result => result.Doc != null) // 실패한 파일 걸러내기
+            .ToList();
+
+        foreach (var result in parsedResults)
+        {
+            var docsRoot = result.Doc!.Root;
+            if (docsRoot == null || docsRoot.Name.LocalName != "Defs") continue;
+        
+            var elements = docsRoot.Elements().ToList();
+        
+            if (result.IsTarget)
+                foreach (var element in elements)
+                    element.SetAttributeValue("ExtractionTarget", "True");
+        
+            baseRoot.Add(elements);
+            // 🟢 [중요] 병합이 끝난 후 더 이상 필요 없는 문서 껍데기의 참조를 끊어 GC가 수집할 수 있게 돕습니다.
+            result.Doc.Root.RemoveNodes(); 
         }
     }
     
-    /// <summary>
-    /// XML 트리의 ParentName을 추적하여 상속 병합을 수행합니다.
-    /// </summary>
+    /// <summary>XML 트리의 ParentName을 추적하여 상속 병합을 수행합니다.</summary>
     private static void DoXmlInheritance(XElement? root)
     {
         if (root == null) return;
@@ -171,9 +209,12 @@ public static class DefTreeSimulator
         {
             Log.Err(e.ToString());
         }
-
     }
 
+    /// <summary>Def 상속 관계를 재귀적으로 구성합니다.</summary>
+    /// <param name="def"></param>
+    /// <param name="defsByName"></param>
+    /// <param name="resolvedSet"></param>
     private static void ResolveInheritanceRecursive(XElement def, Dictionary<string, XElement> defsByName,
         HashSet<XElement> resolvedSet)
     {
@@ -183,21 +224,21 @@ public static class DefTreeSimulator
         bool isBaseSchemaNode = def.Attribute("Name")?.Value == def.Name.LocalName;
 
         // 2. 부모가 없고 자기 자신이 뼈대가 아니라면, 자기 태그명으로 된 부모를 명시적으로 주입
+        // e.g. <ThingDef .../> => <ThingDef ... ParentName="ThingDef" />
         if (def.Attribute("ParentName") == null && !isBaseSchemaNode)
-        {
             def.SetAttributeValue("ParentName", def.Name.LocalName);
-        }
-
+        
         // 3. 이제 모든 노드가 명시적인 ParentName을 가지게 되었으므로, 단일 로직으로 상속 처리
         var parentNameAttr = def.Attribute("ParentName");
         if (parentNameAttr != null)
         {
             string parentName = parentNameAttr.Value;
+            
             if (defsByName.TryGetValue(parentName, out var parentDef))
             {
                 ResolveInheritanceRecursive(parentDef, defsByName, resolvedSet);
 
-                // 핵심 로직: 부모는 타겟(추출 대상)이 아닌데 자식은 타겟인 경우 true가 됩니다.
+                // 부모는 타겟(추출 대상)이 아닌데 자식은 타겟인 경우 MayNotTranslate를 각인합니다.
                 bool markMayNotTranslate = parentDef.Attribute("ExtractionTarget")?.Value != "True" &&
                                            def.Attribute("ExtractionTarget")?.Value == "True";
 
@@ -208,8 +249,13 @@ public static class DefTreeSimulator
         resolvedSet.Add(def);
     }
 
+    /// <summary>자식에게 없는 부모의 속성 자식에게 복사해줍니다.</summary>
+    /// <param name="parent">속성을 넘겨줄 부모 노드입니다.</param>
+    /// <param name="child">속성을 넘겨받을 자식 노드입니다.</param>
+    /// <param name="markMayNotTranslate">true인 경우 MayNotTranslate 어트리뷰트를 각인합니다.</param>
     private static void CopyMissingElements(XElement parent, XElement child, bool markMayNotTranslate = false)
     {
+        // 자식에게 없는 부모의 어트리뷰트를 복사해줍니다.
         foreach (var attr in parent.Attributes())
         {
             if (attr.Name == "Name" || attr.Name == "Abstract" || attr.Name == "ParentName") continue;
@@ -219,14 +265,14 @@ public static class DefTreeSimulator
             }
         }
 
-        foreach (var parentElem in parent.Elements())
+        // li 노드를 제외한 요소 복사
+        foreach (var parentElem in parent.Elements().Where(e => e.Name.LocalName != "li"))
         {
             var childElem = child.Element(parentElem.Name);
             if (childElem == null)
             {
                 var newElem = new XElement(parentElem);
-
-                // 외부(비대상)에서 복사되어 들어오는 요소에 Notice Tag 부여
+                
                 if (markMayNotTranslate)
                 {
                     // 자기 자신에게 부여
@@ -234,17 +280,57 @@ public static class DefTreeSimulator
 
                     // 하위에 중첩된 모든 자손 노드(<graphicData> 안의 <texPath> 등)에게도 꼼꼼히 부여
                     foreach (var desc in newElem.Descendants())
-                    {
                         desc.SetAttributeValue(Constants.AttrMayNotTranslate, "True");
-                    }
                 }
-
                 child.Add(newElem);
             }
             else
             {
                 // 재귀 호출 시에도 상태를 유지하여, 깊은 곳에 복사되는 요소도 태그를 부여받게 합니다.
                 CopyMissingElements(parentElem, childElem, markMayNotTranslate);
+            }
+        }
+
+        // 2. 리스트(li) 노드 병합 (림월드 바닐라 리스트 상속 모사)
+        var parentListElements = parent.Elements("li").ToList();
+        if (parentListElements.Any())
+        {
+            // 자식 컨테이너에 Inherit="False"가 명시되어 있다면 부모 리스트를 상속받지 않음
+            bool inheritList = child.Attribute("Inherit")?.Value.ToLower() != "false";
+
+            if (inheritList)
+            {
+                var liNodesToAdd = new List<XElement>();
+                foreach (var parentLi in parentListElements)
+                {
+                    var newLi = new XElement(parentLi);
+                    if (markMayNotTranslate)
+                    {
+                        newLi.SetAttributeValue(Constants.AttrMayNotTranslate, "True");
+                        foreach (var desc in newLi.Descendants())
+                        {
+                            desc.SetAttributeValue(Constants.AttrMayNotTranslate, "True");
+                        }
+                    }
+                    liNodesToAdd.Add(newLi);
+                }
+
+                // 자식의 첫 번째 li를 찾음
+                var firstChildLi = child.Elements("li").FirstOrDefault();
+                
+                if (firstChildLi != null)
+                {
+                    // 자식의 리스트 요소들 '앞'에 부모 리스트 뭉치를 순서대로 삽입 (Prepend)
+                    foreach (var newLi in liNodesToAdd)
+                    {
+                        firstChildLi.AddBeforeSelf(newLi);
+                    }
+                }
+                else
+                {
+                    // 자식에게 li가 하나도 없다면 자식 컨테이너 내부에 통째로 추가
+                    child.Add(liNodesToAdd);
+                }
             }
         }
     }
@@ -264,7 +350,8 @@ public static class DefTreeSimulator
         }
     }
 
-    private static void ExportDebugFile(XDocument singleTree, string fileNameWithoutExtension)
+    /// <summary>XDocument를 그대로 파일로 출력합니다.</summary>
+    private static void ExportDebugFile(this XDocument singleTree, string fileNameWithoutExtension)
     {
         try
         {
@@ -272,15 +359,16 @@ public static class DefTreeSimulator
             {
                 string debugPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileNameWithoutExtension);
                 singleTree.Save(debugPath);
-                Log.Msg($"[디버그] 0번 스냅샷 트리를 출력했습니다: {debugPath}");
             }
         }
         catch (Exception e)
         {
-            Log.Wrn($"[디버그] 스냅샷 트리 출력 중 오류 발생: {e.Message}");
+            Log.Wrn(e.Message);
         }
     }
 
+    /// <summary>미리 빼둔 어셈블리 해석 트리의 Types 정보를 주입합니다.</summary>
+    /// <param name="node"></param>
     private static void InjectDeepSchemaRecursive(XElement? node)
     {
         if (node == null) return;
@@ -442,5 +530,23 @@ public static class DefTreeSimulator
 
         var memberNode = typeNode.GetOrCreateElement(memberName);
         memberNode.SetAttributeValue(attributeName, value);
+    }
+
+    /// <summary>특정 DefType에 해당하는 모든 Def를 추출 대상에서 제외합니다.</summary>
+    /// <param name="snapshot">작업 대상이 되는 Def 스냅샷</param>
+    /// <param name="defTypeName">ThingDef, ModNamespace.CustomDef 형식의 DefType 이름입니다.</param>
+    public static void BanDefType(this DefSnapshot snapshot, string defTypeName)
+    {
+        // 스냅샷의 XML 트리가 유효한지 검사 (<Defs> 루트 노드 확인)
+        if (snapshot?.Tree?.Root == null) return;
+
+        // 루트 노드 하위에서 태그명이 defTypeName과 정확히 일치하는 모든 요소를 가져옵니다.
+        var targetDefs = snapshot.Tree.Root.Elements(defTypeName);
+
+        foreach (var def in targetDefs)
+        {
+            // 추출 프로시저가 무시하도록 ExtractionTarget 속성을 "False"로 덮어씌우거나 새로 생성합니다.
+            def.SetAttributeValue("ExtractionTarget", "False");
+        }
     }
 }

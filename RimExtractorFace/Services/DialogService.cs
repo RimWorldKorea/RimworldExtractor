@@ -10,7 +10,7 @@ public interface IDialogService
 {
     Task ShowAlertAsync(string title, string message);
     Task<bool> ConfirmAsync(string title, string message);
-    Task<(bool IsSuccess, Mod? SelectedMod, List<Mod> ReferenceMods)> ShowSelectModDialogAsync(Mod? initialMod = null);
+    Task<(bool IsSuccess, Mod? SelectedMod, List<Mod> ReferenceMods)> ShowSelectModDialogAsync(Mod? initialMod = null, List<Mod>? initialReferenceMods = null);
     Task<string[]?> ShowXmlListerDialogAsync();
     Task ShowSettingsDialogAsync();
     Task ShowProcedureSettingsDialogAsync();
@@ -36,9 +36,9 @@ public class DialogService : IDialogService
         return result == ButtonResult.Yes;
     }
 
-    public async Task<(bool IsSuccess, Mod? SelectedMod, List<Mod> ReferenceMods)> ShowSelectModDialogAsync(Mod? initialMod = null)
+    public async Task<(bool IsSuccess, Mod? SelectedMod, List<Mod> ReferenceMods)> ShowSelectModDialogAsync(Mod? initialMod = null, List<Mod>? initialReferenceMods = null)
     {
-        var win = new SelectModWindow(initialMod);
+        var win = new SelectModWindow(initialMod, initialReferenceMods);
         await win.ShowDialog(_owner);
         return (win.IsSuccess, win.SelectedMod, win.ReferenceMods);
     }

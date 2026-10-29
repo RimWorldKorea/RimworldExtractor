@@ -10,12 +10,15 @@ namespace RimExtractorCore
         public static IEnumerable<string> Messages => _logQueue;
         
         private static readonly ConcurrentQueue<string> _logQueue = new();
-        private static readonly HashSet<int> _hashes = new();
+
         private const int MAX_COUNT = 10000;
         
         private static readonly ConcurrentDictionary<string, string> _classNameCache = new();
 
         /// <summary>기본 공통 로그 메서드입니다.</summary>
+        /// <param name="message">출력할 메시지입니다.</param>
+        /// <param name="colorHexOrName">출력 메시지 색상입니다. 자체적으로 색을 넣도록 되어있진 않고, 실제 출력 모듈이 참고할 태그로 가공됩니다.</param>
+        /// <param name="hideTrace">로그에 자동으로 주입되는 호출자 정보를 숨깁니다.</param>
         /// <param name="filePath">호출자의 파일 경로입니다. 컴파일 시점에 자동으로 결정됩니다.</param>
         /// <param name="memberName">호출자의 이름입니다. 컴파일 시점에 자동으로 결정됩니다.</param>
         public static void Default(string message, string colorHexOrName = "White", bool hideTrace = false,
@@ -33,48 +36,54 @@ namespace RimExtractorCore
             StoreMessage(str);
         }
         
+        /// <summary>빨간색 로그입니다.</summary>
         public static void Err(string message, bool hideTrace = false,
             [CallerFilePath] string filePath = "", [CallerMemberName] string memberName = "") 
             => Default(message, "Tomato", hideTrace, filePath, memberName);
         
+        /// <summary>노란색 로그입니다.</summary>
         public static void Wrn(string message, bool hideTrace = false,
             [CallerFilePath] string filePath = "", [CallerMemberName] string memberName = "") 
             => Default(message, "Gold", hideTrace, filePath, memberName);
         
+        /// <summary>하얀색 로그입니다.</summary>
         public static void Msg(string message, bool hideTrace = false,
             [CallerFilePath] string filePath = "", [CallerMemberName] string memberName = "")
             => Default(message, "White", hideTrace, filePath, memberName );
         
+        /// <summary>초록색 로그입니다.</summary>
         public static void Good(string message, bool hideTrace = false,
             [CallerFilePath] string filePath = "", [CallerMemberName] string memberName = "")
             => Default(message, "LimeGreen", hideTrace, filePath, memberName );
         
-        public static void ErrOnce(string message, int hash,
+        /// <summary>연속된 중복 로그 요청을 무시하는 Err입니다.</summary>
+        public static void ErrOnce(string message, bool hideTrace = false,
             [CallerFilePath] string filePath = "", [CallerMemberName] string memberName = "")
         {
-            if (_hashes.Contains(hash)) return;
-            _hashes.Add(hash);
-            Err(message, false, filePath, memberName);
+            if (message.Equals(_logQueue.LastOrDefault())) return;
+            Err(message, hideTrace, filePath, memberName);
         }
         
-        public static void WrnOnce(string message, int hash,
+        /// <summary>연속된 중복 로그 요청을 무시하는 Wrn입니다.</summary>
+        public static void WrnOnce(string message, bool hideTrace = false,
             [CallerFilePath] string filePath = "", [CallerMemberName] string memberName = "")
         {
-            if (_hashes.Contains(hash)) return;
-            _hashes.Add(hash);
-            Wrn(message, false, filePath, memberName);
+            if (message.Equals(_logQueue.LastOrDefault())) return;
+            Wrn(message, hideTrace, filePath, memberName);
         }
         
         private static void StoreMessage(string message)
         {
-            if (_logQueue.Count > MAX_COUNT)
+            if (_logQueue.Count >= MAX_COUNT)
             {
-                _logQueue.TryDequeue(out _);
+                if(!_logQueue.TryDequeue(out _))
+                    throw new InvalidOperationException();
             }
             _logQueue.Enqueue(message);
         }
         
         /// <summary>마지막 로그의 내용을 message로 대체합니다.</summary>
+        /// <remarks>대체 메시지는 로그 큐에는 저장되지 않습니다.</remarks>
         public static void ReplaceLast(string message)
         {
             var str = $"[REPLACE]{message}"; // [REPLACE] 접두를 달아서 보내면 Face 모듈이 알아서 합니다.
@@ -85,6 +94,7 @@ namespace RimExtractorCore
         /// <param name="work">효과를 나타낼 작업입니다.</param>
         /// <param name="dotLength">따라붙는 점의 최대 개수입니다.</param>
         /// <param name="millisecondsInterval">점이 늘어나는 시간 간격입니다.</param>
+        /// <remarks>진행 중간에 다른 로그가 끼어드는 경우에는 대비되지 않았습니다.</remarks>
         public static void RunWithCyclingDot(Action work, int dotLength = 19, int millisecondsInterval = 30)
         {
             // _logQueue에 방금 막 추가된 마지막 문자열(색상 태그 포함)을 가져옵니다.
@@ -122,17 +132,5 @@ namespace RimExtractorCore
                 ReplaceLast(baseMessage);
             }
         }
-        
-        /*
-        private static string GetCallStack()
-        {
-            var curMethod = new StackTrace().GetFrame(2)?.GetMethod();
-            if (curMethod?.DeclaringType == typeof(Log))
-            {
-                curMethod = new StackTrace().GetFrame(3)?.GetMethod();
-            }
-            return $"{curMethod?.DeclaringType?.Name ?? "UNKNOWN Type"}.{curMethod?.Name ?? "UNKNOWN Method"}()";
-        }
-        */
     }
 }

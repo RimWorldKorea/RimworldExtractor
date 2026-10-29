@@ -34,7 +34,7 @@ public static class Engine
             injector.RegisterProcedures();
         }
         
-        Log.Good("림추출기 초기화 완료.", true);
+        Log.Good("림추출기 초기화 완료.\n", true);
     }
     
     /// <summary>

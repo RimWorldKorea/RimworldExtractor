@@ -16,7 +16,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IExternalProcessService _processService;
 
     [ObservableProperty]
-    private string _selectedModsText = "▸ 모드를 선택하면 추출 버튼이 활성화됩니다.\n\n▸ 번역 후 기본 검증 기능을 사용하여 결과물을 점검해보세요.\n\n▸ 안내: 현재 번역 분석기는 동작하지 않습니다.";
+    private string _selectedModsText = "▸ 모드를 선택하면 추출 버튼이 활성화됩니다.\n\n▸ 번역 후 기본 검증 기능을 사용하여 결과물을 점검해보세요.\n\n▸ 안내: 현재 번역 분석기는 제대로 동작하지 않을 수 있습니다.";
 
     [ObservableProperty]
     private string _versionText = "버전 확인 중...";
@@ -88,13 +88,13 @@ public partial class MainWindowViewModel : ViewModelBase
         ReferenceMods = refMods.Except(new[] { mod }).ToList();
         CanExtract = true;
 
-        var text = $"선택된 모드 : {SelectedMod.Name}";
+        var text = $"추출 모드 : {SelectedMod.Name}";
         if (ReferenceMods?.Count > 0)
         {
             var concatText = string.Join(", ", ReferenceMods.Select(x => x.Name));
             var stripedText = concatText.Substring(0, Math.Min(concatText.Length, 200));
             if (concatText.Length > 200) stripedText += "...";
-            text += $"\n기준 모드 : {stripedText}";
+            text += $"\n참조 모드 : {stripedText}";
         }
         SelectedModsText = text;
     }
@@ -102,7 +102,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private async Task SelectModAsync()
     {
-        var result = await _dialogService.ShowSelectModDialogAsync(SelectedMod);
+        var result = await _dialogService.ShowSelectModDialogAsync(SelectedMod, ReferenceMods);
         if (result.IsSuccess && result.SelectedMod != null)
         {
             UpdateSelectedModInfo(result.SelectedMod, result.ReferenceMods);
@@ -113,8 +113,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private async Task ExtractAsync()
     {
         if (SelectedMod == null || ReferenceMods == null) return;
-
-        Log.Msg("추출 시작...");
+        Log.Msg("추출 시작.", true);
 
         try
         {

@@ -10,14 +10,14 @@ public class DefTreeProcedureInjector : IProcedureInjector
 {
     public static DefTreeProcedureInjector Instance { get; } = new();
 
-    private readonly Dictionary<InjectionStage, List<IXDocumentProcedure>> _processorsByStage = new();
+    private readonly Dictionary<InjectionStage, List<IDefTreeProcedure>> _processorsByStage = new();
     public bool IsInitialized { get; private set; } = false;
 
     private DefTreeProcedureInjector()
     {
         foreach (InjectionStage stage in Enum.GetValues(typeof(InjectionStage)))
         {
-            _processorsByStage[stage] = new List<IXDocumentProcedure>();
+            _processorsByStage[stage] = new List<IDefTreeProcedure>();
         }
     }
 
@@ -28,7 +28,7 @@ public class DefTreeProcedureInjector : IProcedureInjector
         foreach (var list in _processorsByStage.Values) list.Clear();
         var baseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Procedures", "DefTree");
         
-        var processors = ProcedureLoader.LoadProceduresFromDirectory<IXDocumentProcedure>(baseDir);
+        var processors = ProcedureLoader.LoadProceduresFromDirectory<IDefTreeProcedure>(baseDir);
         foreach (var processor in processors)
         {
             if (_processorsByStage.TryGetValue(processor.Stage, out var list))
@@ -44,14 +44,12 @@ public class DefTreeProcedureInjector : IProcedureInjector
         IsInitialized = true;
     }
 
-    public XDocument ExecuteStage(InjectionStage stage, XDocument currentDefTree)
+    public void ExecuteStage(InjectionStage stage, DefSnapshot currentSnapshot)
     {
-        if (!_processorsByStage.TryGetValue(stage, out var processors) || processors.Count == 0)
-        {
-            return currentDefTree;
-        }
-
-        var resultDoc = currentDefTree;
+        if (!_processorsByStage.TryGetValue(stage, out var processors) ||
+            processors.Count == 0)
+            return;
+        
         foreach (var processor in processors)
         {
             // 화이트리스트 설정에 포함된 경우만 실행
@@ -59,14 +57,13 @@ public class DefTreeProcedureInjector : IProcedureInjector
             
             try
             {
-                resultDoc = processor.Process(resultDoc);
+                processor.Process(currentSnapshot);
             }
             catch (Exception e)
             {
                 Log.Err($"런타임 에러 ({processor.Name}): {e.Message}");
             }
         }
-        return resultDoc;
     }
     
 }

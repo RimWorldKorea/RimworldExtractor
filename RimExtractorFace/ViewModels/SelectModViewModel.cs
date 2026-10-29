@@ -24,6 +24,9 @@ public partial class ModListItem : ObservableObject
 
     [ObservableProperty]
     private bool _isReference;
+    
+    [ObservableProperty] 
+    private bool _isExtractionTarget;
 
     // 1. 헤더용 생성자
     public ModListItem(string headerText)
@@ -62,6 +65,8 @@ public partial class ModListItem : ObservableObject
         {
             _parentVm.ReferenceMods.Remove(Metadata);
         }
+        
+        _parentVm.UpdateSelectedModInfoText();
     }
 
     public override string ToString() => IsHeader ? HeaderText : DisplayName;
@@ -79,18 +84,19 @@ public partial class SelectModViewModel : ViewModelBase
     private List<Mod> _officialModsCached = new();
     private List<Mod> _localModsCached = new();
     private List<Mod> _workshopModsCached = new();
-    private readonly Mod? _initialMod;
+    private readonly Mod? _initialFocusingMod;
+    private readonly List<Mod>? _initialReferenceMods;
 
-    //TODO Core 모듈 Constants로 이동
+    /// <todo>이게 여기 있는 것이 그다지 적절하지 않을 것이다.</todo>
     private static readonly List<string> OfficialDLCSequence = new()
-    {
-        "Core", "Royalty", "Ideology", "Biotech", "Anomaly", "Odessey"
-    };
+    { "Core", "Royalty", "Ideology", "Biotech", "Anomaly", "Odessey" };
 
     [ObservableProperty] private string _searchText = string.Empty;
     [ObservableProperty] private bool _isFilterSelectedOnly = false;
     [ObservableProperty] private string _selectedModInfoText = "선택된 모드가 없습니다.";
+    [ObservableProperty] private bool _autoReferenceLink;
     
+    /// <summary>SelectedMod의 수정 요청을 임시로 받아두기 위한 속성입니다.</summary>
     [ObservableProperty] private ModListItem? _selectedModListItem;
     [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(CompleteCommand))]
     private bool _canComplete = false;
@@ -103,11 +109,14 @@ public partial class SelectModViewModel : ViewModelBase
     public event Action? RequestClose;
     public event Func<string, Task>? RequestShowAlert;
 
-    public SelectModViewModel(IExternalProcessService processService, IExtractionService extractionService, Mod? initialMod = null)
+    public SelectModViewModel(IExternalProcessService processService, IExtractionService extractionService, Mod? initialFocusingMod = null, List<Mod>? initialReferenceMods = null)
     {
         _processService = processService;
         _extractionService = extractionService;
-        _initialMod = initialMod;
+        _initialFocusingMod = initialFocusingMod;
+        _initialReferenceMods = initialReferenceMods;
+        
+        AutoReferenceLink = SettingManager.Current.AutoReferenceLink;
     }
 
     /// <summary>UI와 분리된 비동기 초기화 메서드입니다.</summary>
@@ -140,41 +149,83 @@ public partial class SelectModViewModel : ViewModelBase
         // UI 스레드 복귀 후 UI 바인딩 갱신
         IdColumnMinWidth = Math.Max(40.0, (maxIdLength * 8) + 26);
 
-        foreach (var officialMod in _officialModsCached)
+        if (_initialReferenceMods != null && _initialReferenceMods.Count > 0)
         {
-            if (!ReferenceMods.Contains(officialMod))
-                ReferenceMods.Add(officialMod);
+            var initialPaths = _initialReferenceMods.Select(m => m.Path).ToHashSet();
+            foreach (var mod in _allModsCached)
+                if (initialPaths.Contains(mod.Path))
+                    ReferenceMods.Add(mod);
         }
-
+        else
+        {
+            foreach (var officialMod in _officialModsCached)
+                if (!ReferenceMods.Contains(officialMod))
+                    ReferenceMods.Add(officialMod);
+        }
+        
+        if (_initialFocusingMod != null)
+        {
+            SelectedMod = _allModsCached.FirstOrDefault(m
+                => m.Path == _initialFocusingMod.Path);
+            
+            if (SelectedMod != null) CanComplete = true;
+        }
+        
         RefreshModList();
-
-        if (_initialMod != null)
+        
+        if (SelectedMod != null)
         {
-            SelectedModListItem = FilteredMods.FirstOrDefault(x => !x.IsHeader && x.Metadata?.Path == _initialMod.Path);
+            SelectedModListItem = FilteredMods.FirstOrDefault(x
+                => !x.IsHeader && x.Metadata?.Path == SelectedMod.Path);
         }
-
+        
+        UpdateSelectedModInfoText();
+        
         IsLoading = false;
     }
     
+    partial void OnAutoReferenceLinkChanged(bool value)
+    {
+        SettingManager.Current.AutoReferenceLink = value;
+        SettingManager.LastSaved.AutoReferenceLink = value;
+        SettingManager.SaveToDisk();
+    }
     partial void OnSearchTextChanged(string value) => RefreshModList();
     partial void OnIsFilterSelectedOnlyChanged(bool value) => RefreshModList();
     partial void OnSelectedModListItemChanged(ModListItem? value)
     {
-        // [예외 처리] 헤더(가짜 아이템)를 클릭했을 때는 무시합니다.
-        if (value == null || value.IsHeader || value.Metadata == null) 
-            return;
-            
+        if (_isLoading) return;
+        // 헤더 선택시 무시
+        if (value == null || value.IsHeader || value.Metadata == null) return;
+  
+        if (AutoReferenceLink) ResetSelection(false);
         SelectedMod = value.Metadata;
-        var info = SelectedMod.Name;
-        if (SelectedMod.About?.modDependencies is { Count: > 0 })
-        {
-            info += $"\n[종속성: {string.Join(';', SelectedMod.About.modDependencies)}]";
-        }
-        SelectedModInfoText = info;
+        if (AutoReferenceLink) _ = SelectAllRefModsAsync(false);
         
+        RefreshModList();
+        UpdateSelectedModInfoText();
         CanComplete = true;
     }
 
+    /// <summary>정보창 텍스트를 갱신합니다.</summary>
+    public void UpdateSelectedModInfoText()
+    {
+        if (SelectedMod == null)
+        {
+            SelectedModInfoText = "선택된 모드가 없습니다.";
+            return;
+        }
+
+        var info = "추출 모드: " + SelectedMod.Name;
+        if (ReferenceMods.Count > 0)
+        {
+            info += "\n참조 모드: ";
+            info += string.Join(", ", ReferenceMods.Select(m => m.Name)); 
+        }
+        SelectedModInfoText = info;
+    }
+    
+    /// <summary>모드 리스트 UI를 갱신합니다.</summary>
     public void RefreshModList()
     {
         FilteredMods.Clear();
@@ -213,13 +264,21 @@ public partial class SelectModViewModel : ViewModelBase
                 if (IsFilterSelectedOnly && !isRef && SelectedMod != mod)
                     continue;
 
-                yield return new ModListItem(mod, isRef, this);
+                var item = new ModListItem(mod, isRef, this);
+                
+                // 방금 만든 아이템이 현재 타겟 모드(SelectedMod)라면 true
+                if (SelectedMod != null && mod.Path == SelectedMod.Path)
+                    item.IsExtractionTarget = true;
+                
+                yield return item;
             }
         }
     }
 
+    /// <summary>선택한 모드의 참조모드 목록을 가져오는 메서드.</summary>
+    /// <todo>뷰모델이 아니라 ModLister로 로직을 옮기는게 맞는거 아닌가?</todo>
     [RelayCommand]
-    private async Task SelectAllRefModsAsync()
+    private async Task SelectAllRefModsAsync(bool refreshUI = true)
     {
         if (SelectedModListItem?.Metadata == null) return;
         var mod = SelectedModListItem.Metadata;
@@ -227,12 +286,9 @@ public partial class SelectModViewModel : ViewModelBase
         // 1. 기본 종속성과 버전별 종속성을 모두 담을 집합(중복 방지)
         var allDependencies = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         
-        if (mod.About?.modDependencies != null)
-        {
-            foreach (var pid in mod.About.modDependencies)
-                allDependencies.Add(pid);
-        }
-
+        foreach (var pid in mod.About.modDependencies) 
+            allDependencies.Add(pid);
+        
         // 2. 현재 버전에 맞는 종속성(modDependenciesByVersion) 추가
         if (Version.TryParse(SettingManager.Current.CurrentVersion, out var currentVersion))
         {
@@ -243,19 +299,12 @@ public partial class SelectModViewModel : ViewModelBase
                     allDependencies.Add(pid);
             }
         }
-        
+
         // 3. 수집된 종속성 ID들을 캐시된 모드 리스트에서 검색
         var requiredMods = allDependencies
             .Select(x => _allModsCached.Find(y => string.Equals(y.PackageID, x, StringComparison.OrdinalIgnoreCase)))
             .Where(x => x != null)
             .ToList();
-
-        if (requiredMods.Count == 0)
-        {
-            if (RequestShowAlert != null)
-                await RequestShowAlert.Invoke("종속성이 선언되지 않았거나 설치된 모드 중 일치하는 종속성을 찾을 수 없습니다!");
-            return;
-        }
         
         // 실제 참조 모드 로드
         foreach (var refMod in ModLister.FindAllReferenceMods(mod))
@@ -263,8 +312,12 @@ public partial class SelectModViewModel : ViewModelBase
             if (!ReferenceMods.Contains(refMod))
                 ReferenceMods.Add(refMod);
         }
-        
-        RefreshModList();
+
+        if (refreshUI)
+        {
+            RefreshModList();
+            UpdateSelectedModInfoText();
+        }
     }
 
     [RelayCommand]
@@ -309,6 +362,28 @@ public partial class SelectModViewModel : ViewModelBase
             }
 
             _processService.OpenFolderInExplorer(path);
+        }
+    }
+    
+    /// <summary>모든 선택 상태를 초기 상태로 되돌립니다.</summary>
+    [RelayCommand]
+    private void ResetSelection(bool refreshUI = true)
+    {
+        SelectedMod = null;
+        ReferenceMods.Clear();
+        SearchText = string.Empty;
+        IsFilterSelectedOnly = false;
+        
+        foreach (var officialMod in _officialModsCached)
+        {
+            if (!ReferenceMods.Contains(officialMod))
+                ReferenceMods.Add(officialMod);
+        }
+        
+        if(refreshUI)
+        {
+            RefreshModList();
+            UpdateSelectedModInfoText();
         }
     }
 

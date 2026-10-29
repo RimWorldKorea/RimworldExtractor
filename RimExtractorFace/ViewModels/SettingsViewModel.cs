@@ -1,4 +1,6 @@
-﻿using Avalonia.Platform.Storage;
+﻿using System.Text.RegularExpressions;
+using Avalonia.Platform.Storage;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using RimExtractorCore;
 
@@ -26,13 +28,18 @@ public partial class SettingsViewModel : ViewModelBase
     public static string[] ExtractionMethods { get; } = new[] { "스프레드시트 (.ods)", "XML 언어팩", "XML 언어팩 (주석 포함)" };
     public static string[] DuplicationPolicies { get; } = new[] { "작업중단", "덮어쓰기", "다른 이름으로 저장" };
 
-    // --- 1. 모델 직접 바인딩 (XAML에서 {Binding Config.XXX} 사용) ---
+    /// <summary>현재 설정의 캡쳐입니다.</summary>
     public Settings settings { get; }
+    
+    /// <summary>뷰의 버전 설정 사용자 입력을 담아두기 위한 속성입니다.</summary>
+    [ObservableProperty]
+    private string _inputVersion = string.Empty;
+    
     public string gameVersion => settings.CurrentVersion;
     
-    // 2차 언어 값이 비어있을 때 "None"으로 매핑해주는 Wrapper
     public string SelectedSecondaryLanguage
     {
+        // 2차 언어 값이 비어있으면 "None"
         get => string.IsNullOrEmpty(settings.SecondaryLanguage) ? "None" : settings.SecondaryLanguage;
         set
         {
@@ -68,6 +75,7 @@ public partial class SettingsViewModel : ViewModelBase
     public SettingsViewModel()
     {
         settings = SettingManager.Current.Clone();
+        InputVersion = settings.CurrentVersion;
         RefreshAdapters();
     }
 
@@ -143,30 +151,31 @@ public partial class SettingsViewModel : ViewModelBase
     private void Apply()
     {
         ApplySettings(SettingManager.Current);
+        
+        Log.Good("일반 설정 적용 완료.", true);
     }
-
-    // 2. 저장: 프로시저 창과 동일하게 우선 저장 로직만 실행하도록 연결
+    
     [RelayCommand]
     private void Save()
     {
         ApplySettings(SettingManager.Current);
-        ApplySettings(SettingManager.LastSaved);
+        ApplySettings(SettingManager.LastSaved, true);
         SettingManager.SaveToDisk();
+
+        Log.Good("일반 설정 저장 완료.", true);
     }
 
-    // 3. 닫기: 저장 없이 창만 닫음
     [RelayCommand]
     private void Close()
     {
         RequestClose?.Invoke();
     }
     
-    private void ApplySettings(Settings target)
+    private void ApplySettings(Settings target, bool SupressLogging = false)
     {
         target.PathRimworld = settings.PathRimworld;
         target.PathWorkshop = settings.PathWorkshop;
         target.PathBaseRefList = settings.PathBaseRefList;
-        target.CurrentVersion = settings.CurrentVersion;
         target.OriginalLanguage = settings.OriginalLanguage;
         target.SecondaryLanguage = settings.SecondaryLanguage;
         target.TranslationLanguage = settings.TranslationLanguage;
@@ -174,5 +183,21 @@ public partial class SettingsViewModel : ViewModelBase
         target.Policy = settings.Policy;
         target.Method = settings.Method;
         target.ExtractMayNotTranslate = settings.ExtractMayNotTranslate;
+        
+        string input = InputVersion.Trim();
+        if (Regex.IsMatch(input, @"^\d+\.\d+$"))
+        {
+            target.CurrentVersion = input;
+            settings.CurrentVersion = input;
+        }
+        else
+        {
+            InputVersion = target.CurrentVersion;
+            string logText = "유효한 버전 형식이 아닙니다.";
+            if (SupressLogging)
+                Log.WrnOnce(logText, true);
+            else
+                Log.Wrn(logText, true);
+        }
     }
 }

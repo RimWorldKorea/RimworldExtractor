@@ -16,7 +16,7 @@
   <ItemGroup>
     <PackageReference Include="ExcelDataReader" Version="3.9.0" />
     <PackageReference Include="HtmlAgilityPack" Version="1.13.1" />
-    <PackageReference Include="ICSharpCode.Decompiler" Version="11.1.0.9782" />
+    <PackageReference Include="ICSharpCode.Decompiler" Version="11.2.0.10050" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />
   </ItemGroup>
     
@@ -27,12 +27,12 @@
     <Compile Remove="Procedures\**\*.cs" />
     
     <!-- Procedure 인터페이스 정의 파일만 빌드에 포함 -->
+    <Compile Include="Procedures\DefTree\IDefTreeProcedure.cs" />
     <Compile Include="Procedures\Translations\ITranslationEntryProcedure.cs" />
-    <Compile Include="Procedures\DefTree\IXDocumentProcedure.cs" />
     <Compile Include="Procedures\Extractor\IExtractionProcedure.cs" />
     
     <!-- Procedure 구현 파일을 출력 디렉토리에 복사 -->
-    <None Include="Procedures\**\*.cs" Exclude="Procedures\Extractor\IExtractionProcedure.cs;Procedures\Translations\ITranslationEntryProcedure.cs;Procedures\DefTree\IXDocumentProcedure.cs">
+    <None Include="Procedures\**\*.cs" Exclude="Procedures\Extractor\IExtractionProcedure.cs;Procedures\Translations\ITranslationEntryProcedure.cs;Procedures\DefTree\IDefTreeProcedure.cs">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     

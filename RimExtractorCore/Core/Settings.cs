@@ -7,7 +7,7 @@ public class Settings
     // 1. 기본 경로 및 버전 (기존 Prefabs의 기본값 복원)
     public string PathRimworld { get; set; } = "C:\\Program Files (x86)\\Steam\\steamapps\\common\\RimWorld";
     public string PathWorkshop { get; set; } = "C:\\Program Files (x86)\\Steam\\steamapps\\workshop\\content\\294100";
-    //TODO 기본 참조 목록도 필요 없을 것 같아 (애초부터 기본값으로 찍어주는걸로 충분)
+    /// <todo>이제 필요 없지 않을까?</todo>
     public string PathBaseRefList { get; set; } = "";
     public string CurrentVersion { get; set; } = "1.6";
 
@@ -23,11 +23,13 @@ public class Settings
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public ExportFileFormmat Method { get; set; } = ExportFileFormmat.LanguageData;
 
-    // 비필수 번역 요소(MayNotTranslate) 추출 여부 스위치
+    /// <summary>비필수 번역 요소(MayNotTranslate) 추출 스위치</summary>
+    /// <todo>이것도 필요가 있나?</todo>
     public bool ExtractMayNotTranslate { get; set; } = true;
-
+    /// <summary>추출 모드 선택시 자동 참조 기능 작동 여부</summary>
+    public bool AutoReferenceLink { get; set; } = true;
+    
     // 4. 내부 로직 (직렬화 무시)
-
     public IEnumerable<string> GetLanguagePriorityList()
     {
         var list = new List<string>();
@@ -37,7 +39,10 @@ public class Settings
         return list.Distinct();
     }
     
-    public List<string> EnabledDefTreeProcedures { get; set; } = new();
+    public List<string> EnabledDefTreeProcedures { get; set; } = new()
+    {
+        "바닐라 보완 프로시저"
+    };
     
     public List<string> EnabledProcedures { get; set; } = new()
     {
@@ -63,7 +68,8 @@ public class Settings
             ExtractMayNotTranslate = this.ExtractMayNotTranslate,
             EnabledDefTreeProcedures = new List<string>(this.EnabledDefTreeProcedures),
             EnabledProcedures = new List<string>(this.EnabledProcedures),
-            EnabledTranslationEntryProcedures = new List<string>(this.EnabledTranslationEntryProcedures)
+            EnabledTranslationEntryProcedures = new List<string>(this.EnabledTranslationEntryProcedures),
+            AutoReferenceLink = this.AutoReferenceLink
         };
     }
 }

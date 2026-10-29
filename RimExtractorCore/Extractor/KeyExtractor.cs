@@ -18,15 +18,15 @@ namespace RimExtractorCore.Extractor
             var requiredMods = new RequiredMods();
             requiredMods.AddAllowedByModNames(snapshot.RequiredModIds);
             
-            Log.Msg($"KeyExtractor.Extract -> {requiredMods.ToString()}");
-            
             var assemblyPaths = new List<string>();
 
             // 1. DLL 경로 수집
             foreach (var unit in snapshot.LoadedUnits)
             {
-                if (unit.Assemblies != null && unit.Assemblies.Exists)
-                    assemblyPaths.AddRange(unit.Assemblies.GetFiles("*.dll", SearchOption.AllDirectories).Select(f => f.FullName));
+                if (unit.Parent.Equals(targetMod) && unit.Assemblies != null && unit.Assemblies.Exists)
+                    assemblyPaths.AddRange(unit.Assemblies
+                        .GetFiles("*.dll", SearchOption.AllDirectories)
+                        .Select(f => f.FullName));
             }
 
             foreach (var dllPath in assemblyPaths.Distinct(StringComparer.OrdinalIgnoreCase))

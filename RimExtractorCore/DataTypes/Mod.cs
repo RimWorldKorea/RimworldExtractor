@@ -5,9 +5,6 @@ namespace RimExtractorCore.DataTypes;
 /// <summary>폴더로 구분되는 각각의 모드에 대응합니다.</summary>
 public class Mod : IEquatable<Mod>, IDisposable
 {
-    private static readonly object RegistryLock = new();
-    public static HashSet<Mod> RegisteredMods = new();
-    
     public readonly string? Path;
     
     public readonly About About;
@@ -57,8 +54,6 @@ public class Mod : IEquatable<Mod>, IDisposable
             Type = ModType.Local;
         }
         else throw new ArgumentException($"{path} is not a valid mod path.");
-
-        lock (RegistryLock) { RegisteredMods.Add(this); }
     }
     
     /// <summary>실제 모드 데이터 없이 PackageID만으로 가상 모드 참조자를 생성합니다.</summary>
@@ -69,8 +64,6 @@ public class Mod : IEquatable<Mod>, IDisposable
         
         About.packageID = packageID;
         Type = ModType.Virtual;
-        
-        lock (RegistryLock) { RegisteredMods.Add(this); }
     }
     
     /// <summary>명시적으로 리소스를 해제하고 레지스트리에서 제거합니다.</summary>
@@ -84,8 +77,7 @@ public class Mod : IEquatable<Mod>, IDisposable
             folder.Dispose();
         }
         OwnedFolders.Clear();
-
-        lock (RegistryLock) { RegisteredMods.Remove(this); }
+        
         _disposed = true;
         GC.SuppressFinalize(this);
     }

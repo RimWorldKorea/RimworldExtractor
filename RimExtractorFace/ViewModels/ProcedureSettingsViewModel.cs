@@ -22,7 +22,7 @@ public partial class ProcedureSettingsViewModel : ViewModelBase
     {
         // 1. DefTree 프로시저 로드
         var defDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Procedures", "DefTree");
-        var defProcs = ProcedureLoader.LoadProceduresFromDirectory<IXDocumentProcedure>(defDir);
+        var defProcs = ProcedureLoader.LoadProceduresFromDirectory<IDefTreeProcedure>(defDir);
         PopulateList(DefTreeProcedures, defProcs, SettingManager.Current.EnabledDefTreeProcedures);
 
         // 2. TranslationEntry 프로시저 로드

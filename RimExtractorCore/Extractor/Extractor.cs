@@ -1,4 +1,5 @@
-﻿using RimExtractorCore.DataTypes;
+﻿using System.Collections.Concurrent;
+using RimExtractorCore.DataTypes;
 using RimExtractorCore.DefTreeSimulator;
 
 namespace RimExtractorCore.Extractor;
@@ -8,11 +9,10 @@ public static partial class ExtractorEngine
     public static ExtractionResult ExtractTranslationData(SimulationResult simResult)
     {
         var finalEntries = new List<TranslationEntry>();
-
+        
         if (simResult.Snapshots.Count == 0)
             return new ExtractionResult(simResult.TargetMod, finalEntries);
-
-        // Base snapshot을 플래그로 명확하게 탐색 (인덱스 의존 탈피)
+        
         var baseSnapshot = simResult.Snapshots.FirstOrDefault(s => s.IsBaseSnapshot);
         //TODO 베이스 스냅샷이 없을 때 이렇게 처리하는게 맞을까?
         if (baseSnapshot == null)
@@ -20,45 +20,51 @@ public static partial class ExtractorEngine
             Log.Err("베이스 스냅샷을 찾을 수 없습니다!");
             return new ExtractionResult(simResult.TargetMod, finalEntries);
         }
-
-        Log.Msg($" 빙빙빙");
-        var baseEntries = ExtractFromSnapshot(baseSnapshot, simResult.TargetMod);
-
-        finalEntries.AddRange(baseEntries);
-
-        var baseDictionary = new Dictionary<string, string>();
-        foreach (var entry in baseEntries)
+        
+        var branchEntriesBag = new ConcurrentBag<TranslationEntry>();
+        Log.Msg("번역 노드 추출.", true);
+        Log.RunWithCyclingDot(() =>
         {
-            baseDictionary[entry.ClassNode] = entry.Original;
-        }
+            var baseEntries = ExtractFromSnapshot(baseSnapshot, simResult.TargetMod);
 
-        // 2. 다중 우주 분기(Diff) 처리 - 조건부 패치로 인해 변경/추가된 번역만 수집
-        foreach (var branchSnapshot in simResult.Snapshots.Where(s => !s.IsBaseSnapshot))
-        {
-            var branchEntries = ExtractFromSnapshot(branchSnapshot, simResult.TargetMod);
+            finalEntries.AddRange(baseEntries);
 
-            var branchCondition = new RequiredMods();
-            branchCondition.AddAllowedByModNames(branchSnapshot.RequiredModIds);
-
-            foreach (var branchEntry in branchEntries)
+            var baseDictionary = new Dictionary<string, string>();
+            foreach (var entry in baseEntries)
             {
-                bool isUniqueToBranch = false;
-
-                if (!baseDictionary.TryGetValue(branchEntry.ClassNode, out var baseOriginalText))
-                {
-                    isUniqueToBranch = true;
-                }
-                else if (baseOriginalText != branchEntry.Original)
-                {
-                    isUniqueToBranch = true;
-                }
-
-                if (isUniqueToBranch)
-                {
-                    finalEntries.Add(branchEntry with { RequiredMods = branchCondition });
-                }
+                baseDictionary[entry.ClassNode] = entry.Original;
             }
-        }
+
+            // 2. 다중 우주 분기(Diff) 처리 - 조건부 패치로 인해 변경/추가된 번역만 수집
+            Parallel.ForEach(simResult.Snapshots.Where(s => !s.IsBaseSnapshot), branchSnapshot =>
+            {
+                var branchEntries = ExtractFromSnapshot(branchSnapshot, simResult.TargetMod);
+
+                var branchCondition = new RequiredMods();
+                branchCondition.AddAllowedByModNames(branchSnapshot.RequiredModIds);
+
+                foreach (var branchEntry in branchEntries)
+                {
+                    bool isUniqueToBranch = false;
+
+                    // baseDictionary는 이 단계에서 읽기 전용으로만 사용되므로 스레드 안전함
+                    if (!baseDictionary.TryGetValue(branchEntry.ClassNode, out var baseOriginalText))
+                    {
+                        isUniqueToBranch = true; // 베이스에 없는 새로운 번역
+                    }
+                    else if (baseOriginalText != branchEntry.Original)
+                    {
+                        isUniqueToBranch = true; // 베이스와 원문이 달라진 번역
+                    }
+
+                    if (isUniqueToBranch)
+                    {
+                        branchEntriesBag.Add(branchEntry with { RequiredMods = branchCondition });
+                    }
+                }
+            });
+        });
+        finalEntries.AddRange(branchEntriesBag);
 
         // 3. 중복 제거 및 최종 프로시저(Stage C) 필터링
         var distinctEntries = FilterDuplicates(finalEntries);

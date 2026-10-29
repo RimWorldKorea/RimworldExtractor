@@ -164,17 +164,19 @@ public static class FileInterface
         }
     }
 
+    private static readonly XmlReaderSettings SharedXmlReaderSettings = new()
+    {
+        IgnoreComments = true,
+        IgnoreWhitespace = true,
+        CheckCharacters = false
+    };
+    
     public static XDocument ReadXml(string filePath)
     {
-        var readerSettings = new XmlReaderSettings
-        {
-            IgnoreComments = true,
-            IgnoreWhitespace = true,
-            CheckCharacters = false
-        };
-    
+        // FileOptions.SequentialScan을 통해 OS 캐시 매니저에게 순차 읽기 힌트 제공
         using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-        using var xmlReader = XmlReader.Create(stream, readerSettings);
+        using var xmlReader = XmlReader.Create(stream, SharedXmlReaderSettings);
+    
         return XDocument.Load(xmlReader);
     }
 

@@ -94,14 +94,12 @@ public static class AssemblyResolver
         return outputFilePath;
     }
     
-    /// <summary>
-    /// 여러 모드로부터 어셈블리를 읽어 XML 구조에 병합합니다.
-    /// </summary>
+    /// <summary>여러 모드로부터 어셈블리를 읽어 XML 구조에 병합합니다.</summary>
     /// <param name="assemblyPaths">병합할 어셈블리 경로입니다.</param>
     /// <param name="typesNode">어셈블리가 병합될 XML 노드입니다.</param>
     public static void AppendModAssembliesSchema(IEnumerable<string> assemblyPaths, XElement typesNode)
     {
-        Log.Msg("모드 어셈블리 해석 모델 병합 중.", true);
+        Log.Msg("모드 어셈블리 해석 모델 병합.", true);
         
         var decompilerSettings = new DecompilerSettings(LanguageVersion.Latest);
         var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount };

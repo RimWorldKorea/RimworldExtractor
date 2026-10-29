@@ -11,15 +11,21 @@ public static class DoctorStrange
     /// <summary>
     /// 대상 모드들의 LoadFolders.xml (Any/All) 규칙을 분석하여 초기 평행우주 스냅샷들을 생성합니다.
     /// </summary>
-    public static List<DefSnapshot> GenerateInitialSnapshots(XDocument prePiledTree, IEnumerable<Mod> targetMods, Version targetVersion)
+    public static List<DefSnapshot> GenerateInitialSnapshots(XDocument prePiledTree, Mod targetMod, List<Mod>? referenceMods, Version targetVersion)
     {
         var snapshots = new List<DefSnapshot>();
         
-        // 1. 발생 가능한 모든 PackageID 조합(멀티버스)을 계산
-        List<string[]> allPossibleUniverses = CalculateAllModCombinations(targetMods, targetVersion);
+        // 1. 발생 가능한 모든 PackageID 조합을 계산
+        var targetModsForBranching = new List<Mod> { targetMod };
+        List<string[]> allPossibleUniverses = CalculateAllModCombinations(targetModsForBranching, targetVersion);
         
-        Log.Msg($"[멀티버스] 총 {allPossibleUniverses.Count}개의 초기 우주가 계산되었습니다.");
+        Log.Msg($"{allPossibleUniverses.Count}개의 런타임 환경 분기 감지.", true);
 
+        
+        var modsToLoad = new List<Mod>();
+        if (referenceMods != null) modsToLoad.AddRange(referenceMods);
+        modsToLoad.Add(targetMod);
+        
         foreach (var modCombination in allPossibleUniverses)
         {
             var activeModsSet = new HashSet<string>(modCombination, StringComparer.OrdinalIgnoreCase);
@@ -28,13 +34,13 @@ public static class DoctorStrange
             if (modCombination.Length == 0) snapshot.IsBaseSnapshot = true;
 
             // 2. 해당 우주에서 각 모드가 활성화해야 할 폴더 상대 경로 산출
-            foreach (var mod in targetMods)
+            foreach (var mod in modsToLoad)
             {
                 var activePaths = EvaluateActivePaths(mod, targetVersion, activeModsSet);
                 
                 foreach (var path in activePaths)
                 {
-                    // [핵심] 이미 생성된 FolderLoadUnit이 있는지 OwnedFolders에서 검색하여 재사용
+                    // 이미 생성된 FolderLoadUnit이 있는지 OwnedFolders에서 검색하여 재사용
                     var unit = mod.OwnedFolders.FirstOrDefault(u => string.Equals(u.RelativePath, path, StringComparison.OrdinalIgnoreCase));
                     if (unit == null)
                     {
@@ -46,7 +52,7 @@ public static class DoctorStrange
                 }
             }
             
-            Log.Msg($"[유니버스 생성] 활성 조건: {(modCombination.Length > 0 ? string.Join(", ", snapshot.RequiredModIds) : "기본 우주(Base)")}");
+            Log.Msg($"\t{(modCombination.Length > 0 ? string.Join(", ", snapshot.RequiredModIds) : "basis")}", true);
             snapshots.Add(snapshot);
         }
 

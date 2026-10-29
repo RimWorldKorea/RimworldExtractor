@@ -1,29 +1,32 @@
-﻿using System.Xml.Linq;
-using RimExtractorCore.DataTypes;
+﻿using RimExtractorCore.DataTypes;
 
 namespace RimExtractorCore;
 
-/// <summary>
-/// 현재 환경에 설치된 림월드 컨텐츠를 추적하는 도구입니다.
-/// </summary>
+/// <summary>모드 정보 통합 관리자입니다.</summary>
 public static class ModLister
 {
+    /// <summary>프로그램이 관리하는 모든 모드가 등록됩니다.</summary>
+    private static readonly Dictionary<string, Mod> ModRegistry = new(StringComparer.OrdinalIgnoreCase);
+    
     private static readonly Dictionary<string, List<Mod>> ModByPackageIdLookUp = new(StringComparer.OrdinalIgnoreCase);
     private static readonly Dictionary<string, List<Mod>> ModByModNameLookUp = new(StringComparer.OrdinalIgnoreCase);
+    
     private static List<Mod>? LocalModsCache = null;
     private static List<Mod>? WorkshopModsCache = null;
+    private static List<Mod>? OfficialModsCache = null;
     
     public static void ResetCache()
     {
         WorkshopModsCache = null;
         LocalModsCache = null;
+        OfficialModsCache = null;
+        
         ModByPackageIdLookUp.Clear();
         ModByModNameLookUp.Clear();
         
-        foreach (var mod in Mod.RegisteredMods.ToList())
-        {
+        foreach (var mod in ModRegistry.Values)
             mod.Dispose();
-        }
+        ModRegistry.Clear();
     }
     
     /// <summary>공식 컨텐츠의 루트 경로를 반환합니다.</summary>
@@ -66,8 +69,20 @@ public static class ModLister
     public static IEnumerable<string> ModRootsAll =>
         ModRootsOfficial.Concat(ModRootsLocal).Concat(ModRootsWorkshop);
 
-    public static IEnumerable<Mod> OfficialMods =>
-        ModRootsOfficial.Select(GetModByModRoot).Where(m => m != null).OrderBy(x => x!.Name)!;
+    public static IEnumerable<Mod> OfficialMods
+    {
+        get
+        {
+            if (OfficialModsCache is null)
+            {
+                OfficialModsCache = ModRootsOfficial.Select(GetModByModRoot)
+                    .Where(m => m != null)
+                    .OrderBy(x => x!.Name)
+                    .ToList()!;
+            }
+            return OfficialModsCache;
+        }
+    }
     
     public static IEnumerable<Mod> LocalMods
     {
@@ -127,22 +142,22 @@ public static class ModLister
     }
     
     /// <summary>
-    /// 모드의 물리적 루트 경로를 기반으로 Mod 객체를 반환합니다. 이미 생성된 객체가 있다면 RegisteredMods에서 가져옵니다.
+    /// 모드의 물리적 루트 경로를 기반으로 Mod 객체를 반환합니다. 이미 생성된 객체가 있다면 ModRegistry에서 가져옵니다.
     /// </summary>
     public static Mod? GetModByModRoot(string modRoot)
     {
         // 1. 이미 로드된 모드인지 확인
         string normalizedPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(modRoot));
-        var existingMod = Mod.RegisteredMods.FirstOrDefault(m => 
-            !string.IsNullOrWhiteSpace(m.Path) && 
-            Path.TrimEndingDirectorySeparator(Path.GetFullPath(m.Path)).Equals(normalizedPath, StringComparison.OrdinalIgnoreCase));
-            
-        if (existingMod != null) return existingMod;
+        
+        if (ModRegistry.TryGetValue(normalizedPath, out var existingMod))
+            return existingMod;
 
-        // 2. 새 Mod 객체 생성 (이 과정에서 자동으로 RegisteredMods에 추가됨)
+        // 2. 새 Mod 객체 생성 (이 과정에서 자동으로 ModRegistry에 추가됨)
         try
         {
-            return new Mod(modRoot, SettingManager.Current);
+            var newMod = new Mod(modRoot, SettingManager.Current);
+            ModRegistry[normalizedPath] = newMod;
+            return newMod;
         }
         catch (Exception e)
         {

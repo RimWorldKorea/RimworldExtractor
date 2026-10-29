@@ -18,7 +18,7 @@ public partial class SelectModWindow : Window
 
     public SelectModWindow() : this(null) { }
 
-    public SelectModWindow(Mod? initialMod = null)
+    public SelectModWindow(Mod? initialMod = null, List<Mod>? initialReferenceMods = null)
     {
         InitializeComponent();
         
@@ -26,7 +26,8 @@ public partial class SelectModWindow : Window
         _viewModel = new SelectModViewModel(
             new ExternalProcessService(),
             new ExtractionService(),
-            initialMod);
+            initialMod,
+            initialReferenceMods);
 
         DataContext = _viewModel;
 
@@ -43,18 +44,5 @@ public partial class SelectModWindow : Window
         };
         
         Loaded += async (s, e) => await _viewModel.InitializeAsync();
-    }
-
-    private void Window_KeyDown(object? sender, KeyEventArgs e)
-    {
-        switch (e.Key)
-        {
-            case Key.A:
-                _viewModel.OpenExplorerCommand.Execute(null);
-                break;
-            case Key.D:
-                _viewModel.IsFilterSelectedOnly = !_viewModel.IsFilterSelectedOnly;
-                break;
-        }
     }
 }

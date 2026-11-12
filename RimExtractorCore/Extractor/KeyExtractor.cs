@@ -18,11 +18,16 @@ namespace RimExtractorCore.Extractor
             var requiredMods = new RequiredMods();
             requiredMods.AddAllowedByModNames(snapshot.RequiredModIds);
             
+            var targetFolders =
+                snapshot.LoadedUnits.Where(x => x.Parent.Equals(targetMod)).ToList();
+            
             var assemblyPaths = new List<string>();
-
+            
             // 1. DLL 경로 수집
-            foreach (var unit in snapshot.LoadedUnits)
+            foreach (var unit in targetFolders)
             {
+                if (!unit.Parent.Equals(targetMod)) continue;
+                
                 if (unit.Parent.Equals(targetMod) && unit.Assemblies != null && unit.Assemblies.Exists)
                     assemblyPaths.AddRange(unit.Assemblies
                         .GetFiles("*.dll", SearchOption.AllDirectories)
@@ -35,8 +40,10 @@ namespace RimExtractorCore.Extractor
             // 3. 설정된 1차/2차 언어를 기반으로 원문(Original) 텍스트 매핑
             var priorityLanguages = SettingManager.Current.GetLanguagePriorityList().ToList();
             
-            foreach (var unit in snapshot.LoadedUnits)
+            foreach (var unit in targetFolders)
             {
+                if (!unit.Parent.Equals(targetMod)) continue;
+                
                 foreach (var lang in priorityLanguages)
                 {
                     var englishName = lang.Split('(')[0].Trim();
@@ -81,9 +88,7 @@ namespace RimExtractorCore.Extractor
             {
                 // 1. 대상 어셈블리를 PE 파일 모듈로 로드
                 using var module = new PEFile(dllPath);
-
-                // [수정됨] module.Reader가 아니라 module 객체에서 직접 호출합니다. 
-                // (만약 그래도 빨간 줄이 뜬다면, 그냥 null을 전달하셔도 림월드 환경에서는 무방합니다.)
+                
                 var targetFramework = module.DetectTargetFrameworkId();
                 var resolver = new UniversalAssemblyResolver(dllPath, throwOnError: false, targetFramework);
                 

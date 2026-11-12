@@ -143,8 +143,10 @@ public partial class SettingsViewModel : ViewModelBase
     [RelayCommand]
     private void AutoDetectVersion()
     {
-        SettingManager.UpdateGameVersion();
-        OnPropertyChanged(nameof(gameVersion));
+        string detectedVersion = SettingManager.GetGameVersion();
+        
+        if (!string.IsNullOrEmpty(detectedVersion))
+            InputVersion = detectedVersion;
     }
     
     [RelayCommand]

@@ -30,8 +30,8 @@ public static class DefTreeSimulator
         // [Phase5 & 6] 각 유니버스별 Defs 병합 및 PatchOperation 수행
         Log.Msg("Def 정의 및 Patch 병합.", true);
         var finalMultiverse = new List<DefSnapshot>();
-        /*Log.RunWithCyclingDot(() =>
-        {*/
+        Log.RunWithCyclingDot(() =>
+        {
             finalMultiverse = multiverse.AsParallel().Select(snapshot =>
             {
                 // 5. 현재 우주에 로드된 폴더(LoadedUnits)들의 Defs 폴더 병합
@@ -40,7 +40,7 @@ public static class DefTreeSimulator
                 var patchedUniverses = DoctorStrange.ProcessPatchOperations(snapshot);
                 return patchedUniverses;
             }).SelectMany(x => x).ToList();
-        /*});*/
+        });
 
 
         var _Debug1 = finalMultiverse.FirstOrDefault(x => x.IsBaseSnapshot);
@@ -180,7 +180,7 @@ public static class DefTreeSimulator
                     element.SetAttributeValue("ExtractionTarget", "True");
         
             baseRoot.Add(elements);
-            // 🟢 [중요] 병합이 끝난 후 더 이상 필요 없는 문서 껍데기의 참조를 끊어 GC가 수집할 수 있게 돕습니다.
+            // 병합이 끝난 후 더 이상 필요 없는 문서 껍데기의 참조를 끊어 GC가 수집할 수 있게 돕습니다.
             result.Doc.Root.RemoveNodes(); 
         }
     }

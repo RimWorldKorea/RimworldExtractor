@@ -86,7 +86,7 @@ public static partial class ExtractorEngine
         entries.AddRange(KeyExtractor.Extract(snapshot, targetMod));
 
         // Step 3: LanguageData 폴더를 순회하며 빈 원문을 채우고 XML 기반 Keyed, Strings를 추가
-        ProcessLanguageData(entries, snapshot, isOfficialContent);
+        ProcessLanguageData(entries, snapshot, isOfficialContent, targetMod);
 
         return entries;
     }
@@ -95,7 +95,7 @@ public static partial class ExtractorEngine
     /// 추출된 항목들의 비어있는 Original 값을 채우고, 누락된 XML Keyed와 Strings를 추가합니다.
     /// </summary>
     private static void ProcessLanguageData(List<TranslationEntry> entries, DefSnapshot snapshot,
-        bool isOfficialContent)
+        bool isOfficialContent, Mod targetMod)
     {
         var priorityLanguages = SettingManager.Current.GetLanguagePriorityList().ToList();
 
@@ -111,6 +111,8 @@ public static partial class ExtractorEngine
 
             foreach (var unit in snapshot.LoadedUnits)
             {
+                if (!unit.Parent.Equals(targetMod)) continue;
+                
                 // 1. Keyed XML 병합
                 var keyedDir = unit.GetKeyedPath(languageInfo);
                 if (keyedDir != null && keyedDir.Exists)

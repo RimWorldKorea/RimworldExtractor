@@ -85,8 +85,21 @@
                 <ListBox.ItemTemplate>
                     
                     <DataTemplate DataType="vm:ModListItem">
-                        <Panel>
+                        <Panel Background="Transparent" PointerPressed="OnItemPointerPressed">
                                 
+                            <Panel.ContextMenu>
+                                <!-- 🟢 [수정] ContextMenu 내부만 엄격한 타입 검사를 끄고 런타임 바인딩으로 전환 -->
+                                <ContextMenu x:CompileBindings="False">
+                                    <MenuItem Header="파일 탐색기에서 폴더 열기" 
+                                              Command="{Binding $parent[Window].DataContext.OpenExplorerCommand}"
+                                              CommandParameter="{Binding}"/>
+                                    <Separator Padding="-2,0"/>
+                                    <MenuItem Header="참조 모드 일괄 선택" 
+                                              Command="{Binding $parent[Window].DataContext.SelectAllRefModsCommand}"
+                                              CommandParameter="{Binding}"/>
+                                </ContextMenu>
+                            </Panel.ContextMenu>
+                            
                             <!-- 헤더 UI -->
                             <Border IsVisible="{Binding IsHeader}" 
                                     Background="#333333" 
@@ -137,14 +150,14 @@
                         </Panel>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
-                    
+                    <!--
                 <ListBox.ContextMenu>
                     <ContextMenu>
                         <MenuItem Header="파일 탐색기에서 모드 폴더 열기" Command="{Binding OpenExplorerCommand}"/>
                         <Separator Padding="-2,0"/>
                         <MenuItem Header="참조 모드 자동 선택" Command="{Binding SelectAllRefModsCommand}"/>
                     </ContextMenu>
-                </ListBox.ContextMenu>
+                </ListBox.ContextMenu> -->
             </ListBox>
         </Border>
             

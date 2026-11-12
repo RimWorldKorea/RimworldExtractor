@@ -200,7 +200,7 @@ public partial class SelectModViewModel : ViewModelBase
   
         if (AutoReferenceLink) ResetSelection(false);
         SelectedMod = value.Metadata;
-        if (AutoReferenceLink) _ = SelectAllRefModsAsync(false);
+        if (AutoReferenceLink) _ = SelectAllRefModsInternalAsync(value, false);
         
         RefreshModList();
         UpdateSelectedModInfoText();
@@ -275,13 +275,18 @@ public partial class SelectModViewModel : ViewModelBase
         }
     }
 
+    [RelayCommand]
+    private async Task SelectAllRefModsAsync(ModListItem? clickedItem)
+    {
+        await SelectAllRefModsInternalAsync(clickedItem ?? SelectedModListItem, true);
+    }
+    
     /// <summary>선택한 모드의 참조모드 목록을 가져오는 메서드.</summary>
     /// <todo>뷰모델이 아니라 ModLister로 로직을 옮기는게 맞는거 아닌가?</todo>
-    [RelayCommand]
-    private async Task SelectAllRefModsAsync(bool refreshUI = true)
+    private async Task SelectAllRefModsInternalAsync(ModListItem? targetItem, bool refreshUI)
     {
-        if (SelectedModListItem?.Metadata == null) return;
-        var mod = SelectedModListItem.Metadata;
+        if (targetItem?.Metadata == null) return;
+        var mod = targetItem.Metadata;
         
         // 1. 기본 종속성과 버전별 종속성을 모두 담을 집합(중복 방지)
         var allDependencies = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -321,20 +326,20 @@ public partial class SelectModViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private async Task OpenExplorerAsync()
+    private async Task OpenExplorerAsync(ModListItem? clickedItem)
     {
-        if (SelectedModListItem?.Metadata?.Path != null)
+        var targetItem = clickedItem ?? SelectedModListItem;
+        
+        if (targetItem?.Metadata?.Path != null)
         {
-            var path = SelectedModListItem.Metadata.Path;
-            var targetMod = SelectedModListItem.Metadata;
+            var path = targetItem.Metadata.Path;
+            var targetMod = targetItem.Metadata;
             
             // 폴더 존재 여부를 뷰모델 단계에서 먼저 확인
             if (!System.IO.Directory.Exists(path))
             {
                 if (RequestShowAlert != null)
-                {
                     await RequestShowAlert.Invoke("존재하지 않는 폴더입니다.");
-                }
                 
                 // 1. 뷰모델의 캐시 리스트에서 해당 모드 제거
                 _allModsCached.Remove(targetMod);
@@ -344,14 +349,15 @@ public partial class SelectModViewModel : ViewModelBase
                 
                 // 2. 참조 모드로 선택되어 있었다면 제거
                 if (ReferenceMods.Contains(targetMod))
-                {
                     ReferenceMods.Remove(targetMod);
-                }
 
                 // 3. 현재 선택된 모드 초기화
-                SelectedModListItem = null;
-                SelectedModInfoText = "선택된 모드가 없습니다.";
-                CanComplete = false;
+                if (SelectedModListItem == targetItem)
+                {
+                    SelectedModListItem = null;
+                    SelectedModInfoText = "선택된 모드가 없습니다.";
+                    CanComplete = false;
+                }
 
                 // 4. Core 엔진 레지스트리(RegisteredMods)에서 영구 삭제 및 자원 해제
                 targetMod.Dispose();

@@ -45,4 +45,17 @@ public partial class SelectModWindow : Window
         
         Loaded += async (s, e) => await _viewModel.InitializeAsync();
     }
+    
+    private void OnItemPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.GetCurrentPoint(this).Properties.IsRightButtonPressed)
+        {
+            // 우클릭 이벤트가 ListBox로 버블링되어 아이템이 선택되는 것을 차단합니다.
+            e.Handled = true; 
+            
+            // 컨텍스트 메뉴를 수동으로 강제 호출합니다.
+            if (sender is Control control && control.ContextMenu != null)
+                control.ContextMenu.Open(control); 
+        }
+    }
 }

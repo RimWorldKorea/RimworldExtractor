@@ -7,13 +7,13 @@
     
     <!-- Build Configurations -->
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <ProduceReferenceAssembly>True</ProduceReferenceAssembly>
     <SignAssembly>False</SignAssembly>
     <NoWin32Manifest>true</NoWin32Manifest>
-    <LangVersion>14</LangVersion>
+    <LangVersion>15</LangVersion>
     <UseWindowsForms>false</UseWindowsForms>
     <PathMap>$(MSBuildProjectDirectory)=/src</PathMap>
     
@@ -46,6 +46,7 @@
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.6" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="MessageBox.Avalonia" Version="12.1.0" />
+    <PackageReference Include="Microsoft.NET.ILLink.Tasks" Version="11.0.0" />
   </ItemGroup>
 
   <ItemGroup>

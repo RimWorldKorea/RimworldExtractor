@@ -13,7 +13,7 @@ public static class Engine
     // 앱 실행 동안 유지될 PrePiledTree XML의 절대 경로
     public static string PrePiledTreePath { get; private set; } = string.Empty;
     
-    // 인터페이스를 기반으로 한 Injector 파이프라인 레지스트리
+    /// TODO 이거 파생클래스 알아서 주워다 등록하게 하면 멋질듯
     private static readonly List<IProcedureInjector> Injectors = new()
     {
         DefTreeProcedureInjector.Instance,

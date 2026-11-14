@@ -1,69 +1,111 @@
-﻿using System.Xml.Linq;
+﻿using System.Runtime.CompilerServices;
+using System.Xml.Linq;
 using RimExtractorCore.Procedures;
 
 namespace RimExtractorCore.DefTreeSimulator;
 
-/// <summary>
-/// DefTreeSimulator에서 동작하는 프로시저 인젝터의 구현체입니다.
-/// </summary>
+/// <summary>DefTreeSimulator에서 동작하는 프로시저 인젝터의 구현체입니다.</summary>
 public class DefTreeProcedureInjector : IProcedureInjector
 {
     public static DefTreeProcedureInjector Instance { get; } = new();
 
-    private readonly Dictionary<InjectionStage, List<IDefTreeProcedure>> _processorsByStage = new();
+    private readonly List<(IDefTreeProcedure Proc, bool IsEnabled)> _procedures = new();
+    private readonly object _syncLock = new();
+    
     public bool IsInitialized { get; private set; } = false;
 
-    private DefTreeProcedureInjector()
-    {
-        foreach (InjectionStage stage in Enum.GetValues(typeof(InjectionStage)))
-        {
-            _processorsByStage[stage] = new List<IDefTreeProcedure>();
-        }
-    }
+    private DefTreeProcedureInjector() { }
 
     public void RegisterProcedures()
     {
         if (IsInitialized) return;
-        
-        foreach (var list in _processorsByStage.Values) list.Clear();
+
         var baseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Procedures", "DefTree");
-        
-        var processors = ProcedureLoader.LoadProceduresFromDirectory<IDefTreeProcedure>(baseDir);
-        foreach (var processor in processors)
+        var loadedProcs = ProcedureLoader.LoadProceduresFromDirectory<IDefTreeProcedure>(baseDir);
+
+        lock (_syncLock)
         {
-            if (_processorsByStage.TryGetValue(processor.Stage, out var list))
+            _procedures.Clear();
+            foreach (var proc in loadedProcs)
             {
-                if (!list.Any(p => p.Name == processor.Name))
+                if (!_procedures.Any(p => p.Proc.Name == proc.Name))
                 {
-                    list.Add(processor);
-                    Log.Good($"{processor.Name} 등록 완료. ({processor.Stage})", true);
+                    _procedures.Add((proc, false));
+                    Log.Good($"{proc.Name} 등록 완료.", true);
                 }
             }
+
+            IsInitialized = true;
         }
-        
-        IsInitialized = true;
+
+        SyncWithSettings();
     }
 
-    public void ExecuteStage(InjectionStage stage, DefSnapshot currentSnapshot)
+    /// <summary>SettingManager.Current의 활성화 목록 및 실행 순서를 인젝터 내부 캐시와 동기화합니다.</summary>
+    public void SyncWithSettings()
     {
-        if (!_processorsByStage.TryGetValue(stage, out var processors) ||
-            processors.Count == 0)
-            return;
-        
-        foreach (var processor in processors)
+        if (!IsInitialized)
         {
-            // 화이트리스트 설정에 포함된 경우만 실행
-            if (!SettingManager.Current.EnabledDefTreeProcedures.Contains(processor.Name)) continue;
-            
+            RegisterProcedures();
+            return;
+        }
+
+        lock (_syncLock)
+        {
+            var enabledNames = SettingManager.Current.EnabledDefTreeProcedures;
+            var reordered = new List<(IDefTreeProcedure Proc, bool IsEnabled)>(_procedures.Count);
+            var remaining = _procedures.Select(x => x.Proc).ToList();
+
+            // 1. 설정에 저장된 순서대로 활성화된 프로시저 배치
+            foreach (var name in enabledNames)
+            {
+                var match = remaining.FirstOrDefault(p => p.Name == name);
+                if (match != null)
+                {
+                    reordered.Add((match, true));
+                    remaining.Remove(match);
+                }
+            }
+
+            // 2. 비활성화된 나머지 프로시저들도 인스턴스를 유지한 채 뒤에 보관
+            foreach (var proc in remaining)
+            {
+                reordered.Add((proc, false));
+            }
+
+            _procedures.Clear();
+            _procedures.AddRange(reordered);
+        }
+    }
+
+    private void ExecuteInner(Action<IDefTreeProcedure> action, [CallerMemberName] string callerName = "")
+    {
+        List<(IDefTreeProcedure Proc, bool IsEnabled)> snapshotProcedures;
+        lock (_syncLock) // 과한 방어. 아마 필요하진 않음.
+        {
+            snapshotProcedures = _procedures.ToList();
+        }
+
+        foreach (var (proc, isEnabled) in snapshotProcedures)
+        {
+            if (!isEnabled) continue;
+
             try
             {
-                processor.Process(currentSnapshot);
+                action(proc);
             }
             catch (Exception e)
             {
-                Log.Err($"런타임 에러 ({processor.Name}): {e.Message}");
+                Log.Err($"{proc.Name}/{callerName} 실행 실패\n\t{e.Message}");
             }
         }
     }
     
+    /// <summary>사전 해석 트리(PrePiledTree)가 로드된 직후 등록된 프로시저들을 실행합니다.</summary>
+    public static void ExecutePostPrePile(XDocument prePiledTree)
+        => Instance.ExecuteInner(proc => proc.PostPrePile(prePiledTree));
+    
+    /// <summary>Def 트리 병합 및 상속 처리가 끝난 직후 등록된 프로시저들을 실행합니다.</summary>
+    public static void ExecutePostCreateTree(DefSnapshot snapshot)
+        => Instance.ExecuteInner(proc => proc.PostCreateTree(snapshot));
 }

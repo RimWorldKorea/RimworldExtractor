@@ -22,6 +22,8 @@ public static class DefTreeSimulator
         Log.Msg("사전 해석 트리 생성.", true);
         XDocument prePiledTree = LoadOrGeneratePrePiledTree(targetMod, referenceMods, targetVersion);
         
+        DefTreeProcedureInjector.ExecutePostPrePile(prePiledTree);
+        
         // 분기 환경 스냅샷 생성
         Log.Msg("런타임 환경 분기 생성.", true);
         List<DefSnapshot> multiverse =
@@ -65,7 +67,7 @@ public static class DefTreeSimulator
                 ApplyDefInjectedLanguageData(snapshot); // 9. 언어 데이터(DefInjected) 반영
             
                 // 프로시저 실행
-                DefTreeProcedureInjector.Instance.ExecuteStage(InjectionStage.PostTreeGeneration, snapshot);
+                DefTreeProcedureInjector.ExecutePostCreateTree(snapshot);
             });
         });
         
@@ -533,12 +535,12 @@ public static class DefTreeSimulator
     }
 
     /// <summary>특정 DefType에 해당하는 모든 Def를 추출 대상에서 제외합니다.</summary>
-    /// <param name="snapshot">작업 대상이 되는 Def 스냅샷</param>
+    /// <param name="snapshot">작업 대상이 되는 Def 스냅샷입니다.</param>
     /// <param name="defTypeName">ThingDef, ModNamespace.CustomDef 형식의 DefType 이름입니다.</param>
-    public static void BanDefType(this DefSnapshot snapshot, string defTypeName)
+    public static void BanDef(this DefSnapshot snapshot, string defTypeName)
     {
         // 스냅샷의 XML 트리가 유효한지 검사 (<Defs> 루트 노드 확인)
-        if (snapshot?.Tree?.Root == null) return;
+        if (snapshot.Tree.Root == null) return;
 
         // 루트 노드 하위에서 태그명이 defTypeName과 정확히 일치하는 모든 요소를 가져옵니다.
         var targetDefs = snapshot.Tree.Root.Elements(defTypeName);
@@ -548,5 +550,12 @@ public static class DefTreeSimulator
             // 추출 프로시저가 무시하도록 ExtractionTarget 속성을 "False"로 덮어씌우거나 새로 생성합니다.
             def.SetAttributeValue("ExtractionTarget", "False");
         }
+    }
+
+    /// <summary>typeName에 해당하는 모든 타입의 속성을 비번역 속성으로 지정합니다.</summary>
+    public static void BanType(this DefSnapshot snapshot, string typeName)
+    {
+        if (DefTreeSimulator.DeepSchemaTypes.TryGetValue(typeName, out var targetNode))
+            targetNode.SetAttributeValue("NoTranslate", "True");
     }
 }

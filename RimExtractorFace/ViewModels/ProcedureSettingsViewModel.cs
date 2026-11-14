@@ -1,6 +1,7 @@
 ﻿using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.Input;
 using RimExtractorCore;
+using RimExtractorCore.DefTreeSimulator;
 using RimExtractorCore.Procedures;
 
 namespace RimExtractorFace.ViewModels;
@@ -24,6 +25,7 @@ public partial class ProcedureSettingsViewModel : ViewModelBase
         var defDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Procedures", "DefTree");
         var defProcs = ProcedureLoader.LoadProceduresFromDirectory<IDefTreeProcedure>(defDir);
         PopulateList(DefTreeProcedures, defProcs, SettingManager.Current.EnabledDefTreeProcedures);
+        DefTreeProcedureInjector.Instance.SyncWithSettings();
 
         // 2. TranslationEntry 프로시저 로드
         var transDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Procedures", "Translations");
@@ -40,12 +42,13 @@ public partial class ProcedureSettingsViewModel : ViewModelBase
         {
             item.PropertyChanged += (s, e) =>
             {
-                if (e.PropertyName == nameof(ProcedureItemViewModel.IsEnabled) && s is ProcedureItemViewModel { IsEnabled: true } currentItem)
+                if (e.PropertyName == 
+                    nameof(ProcedureItemViewModel.IsEnabled) &&
+                    s is ProcedureItemViewModel { IsEnabled: true } currentItem)
                 {
                     foreach (var other in ExtractionProcedures)
-                    {
-                        if (other != currentItem) other.IsEnabled = false;
-                    }
+                        if (other != currentItem)
+                            other.IsEnabled = false;
                 }
             };
         }
@@ -79,6 +82,7 @@ public partial class ProcedureSettingsViewModel : ViewModelBase
     private void Apply()
     {
         ApplySettings(SettingManager.Current);
+        DefTreeProcedureInjector.Instance.SyncWithSettings();
     }
 
     // 2. 저장: 현재는 새 UI 기능 추가 없이 분리만 하므로 '적용'과 동일한 저장 로직 실행
@@ -88,6 +92,7 @@ public partial class ProcedureSettingsViewModel : ViewModelBase
         ApplySettings(SettingManager.Current);
         ApplySettings(SettingManager.LastSaved);
         SettingManager.SaveToDisk();
+        DefTreeProcedureInjector.Instance.SyncWithSettings();
     }
 
     // 3. 닫기: 저장 없이 창만 닫음

@@ -5,17 +5,21 @@ using RimExtractorCore.DefTreeSimulator;
 namespace RimExtractorCore.DefTreeSimulator.Procedures;
 
 /// <summary>
-/// 림월드 자체 어셈블리의 미흡한 번역 태그 등록 상태를 보완하기 위한 프로시저입니다.
+/// 림월드 어셈블리의 번역 태그 등록 상태를 보완하기 위한 프로시저입니다.
 /// </summary>
 public class BaseAttributeProcedure : IDefTreeProcedure
 {
     public string Name => "바닐라 보완 프로시저";
-    public InjectionStage Stage => InjectionStage.PostTreeGeneration;
 
-    public void Process(DefSnapshot a)
+    public void PostPrePile(XDocument prePiledTree)
     {
-        a.BanDefType("SoundDef");
-        a.BanDefType("AbilityGroupDef");
-        a.BanDefType("FleckDef");
+        
+    }
+    
+    public void PostCreateTree(DefSnapshot snapshot)
+    {
+        snapshot.BanDef("SoundDef");
+        snapshot.BanDef("AbilityGroupDef");
+        snapshot.BanDef("FleckDef");
     }
 }

@@ -22,8 +22,6 @@ public class ExtractionProcedureInjector : IProcedureInjector
 
     public void RegisterProcedures()
     {
-
-        
         if (IsInitialized) return;
 
         var baseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Procedures", "Extractor");

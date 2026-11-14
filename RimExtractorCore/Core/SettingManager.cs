@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using RimExtractorCore.DefTreeSimulator;
 
 namespace RimExtractorCore;
 
@@ -24,6 +25,8 @@ public static class SettingManager
     public static void Initialize()
     {
         Current = LastSaved.Clone();
+        if (DefTreeProcedureInjector.Instance.IsInitialized)
+            DefTreeProcedureInjector.Instance.SyncWithSettings();
     }
 
     public static void LoadFromFile()
@@ -64,7 +67,10 @@ public static class SettingManager
     public static void InitDefault()
     {
         LastSaved = new Settings();
-        Current = new Settings(); // 바꿔
+        Current = new Settings();
+        if (DefTreeProcedureInjector.Instance.IsInitialized)
+            DefTreeProcedureInjector.Instance.SyncWithSettings();
+        
     }
 
     /// <summary>림월드 폴더에서 게임 버전을 읽습니다.</summary>

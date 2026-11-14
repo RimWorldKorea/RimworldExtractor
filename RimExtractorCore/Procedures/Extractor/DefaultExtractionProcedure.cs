@@ -45,12 +45,11 @@ public class DefaultExtractionProcedure : IExtractionProcedure
         {
             // 명시적인 NoTranslate 어트리뷰트가 있는 경우 스킵합니다.
             //TODO 굳이 변수로 단계를 나눌 필요가 있는진 모르겠음.
-            bool isNoTranslate = child.Attribute(Constants.AttrNoTranslate)?.Value.ToLower() == "true";
-            bool isFullListTranslate = false;
-            
+            bool isNoTranslate = child.Attribute(Constants.AttrNoTranslate)?.Value.ToLower() == "true"; 
             if (isNoTranslate) continue;
             
             string path;
+            bool isFullListTranslate = false;
             
             // 리스트 노드(li) 처리
             if (child.Name.LocalName == "li")
